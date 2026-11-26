@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>XP Hero (Eigenbau)</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+  <div id="top">
+    <div class="bar"><i id="hp"></i><span id="hpt"></span></div>
+    <div class="bar xp"><i id="xp"></i><span id="xpt"></span></div>
+    <div id="line"><span id="cur"></span><span id="area"></span></div>
+    <button id="quest"></button>
+  </div>
+  <div id="side">
+    <button id="auto" class="b">Auto: AUS</button>
+    <button id="homebtn" class="b">Heim</button>
+    <button id="bonus" class="b pri" hidden>Bonus!</button>
+    <button id="abort" class="b warn" hidden>Abbruch</button>
+    <button id="ctx" class="b pri" hidden></button>
+  </div>
+  <div id="perf" hidden></div>
+  <div id="panel" hidden><header><b id="ptitle"></b><button id="pclose" class="b">✕</button></header><div id="pbody"></div></div>
+  <nav id="nav"></nav>
+  <div id="toasts"></div>
+</div>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

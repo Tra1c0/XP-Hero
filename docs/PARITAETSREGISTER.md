@@ -1,0 +1,115 @@
+# Paritätsregister
+
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1v2yulqpwlz).
+Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
+
+Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
+
+Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein Wert steht im Gameplay-Code.
+
+## Tabellen
+
+| Tabelle | Zeilen | Status | Zeilen nach Status | Hinweis |
+|---|---|---|---|---|
+| items | 31 | D | D:23 ?:1 E:6 B:1 | Währungen/Items laut Abschnitt 11; nicht alle 116 Originalitems bekannt. |
+| areas | 20 | D | D:20 | 20 Gebiete, 19 Gates; Kartenlayout/Koordinaten eigen (E). |
+| monsters | 127 | E | E:127 | 206 Monster/246 Varianten im Original; hier dokumentierte Beispiele (D) + eigene Platzhalter. |
+| variants | 127 | E | D:12 E:114 B:1 | Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops). |
+| spawnGroups | 211 | R | R:191 E:16 D:4 | 82/71/58 Gruppen je Kapitel (D); Verteilung, Position, Standard-Respawn eigen. |
+| resourceGroups | 7 | E | E:7 | Rohstoffstellen als angreifbare Knoten. |
+| behaviors | 6 | E | E:6 | Gegner-KI-Parameter je Typ; Original-KI unbekannt. |
+| bossPatterns | 1 | E | E:1 | Generische, eigene Bossfähigkeiten (keine Originalmuster). |
+| statuses | 3 | E | E:3 | Statuseffekte: Stack-Limit, Erneuerung, Immunität. |
+| chestSpawners | 20 | R | E:8 D:12 | Spawner-Respawn Stage 7-12/14-19 dokumentiert; Rest eigen. |
+| giftSpawners | 45 | R | E:45 | Kap. 1: 17 Gift-Chest-Spawner (D); Position/Respawn eigen. |
+| chestTypes | 2 | D | D:2 | Reveal-Timer und Pool-Zeilen dokumentiert; Gewichte und Goldmenge eigen. Auswahlmodus one = R. |
+| areaChests | 20 | R | R:20 | Je Gebiet eine einmalige Gebietstruhe (Kap. 1: 6 = D); Inhalt eigen. |
+| giftChestLevels | 400 | R | R:400 | Gold L1=12 und L400=1.983.356 (D); Zwischenwerte geometrisch interpoliert (E). Bonus: Gold x5 + 10 Gems (D). |
+| keyHouseSlots | 15 | D | D:15 | 15 Freischaltzeilen; Gem-Summe 5.570. |
+| playerLevels | 400 | E | E:400 | XP-Schwellen unbekannt: EIGENE, austauschbare Kurve. ATK/HP an Tracker-L99 (4.055 / 627.721, interpoliert) verankert. |
+| upgradeTracks | 44 | R | D:1 E:40 R:3 | Ability 10 / Special 11 (4 Grade) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen. |
+| rarities | 9 | E | E:9 | Seltenheitsnamen D; Multiplikatoren/Maxlevel eigen. |
+| weaponClasses | 6 | R | R:6 | 6 Klassen und S-Skill-Namen D; Reichweite/Takt/Passiva eigen. |
+| skills | 10 | E | E:10 | Skillnamen der S-Reihen D; Parameter eigen. |
+| weapons | 84 | R | R:84 | 84 Varianten, 12 Reihen (D). Stats nach DPS-Rechner-Struktur (DPS Add + PerLevel*Level)*RarityMult; Zahlen, Merge-Anzahl, Evo-Kosten eigen. Transzendenz offen. |
+| smithy | 8 | D | D:8 | Kosten = Upgrade zur nächsten Stufe (R). Sichtbare Raten summieren sich ab Stufe 2 auf 60 %; der Rest (otherW) ist NICHT normiert, sondern ein eigener, gekennzeichneter Sonstiges-Ausgang (E). |
+| heroes | 24 | E | E:20 D:4 | Heldenliste unbekannt (24/26): eigene Platzhalter. Freyja/The Skull/Hana/Vlad: Exotic ohne Evolutionszeilen (D). |
+| heroLevelCosts | 5 | R | R:5 | Stützstufen 1 und 10..130 je Tiergruppe (D-Struktur); Evolution-Coin-Werte eigen. |
+| heroStars | 5 | E | E:5 | Sterne 1-6 (D); Kosten/Optionen eigen. |
+| heroCollection | 35 | R | R:35 | Sternsumme je Raritätsgruppe, Schwellen 1 bzw. Dreierschritte (D); Boni eigen. Accountweit. |
+| traitQualities | 7 | E | E:7 | Qualitätsstufen bis SSS (B); Gewichte/Multiplikatoren eigen. |
+| traitOptions | 9 | E | E:9 | Optionen/Rollgewichte eigen. |
+| synergies | 3 | E | E:3 | Synergiegruppen eigen. |
+| runes | 115 | E | E:115 | 115 Runen, 4 Typen, 8 Seltenheiten (D-Zählungen); Verteilung, Effekte, Einheiten eigen. |
+| runeGrades | 8 | R | R:8 | Levelgrenzen ca. 10-80 je Grad (D); Kosten/Refund eigen. |
+| rateGroups | 7 | R | E:5 R:1 D:1 | Rate-Gruppe 4001 = 65/30/4/1 (D); übrige Gewichte eigen. |
+| gachaBoxes | 12 | R | R:10 ?:1 D:1 | 26 Boxdefinitionen im Original; hier 12 belegbare (inkl. 8 Runentruhen, Special Hero Chest). Gem-Preise eigen, kein universeller 10er-Preis. |
+| buildings | 7 | D | D:7 | 26 Gebäudedefinitionen im Original; hier die 7 dokumentierten Einstiegskosten (Gold D, Materialmengen E). |
+| npcs | 3 | E | E:3 | NPC-Daten/Dialoge des Originals nicht erfasst; eigene Platzhalter. |
+| unlocks | 7 | D | D:4 E:2 R:1 | Levelgebundene Freischaltungen (D); blessing/spin/special/extra/pvp eigen platziert. |
+| quests | 87 | R | R:66 D:17 ?:1 E:3 | Hauptquestkette (Original ca. 850 Einträge nicht erfasst): dokumentierte Unlock-Kopplungen (s=D) + eigene Gebietsquests. |
+| tracks | 13 | R | R:4 D:4 E:5 | Generische Claim-Tracks (Meilensteine, Missionen, Pässe, Events). Status je Track im Feld s. |
+| shop | 42 | R | D:5 E:11 R:25 ?:1 | Rein spielinterner Katalog. Royal-Perks (D) als erspielbare Einmal-Angebote; Preise eigen. EXP-Perk (Wert 1000, Einheit ungeklärt) nicht angewendet. |
+| perks | 5 | D | D:4 ?:1 | Royal-Lifetime-Perkwerte; Einheit von cargo/exp ungeklärt (cargo als flacher Wert angewendet = R, exp nicht angewendet). |
+| merchant | 2 | E | E:2 | Rollierender Händler: täglich (UTC) per Seed 4 Angebote; Refresh gegen Gems. Boss-Rank-Shop: 1 Gratis-Refresh/Tag (D-Cap). |
+| randomReward | 1 | R | R:1 | IngameRV: 393 Levelzeilen (als Band L8-400, R); Gem-Gewicht 0,10 Menge 10 (D); Orb-Mengenbereiche D, Orb-Gewichte E. Crimson/Azure/Soul unzugeordnet = deaktiviert. |
+| spinSegments | 7 | E | E:7 | 7 Segmentdefinitionen (D-Zählung, 192 Originalzeilen nicht erfasst); Bedingungen und Rewardzeilen eigen. |
+| towerFloors | 250 | R | E:249 D:1 | 250 Etagen (D); Etage 151 = 35 Gems (D). Gegner, Wellen, übrige Rewards eigen (Gems = 5 + floor(Etage/5)). |
+| raidBosses | 6 | E | E:6 | 6 Spezialbosse (B); Namen, Werte, Wertung eigen. |
+| tombTiers | 20 | R | R:20 | 20 Schwierigkeits-/Dropstufen (D); Gegner, Typ-/Raritätsgewichte eigen. |
+| invasionTiers | 6 | R | R:6 | 6 Tiers (D); Auf-/Abstieg nach Top-Perzentil, Rewards eigen. |
+| events | 1 | E | E:1 | Eigene Live-Events (EventDef). Zeitfenster UTC; per Admin-Panel pflegbar. |
+| codes | 0 | E |  | Eigene Belohnungscodes (lokaler Kanal); keine Fremdcodes. Format {id, code, reward, expires, max}. |
+| base | 1 | E | E:1 | Basis-Karte. |
+
+## Konfigurationswerte
+
+| Schlüssel | Status | Wert | Hinweis |
+|---|---|---|---|
+| curves | E | `{"mobHp":[10,2,2.2],"mobAtk":[0.5,1.6],"mobXp":[2,1,1.1],"mobGold":[1,0.6,1.6],"rank":{"normal":{"hp":1,"at…` | Eigene Gegnerkurve; Originalwerte je Variante aus Bestiary importieren. |
+| xp | ? | `{"trigger":"kill","factor":1,"capBehavior":"discard","maxLevel":400,"healOnLevelUp":true}` | XP-Auszahlungsort, Rundung (floor), Cap-Verhalten und HP-Behandlung sind eigen. factor = Progressionstempo. |
+| rewardFactor | E | `{"gold":1,"drops":1}` | Eigenes Progressionstempo, unabhängig von der Simulation. |
+| bonusClaims | ? | `{"mode":"replace","levelUp":true,"giftChest":true}` | Früherer Rewarded-Ad-Bonus (x5) als direkter Gratis-Claim. replace/add ungeklärt. |
+| caps | D | `{"towerBonus":5,"pvpReward":5,"pvpTicket":10,"revive":3,"dailyGemShop":2,"bossRankRefresh":1,"homeReturn":5…` | Erste 6 Keys = dokumentierte Tagescaps (Summe 26). homeReturn/randomReward/freeSpin = E. |
+| applyDailyGemShopCapToFreeGems | ? | `false` | Semantik von Daily-Gem-Shop-RV-Cap 2 ungeklärt; standardmäßig nicht auf 9002-9004 angewendet. |
+| dailyTickets | E | `{"ticket_tower":5,"ticket_invasion":5,"ticket_raid":2,"ticket_tomb":3,"ticket_pvp":5}` | Tägliche Grundtickets (Auffüllen bis zu diesem Wert). |
+| player | E | `{"baseCargo":20,"moveSpeed":230,"critChance":5,"critDmg":150,"pickupRadius":90,"regenPct":1,"radius":16}` | Grundwerte Spieler. |
+| statCaps | E | `{"critChance":100,"cooldownPct":70,"atkSpeedPct":400,"moveSpeedPct":150,"lifesteal":50,"multiHit":100}` | Obergrenzen; Kritchance <= 100. |
+| combat | R | `{"subIntervalMult":2.2,"subDmgMult":0.6,"dropDespawnSec":90,"respawnOfflineContinues":true,"defaultRespawnS…` | Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt. |
+| weaponLevelCost | E | `{"scrollPer5":1,"goldBase":50}` | Scrolls = ceil(L/5)*(1+r); Gold = goldBase*L*(1+r)^2. |
+| craftCost | E | `[20,60,200,500,1500,4000,10000,25000]` | Gold je Schmiedevorgang pro Schmiedestufe. |
+| weaponSlots | ? | `[{"slot":1},{"slot":2,"quest":true},{"slot":3,"level":20,"cost":{"gold":20000}},{"slot":4,"level":40,"cost"…` | Slot 2 per Quest (D); Slots 3-6 eigene Kosten. |
+| traits | ? | `{"slots":5,"presets":3,"rerollCost":{"attr_point":10},"lockSurcharge":0.5}` | Slotzahl, Rollkosten und Lockkosten eigen. |
+| runes | ? | `{"slots":6,"slotLevels":[1,60,90,120,160,200],"dismantleRefundPct":80,"milestoneEvery":10,"milestonePct":10}` | Slots und Refund eigen. |
+| heroes | E | `{"starter":"h_01","levelPct":2,"selectTicketPieces":50,"raidTeam":3}` | Heldenlevel: +levelPct% ATK/HP je Level über 1. |
+| keyhouse | E | `{"speedUpGemsPerMin":1,"chapterBound":true}` | Beschleunigung nur gegen erspielte Gems; kein Ad-Skip. |
+| homeReturn | E | `{"cost":{}}` | Rückkehr zur Basis: Tagescap caps.homeReturn, mit Perk unbegrenzt. |
+| remoteBaseAccess | E | `true` | Komfort: Basis-Menüs von überall (weniger Laufwege). |
+| randomReward | E | `{"everySec":300}` | Intervall der Bonusbelohnung im Feld (früher Rewarded Ad). |
+| tower | R | `{"entryCost":{"ticket_tower":1},"timerSec":30}` | 30 s ist Modellannahme des DPS-Rechners. |
+| raid | E | `{"entryCost":{"ticket_raid":1},"timerSec":60}` |  |
+| tomb | E | `{"entryCost":{"ticket_tomb":1},"timerSec":90}` |  |
+| pvp | E | `{"entryCost":{"ticket_pvp":1},"k":24,"startRating":1000,"winReward":[{"item":"gold","n":500},{"item":"weapo…` |  |
+| invasion | E | `{"entryCost":{"ticket_invasion":1},"k":32,"startRating":1000,"botsPerTier":30,"bankPerHour":20,"bankCap":20…` | Async-PvP gegen gekennzeichnete Bots/Snapshots. |
+| spin | ? | `{"unlockConfigRaw":"1,3","spinCost":{"spin_ticket":1}}` | Unlock-Config 1,3: Bedeutung ungeklärt, nicht angewendet. |
+| orbAlias | ? | `{"crimson":null,"azure":null,"soul":null}` | Interne Orb-Namen nicht zugeordnet; betroffene Reward-Zeilen sind deaktiviert. |
+| ledgerKeep | E | `400` |  |
+| saveSlots | E | `2` |  |
+
+## Offene Originaldaten (nicht erfunden, nicht behauptet)
+
+- Vollständige XP-Schwellen je Level und Kill-XP je Gegnervariante; XP-Auszahlungsort und Rundung.
+- Formelreihenfolge bei Schaden und Stats; Transzendenzboni der Waffen; StatReduction der Helden.
+- 206 Monster / 246 Varianten: nur die dokumentierten Beispiele tragen Referenzwerte.
+- Vollständige Heldenliste (24/26), Skill-Prozentwerte, Evolutionsoptionen.
+- Fehlende 40 % der Schmiede-Gewichte ab Stufe 2 und mögliche Mehrfachpools.
+- 14 der 26 Gacha-Boxen, exakte Gewichte, Pity-Gruppen, Gem-Preise je Box.
+- Trait-Slotzahl, Rollgewichte, Lock- und Synergiekosten.
+- Rune-Effekte und Einheiten, Levelkosten, Dismantle-Refunds, Typgewichte.
+- 19 der 26 Gebäude und alle Materialmengen.
+- Alle Shop-SKUs und Ingame-Preise; Paid-Track des Chapter Pass (77.000 Gems) wird bewusst nicht ausgezahlt.
+- Ca. 850 Quest- und alle NPC-/Dialogzeilen; Kartenkoordinaten.
+- 250 Tower-Etagen (nur Etage 151 = 35 Gems belegt), Raid-, Tomb-, PvP- und Invasion-Algorithmen und -Rewards.
+- Zuordnung der internen Orb-Namen Crimson/Azure/Soul; Einheit der Perk-Werte Cargo 2000 / EXP 1000.
+- Lucky-Spin-Tabellen (192 Zeilen), Unlock-Config „1,3“, Daily-Gem-Shop-RV-Cap-Semantik.
+- Offline-Respawn und Original-KI.

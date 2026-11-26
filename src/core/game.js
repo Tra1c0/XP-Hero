@@ -176,6 +176,7 @@ export class Game {
 
 // Befehlstabelle: (game, g, ...args). Jeder Eintrag läuft transaktional über Game.cmd.
 const d = (fn) => (_, g, ...a) => fn(g, ...a);
+const atBase = (fn) => (_, g, ...a) => { if (!g.c.cfg.remoteBaseAccess && g.state.world.area !== 'base') fail('not_at_base', 'Nur in der Basis möglich'); return fn(g, ...a); };
 export const COMMANDS = {
   buyUpgrade: d(prog.buyUpgrade),
   equipWeapon: d(gear.equipWeapon), unequipWeapon: d(gear.unequipWeapon), toggleWeaponLock: d(gear.toggleWeaponLock), weaponLevelUp: d(gear.weaponLevelUp),
@@ -183,8 +184,8 @@ export const COMMANDS = {
   unlockHero: d(gear.unlockHero), setActiveHero: d(gear.setActiveHero), heroLevelUp: d(gear.heroLevelUp), heroStarUp: d(gear.heroStarUp), useSelectTicket: d(gear.useSelectTicket), setRaidTeam: d(gear.setRaidTeam),
   rollTraits: d(gear.rollTraits), toggleTraitLock: d(gear.toggleTraitLock), setTraitPreset: d(gear.setTraitPreset),
   equipRune: d(gear.equipRune), unequipRune: d(gear.unequipRune), runeLevelUp: d(gear.runeLevelUp), toggleRuneLock: d(gear.toggleRuneLock), dismantleRunes: d(gear.dismantleRunes),
-  build: d(home.build), upgradeBuilding: d(home.upgradeBuilding), collectProduction: d(home.collectProduction), deliver: d(home.deliver),
-  unlockKeySlot: d(home.unlockKeySlot), claimChest: d(home.claimChest), speedUpChest: d(home.speedUpChest),
+  build: atBase(home.build), upgradeBuilding: atBase(home.upgradeBuilding), collectProduction: atBase(home.collectProduction), deliver: d(home.deliver),
+  unlockKeySlot: atBase(home.unlockKeySlot), claimChest: atBase(home.claimChest), speedUpChest: atBase(home.speedUpChest),
   buy: d(meta.buy), buyMerchant: d(meta.buyMerchant), refreshMerchant: d(meta.refreshMerchant), claimRandomReward: d(meta.claimRandomReward), spin: d(meta.spin),
   redeemLocal: d(meta.redeemLocal), grantExternal: d(meta.grantExternal), claimQuest: d(meta.claimQuest),
   claimNode: d(econ.claimNode), claimAll: d(econ.claimAll),
@@ -215,6 +216,7 @@ export const COMMANDS = {
     if (spec.team) { g.stats = prog.computeStats(g, { heroId: spec.team[0] }); g.statsRev++; }
     game.world = new World(g, arenaMap(), game.hooks(), spec);
     game.world.p.auto = true;
+    g.events.push({ type: 'modeStart', mode, param, resumed: r.resumed });
     return r;
   },
   abortMode: (game, g) => { modes.abortMode(g); game.world = game.field; },

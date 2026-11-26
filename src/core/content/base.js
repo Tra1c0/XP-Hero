@@ -222,8 +222,8 @@ export function buildBaseContent() {
     [2000, 175100, { gold: 16896389, orb_hell: 30 }]], { s: 'D', note: 'Stützzeilen D; Interpolation R; Effekt/Orbs L2000 E.' });
   U('ab_cargo', 'ability', 'Cargo', 'cargo', 1600, own(1600, 1600, 15, 5000000), { note: 'Max 1600 D.' });
   U('ab_atkspeed', 'ability', 'Attack Speed', 'atkSpeedPct', 55, own(55, 55, 100, 2000000), { note: 'Max 55 D.' });
-  U('ab_hp', 'ability', 'Health', 'hp', 2000, own(2000, 4000000, 10, 16000000));
-  U('ab_regen', 'ability', 'Regeneration', 'regen', 200, own(200, 20000, 50, 3000000));
+  U('ab_hp', 'ability', 'Health', 'hp', 2000, [[1, 5, { gold: 10 }], [100, 1500, { gold: 3000 }], [1000, 150000, { gold: 1200000 }], [2000, 600000, { gold: 16000000 }]]);
+  U('ab_regen', 'ability', 'Regeneration', 'regen', 200, [[1, 1, { gold: 50 }], [100, 300, { gold: 40000 }], [200, 2000, { gold: 3000000 }]]);
   U('ab_crit', 'ability', 'Crit Chance', 'critChance', 40, own(40, 40, 200, 4000000));
   U('ab_critdmg', 'ability', 'Crit Damage', 'critDmg', 200, own(200, 200, 150, 6000000));
   U('ab_move', 'ability', 'Movement', 'moveSpeedPct', 40, own(40, 40, 120, 1500000));
