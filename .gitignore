@@ -1,3 +1,11 @@
 node_modules/
 data/
 *.log
+
+# Signaturschlüssel niemals einchecken
+*.jks
+*.keystore
+*.p12
+*.b64
+android/app/release.keystore
+node_modules/

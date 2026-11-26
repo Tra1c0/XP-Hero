@@ -4,11 +4,21 @@
   "private": true,
   "type": "module",
   "description": "Eigenständiges Action-Idle-RPG (Client, Kern, Backend, Admin) – ohne externe Abhängigkeiten",
-  "engines": { "node": ">=22.13" },
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server/server.js",
     "test": "node --disable-warning=ExperimentalWarning --test --test-reporter=dot tests/*.test.js",
     "parity": "node tools/parity.js",
-    "backup": "node --disable-warning=ExperimentalWarning server/server.js --backup"
+    "backup": "node --disable-warning=ExperimentalWarning server/server.js --backup",
+    "android:sync": "npx cap sync android"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.3"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.6.3",
+    "@capacitor/android": "8.6.3"
   }
 }

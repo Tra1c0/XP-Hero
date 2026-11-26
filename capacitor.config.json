@@ -1,0 +1,6 @@
+{
+  "appId": "de.xphero.app",
+  "appName": "XP Hero",
+  "webDir": "src",
+  "android": { "allowMixedContent": false }
+}

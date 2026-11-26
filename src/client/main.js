@@ -5,6 +5,7 @@ import { Game } from '../core/game.js';
 import { Renderer } from './render.js';
 import * as ui from './ui.js';
 import { makeNet } from './net.js';
+import { checkForUpdate } from './update.js';
 
 const mem = new Map();
 const store = {
@@ -58,5 +59,7 @@ function frame(ts) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+setTimeout(() => checkForUpdate(ui), 3000);
+window.__checkUpdate = (force) => checkForUpdate(ui, { force });
 addEventListener('visibilitychange', () => { if (document.hidden) game.save(); else last = performance.now(); });
 addEventListener('pagehide', () => game.save());

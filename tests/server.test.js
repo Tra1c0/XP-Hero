@@ -118,7 +118,7 @@ test('T16 Keine Werbung, IAP, Tracking oder Fremd-Endpunkte im ausgelieferten Co
   walk('src'); walk('admin'); walk('server');
   for (const f of files) {
     const txt = fs.readFileSync(f, 'utf8');
-    const urls = [...txt.matchAll(/https?:\/\/[\w.-]+/g)].map((m) => m[0]).filter((u) => !/^http:\/\/(localhost|x|127\.0\.0\.1)$/.test(u));
+    const urls = [...txt.matchAll(/https?:\/\/[\w.-]+/g)].map((m) => m[0]).filter((u) => !/^http:\/\/(localhost|x|127\.0\.0\.1)$/.test(u) && u !== 'https://api.github.com'); // einzige Ausnahme: Update-Prüfung gegen das eigene Repo
     assert.deepEqual(urls, [], `${f}: externe URL`);
     assert.ok(!/admob|tapjoy|googletagmanager|google-analytics|facebook\.net|unityads|billing|supercent/i.test(txt), `${f}: verbotene Einbindung`);
   }
