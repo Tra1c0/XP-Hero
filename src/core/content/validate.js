@@ -1,6 +1,7 @@
 // Content-Index, Schema-/Referenzvalidierung und Fingerprint. Wird von Client, Server und Admin-Panel gemeinsam genutzt.
 import { hash53, stable } from '../util.js';
 import { SCHEMA, STATS } from './base.js';
+import { buildGrid, snap, walkable } from '../worldgrid.js';
 
 const KEYS = ['id', 'feature', 'floor', 'tier', 'star', 'idx', 'level', 'rarity'];
 const rowKey = (r) => { for (const k of KEYS) if (r[k] !== undefined) return r[k]; return undefined; };
@@ -130,5 +131,22 @@ export function validateContent(pack) {
   }
   for (const s of T.shop) if (s.limit < 0) E(`shop ${s.id}: limit`);
   for (const ev of T.events || []) if (!(Date.parse(ev.start) < Date.parse(ev.end))) E(`event ${ev.id}: Zeitfenster ungültig`);
+  // Welten: Geometrie gültig, alle Weltpositionen begehbar (max. 6 m Abstand), Tore verweisen auf echte Zonen/Gebiete
+  for (const w of T.worlds || []) {
+    if (!w.bounds || !(w.cell > 0) || !(w.ppm > 0) || !Array.isArray(w.zones)) { E(`world ${w.id}: bounds/cell/ppm/zones fehlen`); continue; }
+    const zids = new Set();
+    for (const z of w.zones) { zids.add(z.id); if (!Array.isArray(z.poly) || z.poly.length < 3) E(`world ${w.id}: Zone ${z.id} braucht ein Polygon`); if (z.id !== 'base' && !ids.areas.has(z.id)) E(`world ${w.id}: Zone ${z.id} ist kein Gebiet`); }
+    for (const gt of w.gates || []) { if (!zids.has(gt.from) || !zids.has(gt.to)) E(`world ${w.id}: Tor ${gt.id} verbindet unbekannte Zonen`); if (gt.needs && !ids.areas.has(gt.needs)) E(`world ${w.id}: Tor ${gt.id} needs ${gt.needs} unbekannt`); if (!(gt.w > 0)) E(`world ${w.id}: Tor ${gt.id} Breite`); }
+    let G;
+    try { G = buildGrid(w); } catch (e) { E(`world ${w.id}: Raster nicht baubar (${e.message})`); continue; }
+    G.gateOpen.fill(1);
+    for (const [a, p] of Object.entries(w.entries || {})) { const q = G.toPx(p[0], p[1]); if (!walkable(G, q.x, q.y)) E(`world ${w.id}: Einstieg ${a} nicht begehbar`); }
+    for (const t of ['spawnGroups', 'resourceGroups', 'chestSpawners', 'giftSpawners', 'areaChests', 'npcs', 'buildings', 'worldObjects']) for (const r of T[t] || []) {
+      if (!r.pos) continue;
+      if (!Array.isArray(r.pos) || r.pos.length !== 2 || !r.pos.every(Number.isFinite)) { E(`${t}/${rowKey(r)}: pos ungültig`); continue; }
+      const q = G.toPx(r.pos[0], r.pos[1]), s = snap(G, q.x, q.y, 3);
+      if (!s) E(`${t}/${rowKey(r)}: Position ${r.pos} liegt nicht in begehbarem Gelände`);
+    }
+  }
   return err;
 }

@@ -3,30 +3,59 @@
 import { rnd, clamp } from './util.js';
 import { weaponDmg } from './progress.js';
 import { mobStats } from './content/base.js';
+import { buildGrid, slide, snap, walkable, zoneAt, los, findPath, cellAt } from './worldgrid.js';
 
 const CELL = 180;
 const dist2 = (ax, ay, bx, by) => (ax - bx) * (ax - bx) + (ay - by) * (ay - by);
 
+export const worldOf = (g, areaId) => (g.c.t.worlds || []).find((w) => w.areas.includes(areaId)) || null;
+// Rechteck-Welt für Einzelkarten (Kapitel 2/3) und Modus-Arena: gleiche Raster-/Kollisionslogik wie die große Welt.
+export function rectWorld(id, wpx, hpx, biome, ppm = 40) {
+  const W = wpx / ppm, H = hpx / ppm;
+  return { id, cell: 2, ppm, bounds: { minX: 0, minZ: -H, maxX: W, maxZ: 0 }, zones: [{ id, biome, poly: [[1.5, -1.5], [W - 1.5, -1.5], [W - 1.5, -H + 1.5], [1.5, -H + 1.5]] }], gates: [], blockers: [], landmarks: [] };
+}
+const M = 40; // Fallback px pro Meter
+
+// Zusammenhängende Welt (Kapitel 1): ein Raster, alle Gebiete + Basis, Tore als begehbare Korridore.
+function buildWorldMap(g, W) {
+  const c = g.c, inW = (a) => W.areas.includes(a);
+  const solid = c.t.buildings.filter((b) => b.pos).map((b) => ({ kind: 'rock', c: b.pos, r: b.id === 'bonfire' ? 0.6 : 1.6, building: b.id }));
+  const G = buildGrid({ ...W, blockers: [...(W.blockers || []), ...solid] }), ppm = W.ppm;
+  const at = (pos, zone, roam) => { const q = G.toPx(pos[0], pos[1]); return snap(G, q.x, q.y, 40, roam || !zone ? -1 : G.zoneIds.indexOf(zone)) || q; };
+  const objects = [];
+  const add = (type, row, r, extra = {}) => { const q = at(row.pos, null); objects.push({ ...row, type, x: q.x, y: q.y, r: r * ppm, ...extra }); };
+  for (const b of c.t.buildings) if (b.pos) { const q = G.toPx(b.pos[0], b.pos[1]); objects.push({ type: 'building', id: b.id, name: b.name, x: q.x, y: q.y, r: 3.4 * ppm, pos: b.pos }); }
+  for (const n of c.t.npcs) if (n.pos && inW(n.area)) add('npc', n, 2.2);
+  for (const s of c.t.chestSpawners) if (s.pos && inW(s.area)) add('chest', s, 1.6);
+  for (const s of c.t.giftSpawners) if (s.pos && inW(s.area)) add('gift', s, 1.6);
+  for (const s of c.t.areaChests) if (s.pos && inW(s.area)) add('areachest', s, 1.6);
+  for (const o of c.t.worldObjects || []) if (o.pos && inW(o.area)) add('decor', { ...o, kind: o.type }, 0);
+  (W.gates || []).forEach((gt, k) => {
+    const mx = (gt.a[0] + gt.b[0]) / 2, mz = (gt.a[1] + gt.b[1]) / 2, q = G.toPx(mx, mz);
+    objects.push({ type: 'gatebar', id: gt.id, gate: k, needs: gt.needs, to: gt.to, x: q.x, y: q.y, r: (gt.w / 2 + 2) * ppm, open: () => G.gateOpen[k] === 1, def: gt });
+  });
+  for (const ex of W.exits || []) { const q = at(ex.p); objects.push({ type: 'gate', to: ex.to, x: q.x, y: q.y, r: 1.8 * ppm, open: () => !ex.needs || !!g.state.world.cleared[ex.needs] }); }
+  const groups = [];
+  for (const gr of [...c.t.spawnGroups, ...c.t.resourceGroups]) if (gr.pos && inW(gr.area)) { const q = at(gr.pos, gr.area, gr.roam); groups.push({ ...gr, x: q.x, y: q.y, r: (gr.r || 2) * ppm }); }
+  return { id: W.id, kind: 'world', world: W, grid: G, w: G.w, h: G.h, groups, objects,
+    entryOf: (a) => { const e = W.entries[a] || W.entries.base; const q = G.toPx(e[0], e[1]); return { x: q.x, y: q.y }; } };
+}
+
 export function buildMap(g, areaId) {
-  const c = g.c;
-  if (areaId === 'base') {
-    const b = c.t.base[0];
-    return { id: 'base', kind: 'base', w: b.w, h: b.h, entry: b.entry, groups: [], objects: [
-      { type: 'gate', to: b.next, x: b.gate.x, y: b.gate.y, r: 70, open: () => true },
-      ...c.t.buildings.map((d) => ({ type: 'building', id: d.id, name: d.name, x: d.x, y: d.y, r: 85 })),
-      ...c.t.npcs.filter((n) => n.area === 'base').map((n) => ({ type: 'npc', ...n, r: 70 }))] };
-  }
-  const a = c.get('areas', areaId);
-  const objects = [{ type: 'gate', to: a.prev, x: a.entry.x, y: a.h - 40, r: 60, open: () => true, back: true }];
-  if (a.next) objects.push({ type: 'gate', to: a.next, x: a.gate.x, y: a.gate.y, r: 70, open: () => !!g.state.world.cleared[a.id] });
+  const W = worldOf(g, areaId);
+  if (W) { const m = buildWorldMap(g, W); m.entry = m.entryOf(areaId); return m; }
+  const c = g.c, a = c.get('areas', areaId);
+  const G = buildGrid(rectWorld(areaId, a.w, a.h, 'ch' + a.chapter));
+  const objects = [{ type: 'gate', to: a.prev, x: a.entry.x, y: a.h - 80, r: 60, open: () => true, back: true }];
+  if (a.next) objects.push({ type: 'gate', to: a.next, x: a.gate.x, y: a.gate.y + 40, r: 70, open: () => !!g.state.world.cleared[a.id] });
   for (const s of c.t.chestSpawners) if (s.area === areaId) objects.push({ type: 'chest', id: s.id, x: s.x, y: s.y, r: 55 });
   for (const s of c.t.giftSpawners) if (s.area === areaId) objects.push({ type: 'gift', id: s.id, x: s.x, y: s.y, r: 55 });
   for (const s of c.t.areaChests) if (s.area === areaId) objects.push({ type: 'areachest', id: s.id, x: s.x, y: s.y, r: 55 });
   for (const n of c.t.npcs) if (n.area === areaId) objects.push({ type: 'npc', ...n, r: 70 });
-  return { id: areaId, kind: 'field', w: a.w, h: a.h, entry: a.entry, area: a,
+  return { id: areaId, kind: 'field', w: a.w, h: a.h, entry: a.entry, area: a, grid: G, entryOf: () => a.entry,
     groups: [...c.t.spawnGroups, ...c.t.resourceGroups].filter((s) => s.area === areaId), objects };
 }
-export function arenaMap() { return { id: 'arena', kind: 'arena', w: 900, h: 1200, entry: { x: 450, y: 900 }, groups: [], objects: [] }; }
+export function arenaMap() { return { id: 'arena', kind: 'arena', w: 900, h: 1200, entry: { x: 450, y: 900 }, groups: [], objects: [], grid: buildGrid(rectWorld('arena', 900, 1200, 'arena')) }; }
 
 // Synthetische Gegnervariante für Modi (Tower/Tomb/Raid) aus der gemeinsamen Kurve.
 export function modeVariant(g, level, rank, hpMult = 1) {
@@ -45,7 +74,7 @@ export class World {
     const pl = g.c.cfg.player;
     this.p = { x: map.entry.x, y: map.entry.y, px: map.entry.x, py: map.entry.y, hp: g.stats.hp, alive: true, mx: 0, my: 0, auto: false, tgt: null,
       wcd: [0, 0, 0, 0, 0, 0], scd: {}, r: pl.radius, stuckT: 0, stuckD: 0, skip: {}, hero: g.stats.heroId, teamIdx: 0 };
-    this.statsRev = -1; this.load = [];
+    this.statsRev = -1; this.load = []; this.G = map.grid; this.updateGates();
     for (const gr of map.groups) this.spawnGroup(gr);
     if (mode) this.timer = mode.timer;
   }
@@ -56,9 +85,11 @@ export class World {
     const rs = (g.state.world.respawn[gr.id] ||= []);
     for (let i = 0; i < gr.count; i++) {
       const ang = (i / gr.count) * 6.283 + gr.x, rad = gr.count > 1 ? gr.r * (0.35 + 0.6 * ((i * 7) % 5) / 5) : 0;
-      const e = this.makeEnemy(v, clamp(gr.x + Math.cos(ang) * rad, 30, this.map.w - 30), clamp(gr.y + Math.sin(ang) * rad, 30, this.map.h - 30));
+      let x = clamp(gr.x + Math.cos(ang) * rad, 30, this.map.w - 30), y = clamp(gr.y + Math.sin(ang) * rad, 30, this.map.h - 30);
+      if (!walkable(this.G, x, y)) { x = gr.x; y = gr.y; }
+      const e = this.makeEnemy(v, x, y);
       e.gid = gr.id; e.slot = i; e.group = gr;
-      if (now < (rs[i] || 0)) { e.alive = false; e.st = 'dead'; }
+      if (!this.areaOpen(gr.area)) { e.alive = false; e.st = 'locked'; } else if (now < (rs[i] || 0)) { e.alive = false; e.st = 'dead'; }
       this.enemies.push(e);
     }
   }
@@ -67,6 +98,32 @@ export class World {
     return { v, beh, x, y, px: x, py: y, hx: x, hy: y, hp: v.hp, maxHp: v.hp, st: 'spawn', t: 0.4, cd: 0, alive: true, slowT: 0, stunT: 0, burnT: 0, burnN: 0, burnAcc: 0,
       pcd: beh.pattern ? this.g.c.get('bossPatterns', beh.pattern).period : 0, tx: x, ty: y, cx: 0, cy: 0, r: v.rank === 'boss' ? 34 : v.rank === 'elite' ? 24 : 16 };
   }
+  // Gebiet freigeschaltet? (Basis und Greenhaven immer; sonst Boss-Erstsieg des Vorgängers). Gesperrte Gebiete spawnen nichts.
+  areaOpen(areaId) {
+    if (!areaId || areaId === 'base' || areaId === 'arena') return true;
+    const a = this.g.c.by.areas.get(areaId);
+    return !a || a.prev === 'base' || !!this.g.state.world.cleared[a.prev];
+  }
+  updateGates() {
+    const W = this.map.world;
+    if (W) (W.gates || []).forEach((gt, k) => { this.G.gateOpen[k] = !gt.needs || this.g.state.world.cleared[gt.needs] ? 1 : 0; });
+  }
+  // Wegpunkte bis (x, y) berechnen und folgen (Auto-Hunt, Bots, Zielführung). Liefert verbleibende Distanz.
+  follow(x, y, dt, stopAt = 0) {
+    const p = this.p, d = Math.hypot(x - p.x, y - p.y);
+    if (d <= stopAt) { p.mx = p.my = 0; p.path = null; return d; }
+    p.pathT = (p.pathT || 0) - dt;
+    if (!p.path || p.pathT <= 0 || !p.path.length || Math.hypot(p.pathTo.x - x, p.pathTo.y - y) > 80) {
+      p.path = los(this.G, p.x, p.y, x, y) ? [{ x, y }] : findPath(this.G, p.x, p.y, x, y);
+      p.pathTo = { x, y }; p.pathT = 0.75;
+      if (!p.path) { p.mx = p.my = 0; return Infinity; }
+    }
+    while (p.path.length > 1 && Math.hypot(p.path[0].x - p.x, p.path[0].y - p.y) < 24) p.path.shift();
+    const w = p.path[0], wd = Math.hypot(w.x - p.x, w.y - p.y) || 1;
+    p.mx = (w.x - p.x) / wd; p.my = (w.y - p.y) / wd;
+    return d;
+  }
+  goTo(x, y) { this.p.goal = x == null ? null : { x, y }; this.p.path = null; }
   nextWave() {
     const m = this.mode;
     this.wave++;
@@ -164,7 +221,9 @@ export class World {
   text(x, y, n, kind) { if (this.texts.length < 60) this.texts.push({ x, y, n, kind, t: 0.7 }); }
   spawnDrop(item, n, x, y) {
     if (this.drops.length >= 300) this.drops.shift();
-    this.drops.push({ item, n, x: clamp(x, 20, this.map.w - 20), y: clamp(y, 20, this.map.h - 20), t: this.g.c.cfg.combat.dropDespawnSec });
+    let dx = clamp(x, 20, this.map.w - 20), dy = clamp(y, 20, this.map.h - 20);
+    if (!walkable(this.G, dx, dy)) { const q = snap(this.G, dx, dy, 4); if (q) { dx = q.x; dy = q.y; } }
+    this.drops.push({ item, n, x: dx, y: dy, t: this.g.c.cfg.combat.dropDespawnSec });
   }
 
   // ---- Angriffe
@@ -197,20 +256,23 @@ export class World {
   // ---- Auto-Hunt: Zielwahl, Annäherung, Stuck-Erkennung, volles Cargo, Wiederaufnahme
   autoHunt(dt, load) {
     const p = this.p, g = this.g, bossOk = this.mode || g.state.settings.autoBoss;
-    if (!this.mode && this.hooks.cargoFull && this.hooks.cargoFull() && g.state.settings.autoReturn) { this.pending = { travel: 'base', autoBack: this.map.id }; return; }
+    if (!this.mode && this.hooks.cargoFull && this.hooks.cargoFull() && g.state.settings.autoReturn) { this.pending = { travel: 'base', autoBack: g.state.world.area }; return; }
     if (!p.tgt || !p.tgt.alive || p.skip[p.tgt.gid + ':' + p.tgt.slot] > this.t) {
-      let best = null, bd = Infinity;
+      const R2 = (g.c.cfg.world.activeRadiusM * (this.map.world ? this.map.world.ppm : M)) ** 2, cand = [];
       for (const e of this.enemies) {
         if (!e.alive || (e.v.rank === 'boss' && !bossOk) || p.skip[e.gid + ':' + e.slot] > this.t) continue;
         const d = dist2(p.x, p.y, e.x, e.y);
-        if (d < bd) { bd = d; best = e; }
+        if (d < R2) cand.push([d, e]);
       }
-      p.tgt = best; p.stuckT = 0; p.stuckD = bd;
+      cand.sort((a, b) => a[0] - b[0]);
+      p.tgt = null;
+      for (const [d, e] of cand.slice(0, 6)) { if (los(this.G, p.x, p.y, e.x, e.y) || findPath(this.G, p.x, p.y, e.x, e.y, 3000)) { p.tgt = e; p.stuckD = d; break; } p.skip[e.gid + ':' + e.slot] = this.t + 10; }
+      p.stuckT = 0; p.path = null;
     }
     const t = p.tgt;
     if (!t) { p.mx = p.my = 0; return; }
-    const d = Math.hypot(t.x - p.x, t.y - p.y), want = load[0].range * 0.85;
-    if (d > want) { p.mx = (t.x - p.x) / d; p.my = (t.y - p.y) / d; } else { p.mx = p.my = 0; }
+    const want = load[0].range * 0.85, d = Math.hypot(t.x - p.x, t.y - p.y);
+    if (d <= want && los(this.G, p.x, p.y, t.x, t.y)) { p.mx = p.my = 0; } else this.follow(t.x, t.y, dt, 0);
     // kein Fortschritt (Entfernung oder Schaden) über 6 s -> Ziel vorübergehend überspringen, keine Endlosschleife
     p.stuckT += dt;
     if (p.stuckT > 6) {
@@ -235,8 +297,9 @@ export class World {
     this.rebuildGrid();
     if (p.alive) {
       if (p.auto) this.autoHunt(dt, load);
+      else if (p.goal) { if (this.follow(p.goal.x, p.goal.y, dt, 20) <= 20) p.goal = null; }
       const sp = cfg.player.moveSpeed * (1 + st.moveSpeedPct / 100), ml = Math.hypot(p.mx, p.my);
-      if (ml > 0.05) { const k = Math.min(1, ml) / ml; p.x = clamp(p.x + p.mx * k * sp * dt, p.r, this.map.w - p.r); p.y = clamp(p.y + p.my * k * sp * dt, p.r, this.map.h - p.r); }
+      if (ml > 0.05) { const k = Math.min(1, ml) / ml; [p.x, p.y] = slide(this.G, p.x, p.y, p.x + p.mx * k * sp * dt, p.y + p.my * k * sp * dt, p.r); }
       p.hp = Math.min(st.hp, p.hp + (st.regen + (st.hp * cfg.player.regenPct) / 100) * dt);
       // Hauptwaffe hält ihr Ziel, bis es stirbt oder die Reichweite verlässt; Nebenwaffen/Skills mit eigenen Takten
       for (const l of load) {
@@ -278,7 +341,8 @@ export class World {
       this.respT = 0.25;
       if (!this.mode) {
         const now = g.now(), rs = g.state.world.respawn;
-        for (const e of this.enemies) if (!e.alive && e.gid && now >= ((rs[e.gid] || [])[e.slot] || 0)) {
+        this.updateGates();
+        for (const e of this.enemies) if (!e.alive && e.gid && now >= ((rs[e.gid] || [])[e.slot] || 0) && this.areaOpen(e.group.area)) {
           Object.assign(e, { x: e.hx, y: e.hy, px: e.hx, py: e.hy, hp: e.maxHp, alive: true, st: 'spawn', t: 0.5, cd: 0, slowT: 0, stunT: 0, burnT: 0, burnN: 0 });
         }
         this.interact();
@@ -297,9 +361,19 @@ export class World {
 
   stepEnemies(dt) {
     const g = this.g, p = this.p, sts = g.c.by.statuses, slowM = sts.get('slow').speedMult, burn = sts.get('burn');
-    const move = (e, tx, ty, sp) => { const d = Math.hypot(tx - e.x, ty - e.y); if (d < 2) return true; const k = Math.min(1, (sp * dt) / d); e.x += (tx - e.x) * k; e.y += (ty - e.y) * k; return d < 6; };
+    const G = this.G, far2 = (g.c.cfg.world.activeRadiusM * (this.map.world ? this.map.world.ppm : M)) ** 2;
+    const move = (e, tx, ty, sp) => {
+      const d = Math.hypot(tx - e.x, ty - e.y); if (d < 2) return true;
+      const k = Math.min(1, (sp * dt) / d), ox = e.x, oy = e.y;
+      [e.x, e.y] = slide(G, e.x, e.y, e.x + (tx - e.x) * k, e.y + (ty - e.y) * k, Math.min(e.r, 18));
+      if (e.x === ox && e.y === oy) e.stuck = (e.stuck || 0) + dt; else e.stuck = 0;
+      return d < 6;
+    };
+    const sees = (e) => this.mode || los(G, e.x, e.y, p.x, p.y);
     for (const e of this.enemies) {
       if (!e.alive) continue;
+      // Ruhende Gegner außerhalb des aktiven Radius werden nicht simuliert (Zustand bleibt erhalten)
+      if ((e.st === 'idle' || e.st === 'patrol') && dist2(e.x, e.y, p.x, p.y) > far2) continue;
       const b = e.beh;
       if (e.burnT > 0) {
         e.burnT -= dt; e.burnAcc += ((g.stats.atk * burn.dotPctAtk) / 100) * e.burnN * dt;
@@ -314,17 +388,21 @@ export class World {
       switch (e.st) {
         case 'spawn': if ((e.t -= dt) <= 0) e.st = 'idle'; break;
         case 'idle':
-          if (p.alive && d < aggro) { e.st = 'aggro'; e.t = 0.3; break; }
-          if ((e.t -= dt) <= 0 && b.patrol > 0) { const a = rnd(g.state.rng, 'world') * 6.283; e.tx = clamp(e.hx + Math.cos(a) * b.patrol, 20, this.map.w - 20); e.ty = clamp(e.hy + Math.sin(a) * b.patrol, 20, this.map.h - 20); e.st = 'patrol'; }
+          if (p.alive && d < aggro && sees(e)) { e.st = 'aggro'; e.t = 0.3; break; }
+          if ((e.t -= dt) <= 0 && b.patrol > 0) {
+            const a = rnd(g.state.rng, 'world') * 6.283, tx = clamp(e.hx + Math.cos(a) * b.patrol, 20, this.map.w - 20), ty = clamp(e.hy + Math.sin(a) * b.patrol, 20, this.map.h - 20);
+            if (walkable(G, tx, ty) && los(G, e.hx, e.hy, tx, ty)) { e.tx = tx; e.ty = ty; e.st = 'patrol'; } else e.t = 2;
+          }
           break;
         case 'patrol':
-          if (p.alive && d < aggro) { e.st = 'aggro'; e.t = 0.3; break; }
-          if (move(e, e.tx, e.ty, sp * 0.4)) { e.st = 'idle'; e.t = 1.5 + rnd(g.state.rng, 'world') * 3; }
+          if (p.alive && d < aggro && sees(e)) { e.st = 'aggro'; e.t = 0.3; break; }
+          if (move(e, e.tx, e.ty, sp * 0.4) || e.stuck > 1) { e.st = 'idle'; e.t = 1.5 + rnd(g.state.rng, 'world') * 3; }
           break;
         case 'aggro': if ((e.t -= dt) <= 0) e.st = 'chase'; break;
         case 'chase':
-          if (!p.alive || dist2(e.x, e.y, e.hx, e.hy) > leash * leash) { e.st = 'return'; break; }
-          if (b.flee) { if (d > aggro * 1.6) { e.st = 'return'; break; } const k = (sp * dt) / (d || 1); e.x = clamp(e.x - (p.x - e.x) * k, 20, this.map.w - 20); e.y = clamp(e.y - (p.y - e.y) * k, 20, this.map.h - 20); break; }
+          // Verfolgung endet bei Leine, Tod des Spielers oder wenn der Spieler hinter Wänden festhängt (keine Endlosschleife)
+          if (!p.alive || dist2(e.x, e.y, e.hx, e.hy) > leash * leash || e.stuck > 2.5) { e.st = 'return'; e.stuck = 0; break; }
+          if (b.flee) { if (d > aggro * 1.6) { e.st = 'return'; break; } const k = (sp * dt) / (d || 1); [e.x, e.y] = slide(G, e.x, e.y, e.x - (p.x - e.x) * k, e.y - (p.y - e.y) * k, 14); break; }
           if (b.pattern && (e.pcd -= dt) <= 0) { const pt = g.c.get('bossPatterns', b.pattern); e.st = 'cast'; e.t = pt.windup; e.cx = p.x; e.cy = p.y; e.pcd = pt.period * (e.hp < (e.maxHp * pt.enrageHpPct) / 100 ? pt.enrageIntervalMult : 1); break; }
           if (d <= b.range + p.r) { e.st = 'attack'; e.t = b.windup; } else move(e, p.x, p.y, sp);
           break;
@@ -340,7 +418,9 @@ export class World {
         case 'cast':
           if ((e.t -= dt) <= 0) { const pt = g.c.get('bossPatterns', b.pattern); if (p.alive && dist2(p.x, p.y, e.cx, e.cy) < pt.radius * pt.radius) this.hurt(Math.round(e.v.atk * pt.mult)); this.fx.push({ x: e.cx, y: e.cy, r: pt.radius, t: 0.3, k: 2 }); e.st = 'chase'; }
           break;
-        case 'return': if (move(e, e.hx, e.hy, sp * 1.5)) { e.hp = e.maxHp; e.st = 'idle'; e.t = 1; } break;
+        case 'return':
+          if (move(e, e.hx, e.hy, sp * 1.5) || e.stuck > 3) { e.x = e.hx; e.y = e.hy; e.px = e.x; e.py = e.y; e.hp = e.maxHp; e.st = 'idle'; e.t = 1; e.stuck = 0; }
+          break;
       }
     }
   }
@@ -354,9 +434,11 @@ export class World {
       const inR = dist2(p.x, p.y, o.x, o.y) < o.r * o.r;
       if (inR && !o.in) { o.in = true; if (this.hooks.interact) this.hooks.interact(o, this); } else if (!inR && o.in) o.in = false;
       if (inR && (o.type === 'building' || o.type === 'npc')) near = o;
+      if (inR && o.type === 'gatebar' && !o.open() && !o.warned) { o.warned = true; if (this.hooks.interact) this.hooks.interact(o, this); } else if (!inR) o.warned = false;
     }
     this.near = near;
   }
   // Minimap-/Fog-Zelle des Spielers
-  cellOf() { return Math.floor(this.p.x / 200) + Math.floor(this.p.y / 200) * 100; }
+  cellOf() { return cellAt(this.G, this.p.x, this.p.y); }
+  zone() { return zoneAt(this.G, this.p.x, this.p.y); }
 }

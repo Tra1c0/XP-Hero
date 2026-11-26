@@ -3,6 +3,9 @@
 //  B = beobachtete Mechanik, Details eigen   R = Rekonstruktion/Interpretation
 //  E = EIGENER Wert (Original unbekannt, bewusst konfigurierbar)   ? = offen/zu verifizieren
 // Zeilen können mit Feld `s` einen abweichenden Zeilenstatus tragen. Nichts hiervon ist Gameplay-Code.
+import { WORLD, BUILDINGS as W1_BUILDINGS, REF as W1 } from './world1.js';
+import { inPoly } from '../worldgrid.js';
+
 export const SCHEMA = 1;
 export const RARITIES = ['Normal', 'Fine', 'Rare', 'Epic', 'Legendary', 'Ancient', 'Mythic', 'Exotic', 'Eternal'];
 export const STATS = ['atk', 'hp', 'cargo', 'atkSpeedPct', 'regen', 'critChance', 'critDmg', 'moveSpeedPct', 'multiHit', 'lifesteal',
@@ -28,7 +31,7 @@ export function buildBaseContent() {
   C('curves', {
     mobHp: [10, 2, 2.2], mobAtk: [0.5, 1.6], mobXp: [2, 1, 1.1], mobGold: [1, 0.6, 1.6],
     rank: {
-      normal: { hp: 1, atk: 1, xp: 1, gold: 1 }, elite: { hp: 4, atk: 2, xp: 4, gold: 4 },
+      normal: { hp: 1, atk: 1, xp: 1, gold: 1 }, elite: { hp: 4, atk: 2, xp: 4, gold: 4 }, rare: { hp: 8, atk: 2.5, xp: 10, gold: 12 },
       boss: { hp: 12, atk: 3, xp: 20, gold: 25 }, special: { hp: 3, atk: 1, xp: 3, gold: 10 }, node: { hp: 0.6, atk: 0, xp: 0, gold: 0 },
     },
   }, 'E', 'Eigene Gegnerkurve; Originalwerte je Variante aus Bestiary importieren.');
@@ -64,6 +67,7 @@ export function buildBaseContent() {
     streakBonusPct: 10, streakMax: 5 }, 'E', 'Async-PvP gegen gekennzeichnete Bots/Snapshots.');
   C('spin', { unlockConfigRaw: '1,3', spinCost: { spin_ticket: 1 } }, '?', 'Unlock-Config 1,3: Bedeutung ungeklärt, nicht angewendet.');
   C('orbAlias', { crimson: null, azure: null, soul: null }, '?', 'Interne Orb-Namen nicht zugeordnet; betroffene Reward-Zeilen sind deaktiviert.');
+  C('world', { normalPerNode: 1, rareRespawnMinSec: 900, spawnSpreadM: 2.5, activeRadiusM: 40 }, 'E', 'Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius.');
   C('ledgerKeep', 400, 'E'); C('saveSlots', 2, 'E');
 
   // ------------------------------------------------------------------ Items (Auszug der 116 Definitionen)
@@ -105,12 +109,50 @@ export function buildBaseContent() {
   };
   const orbFor = { 1: 'orb_red', 2: 'orb_red', 3: 'orb_pink', 4: 'orb_ice', 5: 'orb_jungle', 6: 'orb_hell' };
   let chIdx = 0, prevCh = 0, giftLeftCh1 = 17;
+  // Kapitel 1: Spawnknoten, Monsternamen und Respawnzeiten aus den Szenendaten der Referenz (D); Werte je Variante eigen (E).
+  const zoneOf = (X, Z) => (WORLD.zones.find((z) => inPoly(X, Z, z.poly)) || { id: null }).id;
+  const slugTaken = new Set();
+  const BEH = { Spider: 'fast', 'Desert Spider': 'fast', 'Red Spider': 'fast', Wolf: 'fast', WareWolf: 'fast', Hellhound: 'fast', Bat: 'fast', Chicken: 'fast',
+    Witch: 'ranged', 'Dark Elf': 'ranged', Ghost: 'ranged', 'Cursed Phantom': 'ranged', 'Skull Imp Chief': 'ranged', Wildrose: 'ranged', 'Thorn Wildrose': 'ranged', 'Man Eater Flower': 'ranged',
+    'Treasure Goblin': 'flee', 'Gold Elephant': 'melee' };
+  const KEEP_ID = { 'Treasure Goblin': 'treasure_goblin', 'Goblin Warrior': 'goblin_warrior', 'Giant Chicken': 'giant_chicken', Cactus: 'cactus' };
+  const S1_ID = { Mandragora: 'mandragora', Slime: 'slime', Mushroom: 'mushroom', Spider: 'spider', 'Slime King': 'slime_king' };
+  function ch1Stage(s, id, lo, hi, loot, orb, bv) {
+    const nodes = W1.spawns.filter((n) => n[0] === s), cw = config.world, byName = {};
+    const names = [...new Set(nodes.map((n) => n[1]))];
+    const resp = (nm) => Math.max(...nodes.filter((n) => n[1] === nm).map((n) => n[4] || 0));
+    const normals = names.filter((nm) => nm !== bv.name && resp(nm) <= 15 && nm !== 'Treasure Goblin');
+    for (const nm of names) {
+      if (nm === bv.name) { byName[nm] = bv; continue; }
+      if (s === 1) { byName[nm] = variants.find((v) => v.id === S1_ID[nm]); continue; }
+      const r = resp(nm), special = nm === 'Treasure Goblin' || nm === 'Mimic';
+      const rank = special ? 'special' : r <= 15 ? 'normal' : r >= cw.rareRespawnMinSec ? 'rare' : 'elite';
+      const k = normals.indexOf(nm), lv = rank === 'normal' ? Math.round(lo + ((hi - 3 - lo) * k) / Math.max(1, normals.length - 1)) : rank === 'rare' ? hi - 1 : Math.round((lo + hi) / 2) + 2;
+      const base = nm.toLowerCase().replace(/[^a-z0-9]+/g, '_'), vid = KEEP_ID[nm] || (slugTaken.has(base) || variants.some((v) => v.id === base) ? `${base}_s${s}` : base);
+      slugTaken.add(base);
+      const v = V(vid, nm, lv, rank, { monster: base, beh: BEH[nm] || 'melee', s: 'B' });
+      if (rank === 'normal') v.drops.push({ item: loot, n: 1, count: 1, chance: 0.5 }, { item: orb, n: 1, count: 1, chance: 0.03 });
+      else v.drops.push({ item: loot, n: 2, count: rank === 'rare' ? 4 : 2, chance: 1 }, { item: 'weapon_scroll', n: 1, count: 1, chance: rank === 'rare' ? 1 : 0.3 }, { item: orb, n: 2, count: rank === 'rare' ? 3 : 1, chance: rank === 'rare' ? 1 : 0.25 });
+      if (rank === 'rare') v.drops.push({ item: 'evo_coin', n: 3 * s, count: 2, chance: 1 });
+      if (nm === 'Mimic') v.drops.push({ item: 'gems', n: 5, count: 2, chance: 1, s: 'E' });
+      if (nm === 'Treasure Goblin') v.gold *= 20;
+      byName[nm] = v;
+    }
+    nodes.forEach((n, k) => {
+      const v = byName[n[1]], isBoss = v === bv;
+      groups.push({ id: isBoss ? `sg_${id}_boss` : `sg_${id}_${k}`, area: id, v: v.id, count: v.rank === 'normal' ? cw.normalPerNode : 1, respawn: n[4], patrol: !!n[5],
+        roam: n[1] === 'Bat', pos: [n[2], n[3]], r: cw.spawnSpreadM, s: 'D' });
+    });
+    const sc = W1.stageChests.find((c) => c[0] === s);
+    chestSpawners.push({ id: `cs_${id}`, area: id, pos: [sc[1], sc[2]], respawn: sc[3], pool: [{ type: 'wooden', w: 80 }, { type: 'rare', w: 20 }], s: 'D' });
+  }
   AREA.forEach(([ch, name, boss], i) => {
     const s = i + 1;
     chIdx = ch === prevCh ? chIdx + 1 : 1; prevCh = ch;
     const id = `a${ch}_${chIdx}`, hi = bossLevel(s), lo = s === 1 ? 1 : bossLevel(s - 1) + 1;
     const loot = `loot_c${ch}`, orb = ch === 1 ? orbFor[chIdx] : ['orb_red', 'orb_pink', 'orb_ice', 'orb_jungle', 'orb_hell'][i % 5];
     const mk = [];
+    if (s === 1 || ch !== 1) {
     if (s === 1) {
       mk.push(V('mandragora', 'Mandragora', 1, 'normal', { hp: 12, atk: 1, s: 'D' }), V('slime', 'Slime', 2, 'normal', { hp: 16, atk: 1, s: 'D' }),
         V('mushroom', 'Mushroom', 4, 'normal', { hp: 17, atk: 2, s: 'D' }), V('spider', 'Spider', 5, 'normal', { hp: 57, atk: 4, s: 'D', beh: 'fast' }));
@@ -121,10 +163,11 @@ export function buildBaseContent() {
         mk.push(V(s === 2 && k === 0 ? 'cactus' : `m_${id}_${k}`, nm, lv, 'normal', { beh: ['melee', 'ranged', 'fast', 'melee'][k] }));
       }
     }
+    }
     for (const v of mk) v.drops.push({ item: loot, n: 1, count: 1, chance: 0.5 }, { item: orb, n: 1, count: 1, chance: 0.03 });
-    const elite = s === 1 ? V('slime_king', 'Slime King', 3, 'elite', { hp: 63, atk: 6, s: 'D' }) : V(`e_${id}`, `${name} Elite`, Math.round((lo + hi) / 2), 'elite');
-    elite.drops.push({ item: loot, n: 2, count: 2, chance: 1 }, { item: 'weapon_scroll', n: 1, count: 1, chance: 0.3 }, { item: orb, n: 2, count: 1, chance: 0.25 });
-    if (ch >= 2) elite.drops.push({ item: 'attr_point', n: 2, count: 1, chance: 0.2 });
+    const elite = ch === 1 && s !== 1 ? null : s === 1 ? V('slime_king', 'Slime King', 3, 'elite', { hp: 63, atk: 6, s: 'D' }) : V(`e_${id}`, `${name} Elite`, Math.round((lo + hi) / 2), 'elite');
+    if (elite) elite.drops.push({ item: loot, n: 2, count: 2, chance: 1 }, { item: 'weapon_scroll', n: 1, count: 1, chance: 0.3 }, { item: orb, n: 2, count: 1, chance: 0.25 });
+    if (ch >= 2 && elite) elite.drops.push({ item: 'attr_point', n: 2, count: 1, chance: 0.2 });
     const bv = V(`boss_${id}`, boss, hi, 'boss', s === 1 ? { hp: 256, atk: 18, s: 'D' } : { s: [17, 19].includes(s) ? 'D' : 'E' });
     bv.drops.push({ item: loot, n: 5, count: 4, chance: 1 }, { item: 'evo_coin', n: 5 * s, count: 2, chance: 1 }, { item: orb, n: 3, count: 3, chance: 1 });
     if (s === 17) bv.drops.push({ item: 'gems', n: 20, count: 5, chance: 1, s: 'D' }, { item: 'attr_point', n: 40, count: 5, chance: 1, s: 'D' });
@@ -132,6 +175,10 @@ export function buildBaseContent() {
     areas.push({ id, stage: s, chapter: ch, name, boss: bv.id, w: W, h: H, entry: { x: W / 2, y: H - 140 }, gate: { x: W / 2, y: 70 },
       prev: s > 1 ? areas[s - 2].id : 'base', next: null, minimap: null, s: 'D' });
     if (s > 1) areas[s - 2].next = id;
+    if (ch === 1) {
+      ch1Stage(s, id, lo, hi, loot, orb, bv);
+      return;
+    }
     // Spawn-Gruppen: 1 Boss, Spezialgruppen, Rest Elite/Normal
     const specials = [];
     if (s === 2) specials.push(V('treasure_goblin', 'Treasure Goblin', lo + 4, 'special', { beh: 'flee', respawn: 600, s: 'D' }),
@@ -160,6 +207,10 @@ export function buildBaseContent() {
     if (ch === 1) giftLeftCh1 -= ng;
     for (let k = 0; k < ng; k++) giftSpawners.push({ id: `gs_${id}_${k}`, area: id, x: 220 + k * 560, y: 900 + k * 420, respawn: 900, s: 'E' });
   });
+  // Kapitel-1-Rohstoffe (E) und die 17 Gift-Chest-Spawner der Referenz (Position + Respawn D)
+  [['tree', 'a1_1', [-10, -26]], ['tree', 'a1_1', [27, -24]], ['tree', 'a1_2', [-40, 24]], ['rock', 'a1_3', [30, 26]], ['rock', 'a1_4', [70, -24]], ['rock', 'a1_5', [80, 70]], ['rock', 'a1_6', [-50, 82]]]
+    .forEach(([t, area, pos], k) => resGroups.push({ id: `rg_${area}_${t}_${k}`, area, v: `node_${t}`, count: 4, respawn: t === 'tree' ? 60 : 90, pos, r: 2.5 }));
+  W1.gifts.forEach(([nm, X, Z, resp], k) => giftSpawners.push({ id: `gs_ch1_${k}`, ref: nm, area: zoneOf(X, Z) || 'a1_1', pos: [X, Z], respawn: resp, s: 'D' }));
   V('node_tree', 'Baum', 1, 'node', { hp: 20, drops: [{ item: 'wood', n: 1, count: 2, chance: 1 }] });
   V('node_rock', 'Fels', 1, 'node', { hp: 60, drops: [{ item: 'stone', n: 1, count: 2, chance: 1 }] });
   // Minimap-Belohnungen (D): einmalig je Gebiet
@@ -170,7 +221,7 @@ export function buildBaseContent() {
   T('areas', 'D', '20 Gebiete, 19 Gates; Kartenlayout/Koordinaten eigen (E).', areas);
   T('monsters', 'E', '206 Monster/246 Varianten im Original; hier dokumentierte Beispiele (D) + eigene Platzhalter.', monsters);
   T('variants', 'E', 'Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops).', variants);
-  T('spawnGroups', 'R', '82/71/58 Gruppen je Kapitel (D); Verteilung, Position, Standard-Respawn eigen.', groups);
+  T('spawnGroups', 'R', 'Kapitel 1: 124 platzierte Spawnknoten mit Monster, Position, Respawn und Patrol aus den Szenendaten (D). Kapitel 2/3: 71/58 Gruppen (D), Position eigen.', groups);
   T('resourceGroups', 'E', 'Rohstoffstellen als angreifbare Knoten.', resGroups);
   T('behaviors', 'E', 'Gegner-KI-Parameter je Typ; Original-KI unbekannt.', [
     { id: 'melee', aggro: 260, leash: 520, patrol: 90, speed: 105, range: 46, interval: 1.4, windup: 0.35 },
@@ -188,8 +239,8 @@ export function buildBaseContent() {
     { id: 'burn', maxStacks: 5, refresh: 'renew', dotPctAtk: 20, bossImmune: false },
     { id: 'stun', maxStacks: 1, refresh: 'none', stun: true, bossImmune: true },
   ]);
-  T('chestSpawners', 'R', 'Spawner-Respawn Stage 7-12/14-19 dokumentiert; Rest eigen.', chestSpawners);
-  T('giftSpawners', 'R', 'Kap. 1: 17 Gift-Chest-Spawner (D); Position/Respawn eigen.', giftSpawners);
+  T('chestSpawners', 'R', 'Kapitel 1: Position + Respawn aus Szenendaten (D); Stage 7-12/14-19 Respawn dokumentiert; Rest eigen.', chestSpawners);
+  T('giftSpawners', 'R', 'Kapitel 1: 17 Gift-Chest-Spawner mit Position und Respawn 300 s aus Szenendaten (D); Kap. 2/3 eigen.', giftSpawners);
   T('chestTypes', 'D', 'Reveal-Timer und Pool-Zeilen dokumentiert; Gewichte und Goldmenge eigen. Auswahlmodus one = R.', [
     { id: 'wooden', name: 'Wooden Chest', revealSec: 600, mode: 'one', rows: [
       { w: 1, item: 'gold', min: 200, max: 600, s: 'E' }, { w: 1, item: 'bluestone', min: 2, max: 4 },
@@ -198,8 +249,8 @@ export function buildBaseContent() {
       { w: 1, item: 'exp', min: 1, max: 1 }, { w: 1, item: 'bluestone', min: 5, max: 10 },
       { w: 1, item: 'weapon_scroll', min: 2, max: 10 }, { w: 1, item: 'orb_red', min: 14, max: 28 }] },
   ]);
-  T('areaChests', 'R', 'Je Gebiet eine einmalige Gebietstruhe (Kap. 1: 6 = D); Inhalt eigen.',
-    areas.map((a) => ({ id: `ac_${a.id}`, area: a.id, x: 240, y: 520, reward: [{ item: 'gold', n: 100 * a.stage * a.stage }, { item: 'exp', n: 2 + a.stage }, { item: 'weapon_scroll', n: 5 }] })));
+  T('areaChests', 'R', 'Je Gebiet eine einmalige Gebietstruhe (Kap. 1: 6 Stage-Truhen der Referenz, Position D neben dem Truhenspawner); Inhalt eigen.',
+    areas.map((a) => ({ id: `ac_${a.id}`, area: a.id, x: 240, y: 520, ...(a.chapter === 1 ? (() => { const c = W1.stageChests.find((r) => r[0] === a.stage); return { pos: [c[1] + 2.5, c[2] + 1.5] }; })() : {}), reward: [{ item: 'gold', n: 100 * a.stage * a.stage }, { item: 'exp', n: 2 + a.stage }, { item: 'weapon_scroll', n: 5 }] })));
   const giftGold = (L) => Math.round(12 * (1983356 / 12) ** ((L - 1) / 399));
   T('giftChestLevels', 'R', 'Gold L1=12 und L400=1.983.356 (D); Zwischenwerte geometrisch interpoliert (E). Bonus: Gold x5 + 10 Gems (D).',
     Array.from({ length: 400 }, (_, k) => ({ level: k + 1, gold: giftGold(k + 1), bonusGems: 10, bonusMult: 5 })));
@@ -355,12 +406,23 @@ export function buildBaseContent() {
     { id: 'quarry', name: 'Quarry', x: 1220, y: 420, cost: { gold: 1613, wood: 15 }, unlock: [], max: 1, produce: { item: 'stone', perHour: 20, cap: 40 } },
     { id: 'costumeshop', name: 'CostumeShop', x: 620, y: 300, cost: { gold: 3954, wood: 20, stone: 10, orb_red: 5 }, unlock: [], max: 1 },
     { id: 'portal', name: 'Portal', x: 980, y: 300, cost: { gold: 5170 }, unlock: ['portal'], max: 1 },
-  ]);
+  ].map((b) => ({ ...b, pos: W1_BUILDINGS[b.id] })));
   T('npcs', 'E', 'NPC-Daten/Dialoge des Originals nicht erfasst; eigene Platzhalter.', [
-    { id: 'npc_elder', name: 'Älteste', area: 'base', x: 800, y: 560, text: 'Willkommen. Die Wildnis im Norden wartet.' },
-    { id: 'npc_scout', name: 'Späherin', area: 'a1_1', x: 620, y: H - 300, text: 'Rootling haust am Nordende dieses Gebiets.' },
-    { id: 'npc_smith', name: 'Schmied', area: 'base', x: 440, y: 620, text: 'Bring mir Gold, dann schmiede ich dir Waffen.' },
+    { id: 'npc_elder', name: 'Älteste', area: 'base', pos: [14, -6], text: 'Willkommen. Rings um die Siedlung liegen sechs Gebiete – Greenhaven im Süden ist offen.' },
+    { id: 'npc_scout', name: 'Späherin', area: 'a1_1', pos: W1.cain, text: 'Rootling haust zwischen den Wurzeln westlich von hier.' },
+    { id: 'npc_smith', name: 'Schmied', area: 'base', pos: [6, -7], text: 'Bring mir Gold, dann schmiede ich dir Waffen.' },
+    // Wegwächter an den Toren (Positionen = NPC_Taid_Stage2..5 der Referenz; Hellfire-Wächter eigen)
+    ...[...W1.guides, [6, 2, 44]].map(([st, X, Z]) => ({ id: `npc_guide_${st}`, name: 'Wegwächter', area: zoneOf(X, Z), pos: [X, Z], s: st === 6 ? 'E' : 'D',
+      text: `Der Weg nach ${AREA[st - 1][1]} öffnet sich, sobald ${AREA[st - 2][2]} besiegt ist.` })),
+    // Boss-Raid-Eingänge (Positionen = NPC_BossRaid_Stage_1..6 der Referenz)
+    ...W1.raids.map(([st, X, Z]) => ({ id: `npc_raid_${st}`, name: 'Raid-Stein', area: zoneOf(X, Z), pos: [X, Z], kind: 'raid', s: 'D',
+      text: 'Ein Raid-Stein. Boss Raids startest du im Menü „Modi“, sobald sie freigeschaltet sind.' })),
   ]);
+  T('worldObjects', 'D', 'Invasionsportale (Positionen der Referenz, dekorativ: Invasion läuft über das Menü) und Lagerfeuer.', [
+    ...W1.invasion.map(([X, Z], k) => ({ id: `inv_${k}`, type: 'invportal', area: zoneOf(X, Z), pos: [X, Z] })),
+    ...W1.campfires.map(([nm, X, Z], k) => ({ id: `fire_${k}`, type: 'campfire', ref: nm, area: zoneOf(X, Z), pos: [X, Z] })),
+  ]);
+  T('worlds', 'R', 'Zusammenhängende Kapitel-1-Welt: Zonen, Tore, Hindernisse, Landmarken (Level-Design E um Referenzpunkte D). Meter, X=Ost, Z=Nord.', [WORLD]);
   T('unlocks', 'D', 'Levelgebundene Freischaltungen (D); blessing/spin/special/extra/pvp eigen platziert.', [
     { feature: 'battlePass', level: 10 }, { feature: 'sevenDay', level: 14 }, { feature: 'carnival', level: 17 }, { feature: 'liveEvent', level: 24 },
     { feature: 'spin', level: 8, s: 'E' }, { feature: 'blessing', level: 20, s: 'E' }, { feature: 'randomReward', level: 8, s: 'R' },
@@ -392,8 +454,8 @@ export function buildBaseContent() {
       ['Baue die Quarry', { cond: { building: 'quarry' } }, { reward: [{ item: 'gems', n: 150 }], s: 'E' }],
       ['Baue den CostumeShop', { cond: { building: 'costumeshop' } }, { unlock: ['special'], unlockOn: 'clear', s: 'E' }],
       ['Beschwöre einen Helden', { counter: 'gacha:hero', n: 1, from: 'life' }, { unlock: ['heroShop'], unlockOn: 'receive', s: 'D' }],
-      ['Verbessere einen Helden', { counter: 'heroLevel', n: 1, from: 'life' }, { unlock: ['heroes'], unlockOn: 'receive', grant: [{ item: 'evo_coin', n: 30 }], s: 'D' }],
-      ['Besiege das Giant Chicken', kill('giant_chicken', 1), { unlock: ['sTierChest'], unlockOn: 'clear', s: 'D' }]],
+      ['Verbessere einen Helden', { counter: 'heroLevel', n: 1, from: 'life' }, { unlock: ['heroes'], unlockOn: 'receive', grant: [{ item: 'evo_coin', n: 30 }], s: 'D' }]],
+    5: [['Besiege das Giant Chicken', kill('giant_chicken', 1), { unlock: ['sTierChest'], unlockOn: 'clear', s: 'D' }]],
     4: [['Baue das Portal', { cond: { building: 'portal' } }, { unlock: ['portal'], unlockOn: 'clear', s: 'D' }],
       ['Stelle deine Invasion-Verteidigung auf', { counter: 'invasion:defenseSet', n: 1, from: 'life' }, { unlock: ['invasion', 'pvp'], unlockOn: 'receive', s: 'D' }],
       ['Nutze ein Extra-Upgrade', { counter: 'upgrade:extra', n: 1, from: 'life' }, { unlock: ['extra'], unlockOn: 'receive', grant: [{ item: 'orb_ice', n: 6 }], s: 'E' }]],

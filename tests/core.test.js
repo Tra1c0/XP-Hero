@@ -21,7 +21,10 @@ test('Content: gültig, stabiler Fingerprint, Referenzsummen (T02/T05/T13)', () 
   assert.equal(T.areas.length, 20);
   assert.equal(T.areas.filter((a) => a.next).length, 19, '19 Gates');
   assert.equal(T.areas[19].next, null, 'kein Kapitel-4-Phantom');
-  assert.deepEqual([1, 2, 3].map((ch) => T.spawnGroups.filter((g) => T.areas.find((a) => a.id === g.area).chapter === ch).length), [82, 71, 58]);
+  // Kapitel 1: 124 platzierte Spawnknoten (S1 11 · S2 36 · S3 32 · S4 16 · S5 12 · S6 17); Kapitel 2/3: 71/58 Spawngruppen
+  assert.deepEqual([1, 2, 3].map((ch) => T.spawnGroups.filter((g) => T.areas.find((a) => a.id === g.area).chapter === ch).length), [124, 71, 58]);
+  assert.deepEqual([1, 2, 3, 4, 5, 6].map((s) => T.spawnGroups.filter((g) => g.area === `a1_${s}`).length), [11, 36, 32, 16, 12, 17]);
+  assert.equal(T.giftSpawners.filter((g) => g.pos).length, 17);
   assert.equal(T.weapons.length, 84);
   assert.equal(new Set(T.weapons.map((w) => w.cls + w.series)).size, 12);
   assert.equal(T.runes.length, 115);

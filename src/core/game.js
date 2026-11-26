@@ -9,7 +9,7 @@ import * as gear from './gear.js';
 import * as home from './home.js';
 import * as meta from './meta.js';
 import * as modes from './modes.js';
-import { World, buildMap, arenaMap } from './sim.js';
+import { World, buildMap, arenaMap, worldOf } from './sim.js';
 
 export class Game {
   constructor({ pack, state = null, now = () => Date.now(), store = null, seed }) {
@@ -81,7 +81,7 @@ export class Game {
       cargoFull: () => home.cargoFree(g) <= 0,
       interact: (o, world) => {
         try {
-          if (o.type === 'gate') { if (o.open()) world.pending = { travel: o.to, back: !!o.back }; else g.events.push({ type: 'toast', msg: 'Tor verschlossen – besiege zuerst den Boss.' }); } else if (o.type === 'chest') { if (home.chestSpawnerReady(g, o.id)) { home.pickupChest(g, o.id); g.events.push({ type: 'toast', msg: 'Feldtruhe ins Key House gelegt.' }); } } else if (o.type === 'gift') { if (home.giftReady(g, o.id)) g.events.push({ type: 'reward', title: 'Gift Chest', got: home.openGift(g, o.id) }); } else if (o.type === 'areachest') { if (!g.state.claims[`areachest:${o.id}`]) g.events.push({ type: 'reward', title: 'Gebietstruhe', got: home.openAreaChest(g, o.id) }); } else if (o.type === 'npc') { econ.emit(g, `talk:${o.id}`); g.events.push({ type: 'dialog', name: o.name, text: o.text }); }
+          if (o.type === 'gate') { if (o.open()) world.pending = { travel: o.to, back: !!o.back }; else g.events.push({ type: 'toast', msg: 'Tor verschlossen – besiege zuerst den Boss.' }); } else if (o.type === 'chest') { if (home.chestSpawnerReady(g, o.id)) { home.pickupChest(g, o.id); g.events.push({ type: 'toast', msg: 'Feldtruhe ins Key House gelegt.' }); } } else if (o.type === 'gift') { if (home.giftReady(g, o.id)) g.events.push({ type: 'reward', title: 'Gift Chest', got: home.openGift(g, o.id) }); } else if (o.type === 'areachest') { if (!g.state.claims[`areachest:${o.id}`]) g.events.push({ type: 'reward', title: 'Gebietstruhe', got: home.openAreaChest(g, o.id) }); } else if (o.type === 'npc') { econ.emit(g, `talk:${o.id}`); g.events.push({ type: 'dialog', name: o.name, text: o.text }); } else if (o.type === 'gatebar') { const b = g.c.by.areas.get(o.needs); g.events.push({ type: 'toast', msg: `Tor verschlossen – besiege zuerst ${b ? g.c.get('variants', b.boss).name : 'den Boss'}.` }); }
         } catch (e) { if (e instanceof GameError) g.events.push({ type: 'toast', msg: e.message }); else throw e; }
       },
       onDeath: (world) => {
@@ -105,10 +105,11 @@ export class Game {
       if (cfg.xp.trigger === 'pickup') world.spawnDrop('#xp', v.xp, e.x, e.y); else prog.gainXp(g, v.xp, 'kill');
       econ.emit(g, `kill:${v.monster}`); econ.emit(g, 'kill:any');
       if (v.rank === 'boss') {
-        const area = world.map.id;
+        const area = e.group.area, def = g.c.by.areas.get(area);
         econ.emit(g, 'bossKill'); econ.emit(g, `bossKill:${area}`);
         s.world.bossKills[area] = (s.world.bossKills[area] || 0) + 1;
-        if (!s.world.cleared[area]) { s.world.cleared[area] = g.now(); g.events.push({ type: 'areaCleared', area }); } // Erstsieg genau einmal
+        // Erstsieg genau einmal, nur durch den Gebietsboss dieses Gebiets
+        if (def && def.boss === v.id && !s.world.cleared[area]) { s.world.cleared[area] = g.now(); g.events.push({ type: 'areaCleared', area }); }
       }
     }
     const dropMult = Math.min(2, 1 + g.stats.dropPct / 100), orbMult = s.flags.perk_orbs ? g.c.get('perks', 'perk_orbs').v : 1;
@@ -118,16 +119,33 @@ export class Game {
       for (let k = 0; k < d.count; k++) world.spawnDrop(d.item, n, e.x + (k - d.count / 2) * 22, e.y + ((k * 13) % 30) - 15);
     }
   }
+  // Betreten eines Gebiets. Innerhalb einer zusammenhängenden Welt nur Versetzen (Gegner-/Truhenzustand bleibt), sonst neue Karte.
   enter(areaId, viaBackGate) {
-    const g = this.g, map = buildMap(g, areaId);
-    g.state.world.area = areaId;
-    const auto = this.field ? this.field.p.auto : false;
-    this.field = this.world = new World(g, map, this.hooks());
+    const g = this.g, W = worldOf(g, areaId), auto = this.field ? this.field.p.auto : false;
+    if (W && this.field && this.field.map.id === W.id) {
+      const p = this.field.p, q = this.field.map.entryOf(areaId);
+      Object.assign(p, { x: q.x, y: q.y, px: q.x, py: q.y, mx: 0, my: 0, path: null, goal: null, tgt: null });
+      this.world = this.field;
+    } else {
+      const map = buildMap(g, areaId);
+      this.field = this.world = new World(g, map, this.hooks());
+      if (viaBackGate && map.area && map.area.next) { this.world.p.x = map.area.gate.x; this.world.p.y = map.area.gate.y + 140; }
+    }
     this.world.p.auto = auto && areaId !== 'base';
-    if (viaBackGate && map.area && map.area.next) { this.world.p.x = map.area.gate.x; this.world.p.y = map.area.gate.y + 110; }
-    if (areaId === 'base') { econ.emit(g, 'returnBase'); if (Object.keys(g.state.cargo).length) g.events.push({ type: 'reward', title: 'Beute abgegeben', got: home.deliver(g) }); }
+    this.setArea(areaId);
     for (const o of this.world.map.objects) o.in = (o.x - this.world.p.x) ** 2 + (o.y - this.world.p.y) ** 2 < o.r * o.r; // nicht sofort zurückspringen
     g.dirty = true;
+  }
+  // Aktuelles Gebiet (auch beim Laufen über Zonengrenzen). Basis betreten = Heimkehr: Beute abgeben, Quest-Zähler.
+  setArea(areaId) {
+    const g = this.g, prev = g.state.world.area;
+    g.state.world.area = areaId;
+    if (areaId === 'base' && (prev !== 'base' || !this.enteredOnce)) {
+      econ.emit(g, 'returnBase');
+      if (Object.keys(g.state.cargo).length) g.events.push({ type: 'reward', title: 'Beute abgegeben', got: home.deliver(g) });
+    }
+    this.enteredOnce = true;
+    if (prev !== areaId && areaId !== 'base' && this.c.has('areas', areaId)) g.events.push({ type: 'zone', area: areaId });
   }
   canEnter(areaId) {
     if (areaId === 'base') return true;
@@ -146,7 +164,10 @@ export class Game {
     const w = this.world;
     if (w.pending) { const p = w.pending; w.pending = null; this.autoBack = p.autoBack || null; this.travelInternal(p.travel, p.back); }
     if (w.ended && w.mode) this.finishMode();
-    if (!w.mode && w.map.kind === 'field') { const fog = (g.state.world.fog[w.map.id] ||= {}); fog[w.cellOf()] = 1; }
+    if (!w.mode && w.map.kind !== 'arena') {
+      const fog = (g.state.world.fog[w.map.id] ||= {}); fog[w.cellOf()] = 1;
+      if (w.map.kind === 'world') { const z = w.zone(); if (z && z !== g.state.world.area) this.setArea(z); }
+    }
     this.secAcc += dtReal;
     if (this.secAcc >= 1) {
       this.secAcc = 0;

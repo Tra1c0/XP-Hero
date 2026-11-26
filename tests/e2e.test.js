@@ -7,8 +7,8 @@ import { currentQuests } from '../src/core/meta.js';
 
 function bot(game, clock, done, maxSec) {
   const g = game.g, c = game.c;
-  const goto = (x, y) => { const p = game.world.p, d = Math.hypot(x - p.x, y - p.y) || 1; p.mx = (x - p.x) / d; p.my = (y - p.y) / d; return d; };
-  const gate = (to) => game.world.map.objects.find((o) => o.type === 'gate' && o.to === to);
+  // Steuert wie ein Spieler mit Zielführung über das Begehbarkeitsraster (Wände, Tore, Wasser werden umlaufen).
+  const goto = (x, y) => { const p = game.world.p; game.world.goTo(x, y); return Math.hypot(x - p.x, y - p.y); };
   const want = () => {
     for (const { q, state } of currentQuests(g)) {
       if (state === 'satisfied') { game.cmd('claimQuest', q.id); return null; }
@@ -35,14 +35,14 @@ function bot(game, clock, done, maxSec) {
     game.try('buyUpgrade', 'ab_power', 'max');
     const best = [...game.state.weapons.list].sort((a, b) => c.get('weapons', b.def).rarity - c.get('weapons', a.def).rarity)[0];
     if (best && game.state.weapons.slots[0] !== best.uid) game.cmd('equipWeapon', best.uid, 0);
-    if (w.map.id === 'base') { goto(gate('a1_1').x, gate('a1_1').y); continue; }
+    if (game.state.world.area === 'base') { const q = w.map.entryOf('a1_1'); goto(q.x, q.y); continue; }
     let tgt = null;
     if (t.npc) { const n = w.map.objects.find((o) => o.id === t.npc); if (n) { goto(n.x, n.y); continue; } }
     const pick = (f) => w.enemies.filter((e) => e.alive && f(e)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
     if (t.kill) tgt = pick((e) => e.v.monster === t.kill);
     else if (t.boss) tgt = game.state.player.level >= 7 ? pick((e) => e.v.rank === 'boss') : pick((e) => e.v.rank === 'normal');
     else tgt = pick((e) => e.v.rank === 'normal');
-    if (tgt) { if (goto(tgt.x, tgt.y) < 40) p.mx = p.my = 0; } else p.mx = p.my = 0;
+    if (tgt) { if (goto(tgt.x, tgt.y) < 40) w.goTo(null); } else w.goTo(null);
   }
   return -1;
 }
@@ -68,6 +68,7 @@ test('T01/T03 Tutorial bis erster Boss: Quests, Unlocks genau einmal, Loot, Resp
   game.cmd('claimNode', 'minimap', 'a1_1');
   clock.t = rs + 1000;
   if (s().world.area !== 'a1_1') game.enter('a1_1', false);
+  assert.equal(game.world.map.kind, 'world', 'Kapitel 1 ist eine zusammenhängende Welt');
   for (let k = 0; k < 60; k++) { game.tick(1 / 30); clock.t += 33; }
   assert.ok(game.world.enemies.find((e) => e.v.rank === 'boss').alive, 'Boss respawnt nach Timer (auch über Neustart, da Zeitstempel)');
   assert.equal(s().world.cleared.a1_1, cleared);
