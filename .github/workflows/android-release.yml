@@ -6,8 +6,8 @@ name: Android Release
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-    paths: ['src/**', 'android/**', 'capacitor.config.json', 'package.json', 'package-lock.json']
+    branches: [main, ccr-44079d87-msrurq]
+    paths: ['.github/workflows/android-release.yml', 'android-signing.sha256', 'src/**', 'android/**', 'capacitor.config.json', 'package.json', 'package-lock.json']
 
 permissions:
   contents: write
@@ -51,7 +51,9 @@ jobs:
         run: npm ci && npm test
 
       - name: Version in die App schreiben
-        run: echo "{\"versionCode\": $XP_VERSION_CODE, \"versionName\": \"$XP_VERSION_NAME\"}" > src/client/version.json
+        run: |
+          printf '{ "versionCode": %s, "versionName": "%s" }\n' "$XP_VERSION_CODE" "$XP_VERSION_NAME" > src/client/version.json
+          cat src/client/version.json
 
       - name: Keystore bereitstellen
         env:
@@ -80,7 +82,15 @@ jobs:
           cp "$APK" "xp-hero-$XP_VERSION_NAME.apk"
           rm -f "$RUNNER_TEMP/release.p12"
 
+      - name: APK als Artefakt (zum Testen, auch ohne Release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: xp-hero-${{ env.XP_VERSION_NAME }}
+          path: xp-hero-${{ env.XP_VERSION_NAME }}.apk
+
+      # Nur main veröffentlicht Releases; nur diese sieht die App als Update.
       - name: Release veröffentlichen
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
