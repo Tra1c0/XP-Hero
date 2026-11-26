@@ -1,0 +1,14 @@
+{
+  "name": "xp-hero",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Eigenständiges Action-Idle-RPG (Client, Kern, Backend, Admin) – ohne externe Abhängigkeiten",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test --test-reporter=dot tests/*.test.js",
+    "parity": "node tools/parity.js",
+    "backup": "node --disable-warning=ExperimentalWarning server/server.js --backup"
+  }
+}
