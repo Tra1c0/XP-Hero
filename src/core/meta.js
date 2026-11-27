@@ -134,6 +134,8 @@ function acceptQuest(g, q) {
   {
     const base = {};
     for (const o of q.obj) if (o.counter && o.from === 'accept') base[o.counter] = g.state.counters[o.counter] || 0;
+    // "Kehre zur Basis zurück" gilt sofort als erfüllt, wenn die Figur bei der Annahme schon in der Basis steht (wie in der Vorlage: sofort erledigt bei leerer Fracht)
+    if (q.obj.some((o) => o.counter === 'returnBase') && g.state.world.area === 'base' && base.returnBase !== undefined) base.returnBase -= 1;
     s.active[q.id] = { base, t: g.now() };
     if (q.grant && !g.state.claims[`qgrant:${q.id}`]) claimOnce(g, `qgrant:${q.id}`, () => give(g, q.grant, 'quest:grant', q.id));
     if (q.unlockOn === 'receive') for (const f of q.unlock || []) unlock(g, f);

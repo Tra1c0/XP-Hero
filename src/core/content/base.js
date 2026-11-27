@@ -7,7 +7,7 @@ import { WORLD, BUILDINGS as W1_BUILDINGS, BASE as W1_BASE, REF as W1, zoneOf as
 import { inPoly } from '../worldgrid.js';
 import { BESTIARY } from './bestiary_ref.js';
 import { ABILITY_REF, BLESS_REF } from './progression_ref.js';
-import { CHOP, STONE } from './scene1_ref.js';
+import { CHOP, STONE, SPAWN_PTS } from './scene1_ref.js';
 import { BUILD, SMITHY, SMITHY_RATES, SMITHY_ROLL, CHEST, CHESTSPAWN, KEYHOUSE, KEYSLOT, SUBSLOT, WGOLD, LVREW, MAINQ } from './econ_ref.js';
 import { WEAPON_REF } from './weapon_ref.js';
 import { WEAPON_WIKI, TYPE_BONUS, UPGRADE_WIKI } from './wiki_ref.js';
@@ -155,8 +155,10 @@ export function buildBaseContent(opt = {}) {
     }
     nodes.forEach((n, k) => {
       const v = byName[n[1]], isBoss = v === bv;
-      groups.push({ id: isBoss ? `sg_${id}_boss` : `sg_${id}_${k}`, area: id, v: v.id, count: v.rank === 'normal' ? cw.normalPerNode : 1, respawn: n[4], patrol: !!n[5],
-        roam: n[1] === 'Bat', pos: [n[2], n[3]], r: cw.spawnSpreadM, s: 'D' });
+      // Gruppengröße und Streukreis des Spawnpunkts aus den Szenendaten (D): der nächstgelegene Punkt desselben Gebiets im Umkreis von 0,75 m
+      let pt = null, pd = 0.75; for (const q of SPAWN_PTS) if (q[0] === s) { const d = Math.hypot(q[2] - n[2], q[3] - n[3]); if (d < pd) { pd = d; pt = q; } }
+      groups.push({ id: isBoss ? `sg_${id}_boss` : `sg_${id}_${k}`, area: id, v: v.id, count: pt ? pt[5] : v.rank === 'normal' ? cw.normalPerNode : 1, respawn: n[4], patrol: !!n[5],
+        roam: n[1] === 'Bat', pos: [n[2], n[3]], r: pt ? Math.max(1, pt[4]) : cw.spawnSpreadM, s: 'D' });
     });
     const sc = W1.stageChests.find((c) => c[0] === s);
     chestSpawners.push({ id: `cs_${id}`, area: id, pos: [sc[1], sc[2]], respawn: sc[3], order: CHESTSPAWN[`Chest_Stage${s}`][0].map((n) => `c${n}`), s: 'D' });

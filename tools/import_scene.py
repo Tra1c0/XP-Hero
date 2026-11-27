@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Erzeugt src/core/content/scene1_ref.js aus der Szenenhierarchie von Kapitel 1 (Knotenliste als JSON: Name, Pfad, Weltposition, Drehung, Skalierung;
 # aus der vom Nutzer bereitgestellten Spieldatei gelesen – weder die Datei noch die Liste liegen im Repo).
-# Aufruf: python3 -I tools/import_scene.py <world1.json>. Übernommen werden nur Koordinaten, Drehung, Größe und die ART eines Objekts
+# Aufruf: python3 -I tools/import_scene.py <world1.json> [<spawnpunkte.json>]. Übernommen werden nur Koordinaten, Drehung, Größe und die ART eines Objekts
 # (Baum, Fels, Zaun ...). Modelle, Texturen und Namen der Vorlage werden nicht übernommen; gezeichnet wird mit eigenen Grundformen.
 import sys, json, re, collections
 W = json.load(open(sys.argv[1]))
@@ -45,12 +45,15 @@ stone = [[round(o['p'][0], 1), round(o['p'][2], 1), stage(o)] for o in W if re.m
 pos = lambda name: next([round(o['p'][0], 2), round(o['p'][2], 2)] for o in W if o['n'] == name)
 BP = {'bonfire': 'BuildingPoint (4)', 'chesthouse': 'BuildingPoint (1)', 'smithy': 'BuildingPoint', 'portal': 'BuildingPoint (3)', 'special': 'BuildingPoint (2)', 'tower': 'BuildingPoint (5)', 'raidcamp': 'BuildingPoint_BossRaidCamp'}
 TF = {k: pos(v) for k, v in {'start': 'TF_Start', 'home': 'TF_Home', 'center': 'TF_HomeCenter', 'npc': 'TF_MainNPC', 'returnPortal': 'TF_ReturnPortal'}.items()}
+# Gruppengröße und Streukreis je Spawnpunkt (zweite Eingabedatei, aus den Spawn-Bausteinen der Szene gelesen): [Gebiet, Gegner-id, x, z, Radius m, Anzahl]
+SPAWN_PTS = [[int(r[0]), r[2], r[3], r[4], r[5], r[6]] for r in json.load(open(sys.argv[2])) if str(r[0]).isdigit()] if len(sys.argv) > 2 else []
 J = lambda v: json.dumps(v, separators=(',', ':'))
 open(__file__.replace('tools/import_scene.py', 'src/core/content/scene1_ref.js'), 'w').write(
     '// GENERIERT von tools/import_scene.py – nicht von Hand ändern.\n// Quelle: Szenenaufbau von Kapitel 1 der Spielversion 27.2.0. Nur Koordinaten, Drehung, Größe und Objektart; gezeichnet wird mit eigenen Grundformen.\n'
     '// DECO[requisite] = [[x*10, z*10, Drehung/10 Grad, Größe*10], ...]\nexport const DECO = ' + J(out) + ';\n'
     '// Fällbare Bäume und abbaubare Steine: [x, z, Gebiet]\nexport const CHOP = ' + J(chop) + ';\nexport const STONE = ' + J(stone) + ';\n'
-    '// Bauplätze und feste Punkte [x, z]\nexport const BUILD_POS = ' + J({k: pos(v) for k, v in BP.items()}) + ';\nexport const POINTS = ' + J(TF) + ';\n')
+    '// Bauplätze und feste Punkte [x, z]\nexport const BUILD_POS = ' + J({k: pos(v) for k, v in BP.items()}) + ';\nexport const POINTS = ' + J(TF) + ';\n'
+    '// Spawnpunkte: [Gebiet, Gegner-id, x, z, Streuradius m, Anzahl der Gegner]\nexport const SPAWN_PTS = ' + J(SPAWN_PTS) + ';\n')
 print(n, 'Objekte in', len(out), 'Arten:', {k: len(v) for k, v in out.items()})
 print('fällbar', len(chop), collections.Counter(c[2] for c in chop), 'Steine', len(stone), collections.Counter(c[2] for c in stone))
 print('nicht zugeordnet:', miss.most_common(40))

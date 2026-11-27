@@ -96,7 +96,8 @@ export class World {
     for (let i = 0; i < gr.count; i++) {
       const ang = (i / gr.count) * 6.283 + gr.x, rad = gr.count > 1 ? gr.r * (0.35 + 0.6 * ((i * 7) % 5) / 5) : 0;
       let x = clamp(gr.x + Math.cos(ang) * rad, 30, this.map.w - 30), y = clamp(gr.y + Math.sin(ang) * rad, 30, this.map.h - 30);
-      if (!walkable(this.G, x, y)) { x = gr.x; y = gr.y; }
+      // Mitglieder der Gruppe stehen nur auf begehbarem Boden des eigenen Gebiets; sonst rücken sie schrittweise zur Gruppenmitte
+      for (let k = 0; k < 4 && (!walkable(this.G, x, y) || (this.map.world && zoneAt(this.G, x, y) !== gr.area)); k++) { x = k === 3 ? gr.x : (x + gr.x) / 2; y = k === 3 ? gr.y : (y + gr.y) / 2; }
       const e = this.makeEnemy(v, x, y);
       e.gid = gr.id; e.slot = i; e.group = gr;
       if (!this.areaOpen(gr.area)) { e.alive = false; e.st = 'locked'; } else if (now < (rs[i] || 0)) { e.alive = false; e.st = 'dead'; }
@@ -212,7 +213,8 @@ export class World {
   }
 
   // ---- Schaden
-  hit(e, base, kind, skill = false) {
+  // splash = Nebentreffer eines Flächenschlags: der Getroffene wehrt sich, ruft aber kein Rudel herbei
+  hit(e, base, kind, skill = false, splash = false) {
     if (!e.alive || e.st === 'spawn') return;
     // Raid: Panzer blockt Treffer (Fernangriffe prallen auf die Figur zurück), Schild fängt Schaden ab
     if (e.shell > 0) { e.shell--; this.text(e.x, e.y - e.r, 0, 1); if (kind === 'ranged') this.hurt(Math.round(e.baseAtk * 0.5)); return; }
@@ -229,7 +231,10 @@ export class World {
     if (st.lifesteal > 0 && this.p.alive) this.p.hp = Math.min(st.hp, this.p.hp + (dealt * st.lifesteal) / 100);
     this.text(e.x, e.y - e.r, dmg, crit ? 2 : 1);
     // Reaktion auf Treffer laut Daten: 3 kämpfen (und Rudel alarmieren), 4 fliehen, 0/1 ignorieren. Ohne Daten: kämpfen.
-    if (e.beh.id !== 'node' && (e.st === 'idle' || e.st === 'patrol' || e.st === 'return')) { const oh = e.beh.onHit; if (oh === undefined || oh === 3 || oh === 4 || oh === 2) { e.st = 'chase'; e.provoked = true; if (e.beh.assist) this.rally(e); } }
+    if (e.beh.id !== 'node' && (e.st === 'idle' || e.st === 'patrol' || e.st === 'return')) { const oh = e.beh.onHit; if (oh === undefined || oh === 3 || oh === 4 || oh === 2) {
+        // Flächentreffer (Nebentreffer, Fertigkeiten) reißen nicht die ganze Gruppe los: es kämpfen höchstens so viele mit, wie das Rudel groß ist (R)
+        const calm = (splash || skill) && e.beh.passive && this.fighters(e.gid) >= (e.beh.flock || 3);
+        if (!calm) { e.st = 'chase'; e.provoked = true; if (e.beh.assist && !splash && !skill) this.rally(e); } } }
     if (e.hp <= 0) this.kill(e);
   }
   status(e, id, dur) {
@@ -259,8 +264,11 @@ export class World {
     e.mch = m.charge || 1; e.tele = { t: e.mch, r: m.radius || 120 }; // Ankündigung für die Darstellung
   }
   // Rudel: nahe Artgenossen derselben Gruppe greifen mit an (höchstens Rudelgröße - 1)
+  fighters(gid) { let n = 0; for (const o of this.enemies) if (o.alive && o.gid === gid && o.provoked && o.st !== 'idle' && o.st !== 'patrol' && o.st !== 'return' && o.st !== 'spawn') n++; return n; }
   rally(e) {
-    let n = (e.beh.flock || 3) - 1; const r2 = e.beh.assist ** 2;
+    // Rudelgröße = wie viele aus der Gruppe höchstens gleichzeitig mitkämpfen (R): wer schon kämpft, zählt mit
+    let n = e.beh.flock || 3; const r2 = e.beh.assist ** 2;
+    n -= this.fighters(e.gid);
     for (const o of this.enemies) { if (n <= 0) break; if (o !== e && o.alive && o.gid === e.gid && (o.st === 'idle' || o.st === 'patrol') && dist2(o.x, o.y, e.x, e.y) < r2 * 4) { o.st = 'chase'; o.provoked = true; n--; } }
   }
   kill(e) {
@@ -290,7 +298,7 @@ export class World {
     if (l.cls.melee) {
       // erst das anvisierte Ziel, dann weitere in Reichweite; Bäume/Steine nur, wenn das Ziel selbst einer ist
       let n = 1; const node = tgt.v.rank === 'node'; this.hit(tgt, l.dmg, kind);
-      this.query(p.x, p.y, l.range, (e) => { if (e !== tgt && n < l.cls.targets && (node || e.v.rank !== 'node')) { n++; this.hit(e, l.dmg, kind); } });
+      this.query(p.x, p.y, l.range, (e) => { if (e !== tgt && n < l.cls.targets && (node || e.v.rank !== 'node')) { n++; this.hit(e, l.dmg, kind, false, true); } });
       this.fx.push({ x: p.x, y: p.y, r: l.range, t: 0.12, k: 0 });
     } else {
       const d = Math.hypot(tgt.x - p.x, tgt.y - p.y) || 1;
@@ -394,7 +402,12 @@ export class World {
     if (p.alive) {
       if (!p.auto) p.huntArea = null;
       if (p.auto) this.autoHunt(dt, load);
-      else if (p.goal) { if (this.follow(p.goal.x, p.goal.y, dt, 20) <= 20) p.goal = null; }
+      else if (p.goal) {
+        // Laufziel: erreicht -> fertig. Kommt die Figur 4 s lang nicht voran (Ziel unerreichbar), wird das Ziel verworfen statt sie festzuhalten.
+        const gx = p.x, gy = p.y;
+        if (this.follow(p.goal.x, p.goal.y, dt, 20) <= 20) p.goal = null;
+        else { p.goalT = Math.hypot(p.mx, p.my) < 0.05 && Math.abs(p.x - gx) + Math.abs(p.y - gy) < 0.01 ? (p.goalT || 0) + dt : Math.max(0, (p.goalT || 0) - dt); if (p.goalT > 4) { p.goal = null; p.goalT = 0; } }
+      }
       // Raid-Effekte auf der Figur: Verlangsamung (Lauf- und Angriffstempo), Gift/Brand als Schaden über Zeit
       const slowP = p.slowT > 0 ? ((p.slowT -= dt), 0.6) : 1;
       if (p.dot && p.dot.t > 0) { p.dot.t -= dt; p.dot.acc += p.dot.dps * dt; if (p.dot.acc >= 1) { const n = Math.floor(p.dot.acc); p.dot.acc -= n; this.hurt(n); } }

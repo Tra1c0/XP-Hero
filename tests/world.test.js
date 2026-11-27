@@ -14,7 +14,7 @@ function walk(game, clock, x, y, maxSec = 120) {
   for (let t = 0; t < maxSec * 30; t++) {
     for (const e of w.enemies) e.alive = false;
     game.tick(1 / 30); clock.t += 1000 / 30;
-    if (!w.p.goal) return t / 30;
+    if (!w.p.goal) return Math.hypot(w.p.x - x, w.p.y - y) <= 30 ? t / 30 : -1; // verworfenes (unerreichbares) Ziel zählt nicht als angekommen
   }
   return -1;
 }

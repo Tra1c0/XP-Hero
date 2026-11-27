@@ -182,7 +182,9 @@ export class Game {
     if (t.npc || t.char) { const o = near(objs.filter((x) => x.type === 'npc' && (t.npc ? x.id === t.npc : x.char === t.char))); return pt(o, o && o.name); }
     if (t.building) return pt(objs.find((x) => x.type === 'building' && x.id === t.building), 'Bauplatz');
     if (t.area === 'base') return w.map.entryOf ? { ...w.map.entryOf('base'), label: 'Basis' } : null;
-    if (t.chest) return pt(near(objs.filter((x) => x.type === 'chest' && g.now() >= (g.state.world.chests[x.id] || 0))), 'Feldtruhe');
+    // Feldtruhe: nur in offenen Gebieten; ist dort gerade keine bereit, zeigt das Ziel auf die, die als nächste wiederkommt
+    if (t.chest) { const open = objs.filter((x) => x.type === 'chest' && (!x.area || !w.areaOpen || w.areaOpen(x.area))), ready = open.filter((x) => g.now() >= (g.state.world.chests[x.id] || 0));
+      return pt(near(ready) || open.sort((a, b) => (g.state.world.chests[a.id] || 0) - (g.state.world.chests[b.id] || 0))[0], 'Feldtruhe'); }
     const want = t.boss ? (e) => e.v.rank === 'boss' && e.group && e.group.area === t.boss : t.monster === '*' ? (e) => e.v.rank === 'normal' : t.monster === '#boss' ? (e) => e.v.rank === 'boss' || e.v.rank === 'rare' : (e) => e.v.monster === t.monster;
     const alive = near(w.enemies.filter((e) => e.alive && e.gid && want(e)));
     if (alive) return { x: alive.x, y: alive.y, label: alive.v.name };

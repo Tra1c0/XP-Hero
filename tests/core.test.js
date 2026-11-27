@@ -540,3 +540,15 @@ test('Kampf und Gebiete: Gegner vor Rohstoffen als Ziel, Geschosse fliegen an B�
   // Krieger-Truhe erst nach der Hauptquest, die den ersten Schlüssel vergibt
   unlock('shop'); give('key_warrior', 1); assert.equal(code(() => game.cmd('openBox', 'warrior', 1)), 'locked'); s().quests.done.mq_67 = 1; assert.equal(game.cmd('openBox', 'warrior', 1).length, 1);
 });
+
+test('Spawngruppen: Größe und Streukreis je Punkt aus den Szenendaten; Rudel begrenzt, wie viele gleichzeitig mitkämpfen', () => {
+  const T = pack.tables, sum = (area, name) => T.spawnGroups.filter((g) => g.area === area && T.variants.find((v) => v.id === g.v).name === name).reduce((a, g) => a + g.count, 0);
+  assert.deepEqual([sum('a1_1', 'Slime'), sum('a1_1', 'Spider'), sum('a1_1', 'Mushroom'), sum('a1_1', 'Mandragora'), sum('a1_2', 'Goblin'), sum('a1_2', 'Cactus'), sum('a1_2', 'Desert Spider'), sum('a1_3', 'Gold Elephant')], [15, 18, 10, 12, 28, 29, 37, 3]);
+  assert.equal(T.spawnGroups.filter((g) => g.area.startsWith('a1_')).reduce((a, g) => a + g.count, 0), 456);
+  const { game, clock } = mk(); const w = game.world, sl = w.enemies.filter((e) => e.alive && e.v.id === 'slime');
+  assert.equal(sl.length, 15); const cx = sl.reduce((a, e) => a + e.x, 0) / 15, cy = sl.reduce((a, e) => a + e.y, 0) / 15;
+  assert.ok(sl.every((e) => Math.hypot(e.x - cx, e.y - cy) <= 6.5 * 40), 'Schleime stehen als Gruppe im 5-m-Kreis');
+  // ein direkter Treffer ruft höchstens das Rudel (3) zusammen; Flächentreffer reißen nicht die ganze Gruppe los
+  for (const e of sl) e.st = 'idle'; w.hit(sl[0], 1, 'melee'); assert.equal(w.fighters(sl[0].gid), 3);
+  for (const e of sl.slice(3)) w.hit(e, 1, 'melee', true); assert.equal(w.fighters(sl[0].gid), 3, 'Fertigkeitstreffer auf den Rest der Gruppe ändern nichts');
+});
