@@ -38,7 +38,7 @@ for o in W:  # Reihenfolge = Tiefensuche: Eltern kommen vor ihren Kindern
     if any(kind(c) is not None for c in kids.get(full, [])): continue  # Sammelknoten ("Grass", "Rocks"): seine Kinder sind die Objekte
     p = prop if isinstance(prop, str) else prop[st - 1]
     s = sum(abs(v) for v in o['s']) / 3
-    out[p].append([round(o['p'][0] * 10), round(o['p'][2] * 10), round(o['yaw'] / 10) % 36, max(4, min(30, round(s * 10)))]); n += 1
+    out[p].append([round(o['p'][0] * 10), round(o['p'][2] * 10), round(o['yaw'] / 10) % 36, max(4, min(30, round(s * 10))), round(o['p'][1] * 10)]); n += 1
     emitted.append(full)
 chop = [[round(o['p'][0], 1), round(o['p'][2], 1), stage(o)] for o in W if o['n'].startswith('Tree_Chop') and '/Tree_Chop' not in o['path'] and not any(c.startswith('Tree_Chop') for c in kids.get(o['path'] + '/' + o['n'], []))]
 stone = [[round(o['p'][0], 1), round(o['p'][2], 1), stage(o)] for o in W if re.match(r'^(Stone_[ABC]|CH4_Ore)', o['n']) and not re.search(r'/(Stone_|CH4_Ore)', o['path'])]
@@ -50,7 +50,7 @@ SPAWN_PTS = [[int(r[0]), r[2], r[3], r[4], r[5], r[6]] for r in json.load(open(s
 J = lambda v: json.dumps(v, separators=(',', ':'))
 open(__file__.replace('tools/import_scene.py', 'src/core/content/scene1_ref.js'), 'w').write(
     '// GENERIERT von tools/import_scene.py – nicht von Hand ändern.\n// Quelle: Szenenaufbau von Kapitel 1 der Spielversion 27.2.0. Nur Koordinaten, Drehung, Größe und Objektart; gezeichnet wird mit eigenen Grundformen.\n'
-    '// DECO[requisite] = [[x*10, z*10, Drehung/10 Grad, Größe*10], ...]\nexport const DECO = ' + J(out) + ';\n'
+    '// DECO[requisite] = [[x*10, z*10, Drehung/10 Grad, Größe*10, Höhe über Null*10], ...]\nexport const DECO = ' + J(out) + ';\n'
     '// Fällbare Bäume und abbaubare Steine: [x, z, Gebiet]\nexport const CHOP = ' + J(chop) + ';\nexport const STONE = ' + J(stone) + ';\n'
     '// Bauplätze und feste Punkte [x, z]\nexport const BUILD_POS = ' + J({k: pos(v) for k, v in BP.items()}) + ';\nexport const POINTS = ' + J(TF) + ';\n'
     '// Spawnpunkte: [Gebiet, Gegner-id, x, z, Streuradius m, Anzahl der Gegner]\nexport const SPAWN_PTS = ' + J(SPAWN_PTS) + ';\n')
