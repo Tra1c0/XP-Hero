@@ -196,7 +196,7 @@ export class World {
     if (crit) dmg *= st.critDmg / 100;
     dmg = Math.max(1, Math.round(dmg));
     const dealt = Math.min(dmg, e.hp); // Overkill zählt nicht als Schaden
-    e.hp -= dealt; this.dmgDealt += dealt;
+    e.hp -= dealt; e.hitT = this.t; this.dmgDealt += dealt;
     if (st.lifesteal > 0 && this.p.alive) this.p.hp = Math.min(st.hp, this.p.hp + (dealt * st.lifesteal) / 100);
     this.text(e.x, e.y - e.r, dmg, crit ? 2 : 1);
     if (e.beh.id !== 'node' && (e.st === 'idle' || e.st === 'patrol' || e.st === 'return')) { e.st = 'chase'; }
@@ -211,12 +211,13 @@ export class World {
   kill(e) {
     if (!e.alive) return; // genau einmal pro Tod
     e.alive = false; e.st = 'dead';
+    if (e.v.rank !== 'node') this.fx.push({ x: e.x, y: e.y, r: e.r * 2.2, t: 0.4, k: 3 }); // Auflösung beim Tod
     if (this.hooks.onKill) this.hooks.onKill(e, this);
   }
   hurt(n) {
     const p = this.p;
     if (!p.alive || this.ended) return;
-    p.hp -= n; this.text(p.x, p.y - 20, n, 3);
+    p.hp -= n; p.hurtT = this.t; this.text(p.x, p.y - 20, n, 3);
     if (p.hp <= 0) { p.hp = 0; p.alive = false; this.events.push({ type: 'dead' }); if (this.hooks.onDeath) this.hooks.onDeath(this); }
   }
   text(x, y, n, kind) { if (this.texts.length < 60) this.texts.push({ x, y, n, kind, t: 0.7 }); }
@@ -374,6 +375,8 @@ export class World {
       const d = this.drops[i];
       d.t -= dt;
       let gone = d.t <= 0;
+      // Beute fliegt der Figur entgegen, sobald sie in der Nähe ist (Fracht-Beute nur, wenn noch Platz ist)
+      if (!gone && p.alive) { const dd = dist2(d.x, d.y, p.x, p.y); if (dd < pr2 * 6 && dd > 1 && !(this.hooks.cargoFull && this.hooks.cargoFull() && g.c.by.items.get(d.item) && g.c.by.items.get(d.item).cargo > 0)) { const dl = Math.sqrt(dd), k = Math.min(1, (520 * dt) / dl); d.x += (p.x - d.x) * k; d.y += (p.y - d.y) * k; } }
       if (!gone && p.alive && dist2(d.x, d.y, p.x, p.y) < pr2 && this.hooks.onPickup) gone = this.hooks.onPickup(d, this);
       if (gone) { this.drops[i] = this.drops[this.drops.length - 1]; this.drops.pop(); }
     }

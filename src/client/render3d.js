@@ -7,12 +7,13 @@ import { npcStatus, currentQuests } from '../core/meta.js';
 import { enemyParts, enemyTop } from './enemy3d.js';
 
 const VIEW_W = 11.5, TILT = (45 * Math.PI) / 180; // an der Vorlage vermessen: Figur ca. 1/13 der Bildbreite, Kreise auf dem Boden ca. 0,7-fach gestaucht; // sichtbare Breite in Metern (Hochformat), Neigung
-const INST = 11; // pos3, rot, scl3, rgba(em)
+const INST = 13; // pos3, rot, scl3, rgba(em), Neigung (vor/zurück, seitlich)
 const VS_I = `#version 300 es
-layout(location=0) in vec3 p; layout(location=1) in vec3 n; layout(location=2) in vec3 ip; layout(location=3) in float ir; layout(location=4) in vec3 is; layout(location=5) in vec4 ic;
+layout(location=0) in vec3 p; layout(location=1) in vec3 n; layout(location=2) in vec3 ip; layout(location=3) in float ir; layout(location=4) in vec3 is; layout(location=5) in vec4 ic; layout(location=6) in vec2 it;
 uniform mat4 vp; uniform float zb; out vec3 vN; out vec4 vC;
-void main(){ float c=cos(ir), s=sin(ir); vec3 q=p*is; q=vec3(c*q.x+s*q.z, q.y, -s*q.x+c*q.z);
- vec3 m=n/max(is,vec3(1e-3)); m=vec3(c*m.x+s*m.z, m.y, -s*m.x+c*m.z); vN=normalize(m); vC=ic; gl_Position=vp*vec4(q+ip,1.); gl_Position.z-=zb; }`;
+vec3 tl(vec3 v){ float cr=cos(it.y), sr=sin(it.y); v=vec3(cr*v.x-sr*v.y, sr*v.x+cr*v.y, v.z); float cp=cos(it.x), sp=sin(it.x); return vec3(v.x, cp*v.y-sp*v.z, sp*v.y+cp*v.z); }
+void main(){ float c=cos(ir), s=sin(ir); vec3 q=tl(p*is); q=vec3(c*q.x+s*q.z, q.y, -s*q.x+c*q.z);
+ vec3 m=tl(n/max(is,vec3(1e-3))); m=vec3(c*m.x+s*m.z, m.y, -s*m.x+c*m.z); vN=normalize(m); vC=ic; gl_Position=vp*vec4(q+ip,1.); gl_Position.z-=zb; }`;
 const VS_T = `#version 300 es
 layout(location=0) in vec3 p; layout(location=1) in vec3 n; layout(location=2) in vec4 c;
 uniform mat4 vp; out vec3 vN; out vec4 vC; void main(){ vN=n; vC=c; gl_Position=vp*vec4(p,1.); }`;
@@ -43,6 +44,17 @@ const COLS = new Map();
 const col = (h) => { let c = COLS.get(h); if (!c) { c = hex(h); COLS.set(h, c); } return c; };
 const RANK_COL = { normal: '#c0564b', elite: '#d98a2b', rare: '#9b3fd1', boss: '#7b2bb0', special: '#e2c13a' };
 
+// Neigt eine Teilegruppe starr um den Bodenpunkt (cx, cz): pitch = nach vorn (in Blickrichtung yaw), roll = zur Seite. Teile: [shape, x, y, z, rot, sx, sy, sz, farbe, em, pitch, roll].
+function tiltGroup(parts, cx, cz, yaw, pitch, roll = 0, lift = 0) {
+  const sy = Math.sin(yaw), cy = Math.cos(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch), cr = Math.cos(roll), sr = Math.sin(roll);
+  for (const t of parts) {
+    let f = (t[1] - cx) * sy + (t[3] - cz) * cy, r = (t[1] - cx) * cy - (t[3] - cz) * sy, y = t[2];
+    const r2 = r * cr - y * sr; y = r * sr + y * cr; r = r2;
+    const y2 = y * cp - f * sp; f = y * sp + f * cp; y = y2;
+    t[1] = cx + r * cy + f * sy; t[3] = cz - r * sy + f * cy; t[2] = y + lift; t[10] = (t[10] || 0) + pitch; t[11] = (t[11] || 0) + roll;
+  }
+  return parts;
+}
 export class Renderer3D {
   constructor(glCanvas, overlay) {
     this.cv = glCanvas; this.ov = overlay; this.ctx = overlay.getContext('2d');
@@ -75,7 +87,7 @@ export class Renderer3D {
     gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
     gl.bindBuffer(gl.ARRAY_BUFFER, ib);
     const S = INST * 4;
-    [[2, 3, 0], [3, 1, 12], [4, 3, 16], [5, 4, 28]].forEach(([loc, size, off]) => { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, S, off); gl.vertexAttribDivisor(loc, 1); });
+    [[2, 3, 0], [3, 1, 12], [4, 3, 16], [5, 4, 28], [6, 2, 44]].forEach(([loc, size, off]) => { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, S, off); gl.vertexAttribDivisor(loc, 1); });
     gl.bindVertexArray(null);
     return v;
   }
@@ -84,7 +96,7 @@ export class Renderer3D {
     for (const t of parts) {
       const b = (buckets[t[0]] ||= []);
       const c = typeof t[8] === 'string' ? col(t[8]) : t[8];
-      b.push(t[1], t[2], t[3], t[4], t[5], t[6], t[7], c[0], c[1], c[2], t[9] || 0);
+      b.push(t[1], t[2], t[3], t[4], t[5], t[6], t[7], c[0], c[1], c[2], t[9] || 0, t[10] || 0, t[11] || 0);
     }
     return buckets;
   }
@@ -251,7 +263,16 @@ export class Renderer3D {
       if (!vis(x, z, 6)) continue;
       // Gestrichelter Kreis um NPCs mit Anliegen: wer ihn betritt, wird angesprochen
       { const m = this.npcSt && this.npcSt[o.id]; if (o.type === 'npc' && (m === 'offer' || m === 'turnin')) { const R = o.r / ppm; for (let k = 0; k < 20; k++) { const a = (k / 20) * 6.283; out.push(['box', x + Math.cos(a) * R, 0.03, z + Math.sin(a) * R, -a, 0.14, 0.03, R * 0.17, '#5fe07a', 0.9]); } } }
-      if (o.type === 'building') expand(st.buildings[o.id] ? o.id : 'plot', x, 0, z, 0, 1, out);
+      if (o.type === 'building') {
+        const built = !!st.buildings[o.id], tB = performance.now() / 1000;
+        expand(built ? o.id : 'plot', x, 0, z, 0, 1, out);
+        // Lebendige Details: Feuer flackert, Schmiede raucht und glüht, Portal pulsiert, Fackeln am Raid-Turm lodern, Bauplatz-Ring pulsiert
+        if (!built) { const k = 1.75 + Math.sin(tB * 3) * 0.12; fx.push(['disc', x, 0.09, z, 0, k * 1.15, 1, k * 1.15, '#ffffff', 1]); }
+        else if (o.id === 'bonfire') for (let k = 0; k < 3; k++) { const fl = 0.75 + Math.sin(tB * (9 + k * 3) + k) * 0.25; out.push(['cone6', x + Math.sin(k * 2.1) * 0.18, 0.15, z + Math.cos(k * 2.1) * 0.18, tB * (k + 1), 0.55 * fl, (1.0 + k * 0.25) * fl, 0.55 * fl, ['#ff7a2a', '#ffb53a', '#ffe27a'][k], 1]); }
+        else if (o.id === 'smithy') { for (let k = 0; k < 4; k++) { const u = (tB * 0.45 + k / 4) % 1; out.push(['sphere', x + Math.sin(u * 5 + k) * 0.25, 3.3 + u * 2.2, z, 0, 0.3 + u * 0.55, 0.3 + u * 0.55, 0.3 + u * 0.55, '#5c5850', 0]); } out.push(['box', x, 0.3, z + 1.06, 0, 0.8, 0.4, 0.04, '#ffd24a', 0.6 + Math.sin(tB * 7) * 0.4]); }
+        else if (o.id === 'portal') { const k = 0.9 + Math.sin(tB * 2.4) * 0.1; out.push(['box', x, 0.4 + (1 - k) * 0.8, z - 0.14, 0, 1.3 * k, 1.5 * k, 0.24, '#e0a8ff', 1]); fx.push(['disc', x, 0.3, z + 0.9, 0, 2.2 + Math.sin(tB * 2.4) * 0.3, 1, 1.2, '#b04cff', 1]); }
+        else if (o.id === 'raidcamp') for (const sx of [-1.25, 1.25]) { const fl = 0.8 + Math.sin(tB * 11 + sx * 3) * 0.2; out.push(['sphere', x + sx, 1.75, z + 1.75, 0, 0.5 * fl, 0.85 * fl, 0.5 * fl, '#ff8a3a', 1]); }
+      }
       else if (o.type === 'chest') { if (now >= (st.world.chests[o.id] || 0)) { out.push(['box', x, 0, z, 0.3, 1.1, 0.7, 0.8, '#8a5a32', 0], ['box', x, 0.7, z, 0.3, 1.12, 0.18, 0.82, '#e9b43a', 0.2]); shadows.push(['disc', x, 0.02, z, 0, 1.6, 1, 1.6, '#000000', 0]); } } else if (o.type === 'gift') { if (now >= (st.world.gifts[o.id] || 0)) { out.push(['box', x, 0, z, 0.6, 0.8, 0.8, 0.8, '#ff7fae', 0.15], ['box', x, 0, z, 0.6, 0.84, 0.84, 0.18, '#fff3b0', 0.3], ['box', x, 0, z, 0.6, 0.18, 0.84, 0.84, '#fff3b0', 0.3]); } } else if (o.type === 'areachest') { if (!st.claims[`areachest:${o.id}`]) { out.push(['box', x, 0, z, -0.2, 1.3, 0.9, 0.9, '#e9b43a', 0.25], ['box', x, 0.9, z, -0.2, 1.32, 0.2, 0.92, '#b5482f', 0]); } } else if (o.type === 'npc') {
         if (o.kind === 'raid') out.push(['box', x + 1.4, 0, z - 0.6, 0.4, 1.0, 2.6, 1.0, '#3d3a4a', 0], ['sphere', x + 1.4, 2.5, z - 0.6, 0, 0.6, 0.6, 0.6, '#c24bff', 0.9]);
         { out.push(['cyl8', x, 0, z, 0, 0.7, 1.0, 0.7, '#3f8f5a', 0], ['sphere', x, 1.0, z, 0, 0.5, 0.5, 0.5, '#f1c9a5', 0], ['cone6', x, 1.42, z, 0, 0.6, 0.5, 0.6, '#2f6b45', 0]); shadows.push(['disc', x, 0.02, z, 0, 1.1, 1, 1.1, '#000000', 0]); }
@@ -291,6 +312,19 @@ export class Renderer3D {
       part('box', 0, 0.5, -0.36, 0.5, 0.42, 0.24, '#6a4a30'),
       part('box', 0, 0.96, 0, 0.78, 0.68, 0.7, hc2), part('box', 0, 0.97, 0.01, 0.16, 0.69, 0.72, ac2), part('box', 0, 1.62, 0, 0.26, 0.16, 0.26, '#7a5236'),
       ];
+    // Bewegung der Figur: Schrittzyklus (Beine und Arme gegenläufig, Rumpf wippt und lehnt sich vor), Treffer-Blitz, Umfallen beim Tod
+    {
+      const tnow = performance.now() / 1000, dtf = Math.min(0.1, tnow - (this.animT || tnow)); this.animT = tnow;
+      const moving = p.alive && Math.abs(p.x - p.px) + Math.abs(p.y - p.py) > 0.4;
+      this.wph = (this.wph || 0) + (moving ? dtf * 11 : 0); this.wamp = (this.wamp || 0) + ((moving ? 1 : 0) - (this.wamp || 0)) * Math.min(1, dtf * 12);
+      const sw = Math.sin(this.wph) * this.wamp, fwd = (t, d, up = 0) => { t[1] += sf * d; t[3] += cf * d; t[2] += up; };
+      fwd(ch[0], 0.2 * sw, Math.max(0, sw) * 0.1); fwd(ch[1], -0.2 * sw, Math.max(0, -sw) * 0.1); fwd(ch[4], -0.14 * sw); fwd(ch[5], 0.14 * sw);
+      const bob = Math.abs(Math.cos(this.wph)) * 0.05 * this.wamp + (moving ? 0 : Math.sin(tnow * 2.2) * 0.012);
+      for (let k = 2; k < ch.length; k++) ch[k][2] += bob;
+      if (!p.alive) { this.fall = Math.min(1, (this.fall || 0) + dtf * 4); tiltGroup(ch, px, pz, f, -1.45 * this.fall, 0, 0.12 * this.fall); }
+      else { this.fall = 0; if (this.wamp > 0.02) tiltGroup(ch, px, pz, f, 0.13 * this.wamp); }
+      if (p.hurtT !== undefined && w.t - p.hurtT < 0.12) for (const t of ch) t[8] = '#ffffff';
+    }
     // Waffen: Hauptwaffe in der Hand mit Schwungbogen, Nebenwaffen schweben im Kreis um die Figur und stoßen beim Angriff zum Ziel (eigene Darstellung, Zeit aus der Simulation)
     {
       const tm = w.t + a / 30, load = w.loadout(), subs = load.filter((l) => l.slot > 0), wf = w.p.wfire || {}, ws = [];
@@ -345,16 +379,34 @@ export class Renderer3D {
       // Blickrichtung: im Kampf zum Spieler, sonst in Laufrichtung (bleibt stehen, wenn der Gegner steht)
       const fight = e.st === 'chase' || e.st === 'attack' || e.st === 'cool' || e.st === 'aggro' || e.st === 'cast', mv = Math.abs(e.x - e.px) + Math.abs(e.y - e.py) > 0.05;
       if (fight && !e.beh.flee) e.face = Math.atan2(p.x - e.x, p.y - e.y); else if (mv) e.face = Math.atan2(e.x - e.px, e.y - e.py); else if (e.face === undefined) e.face = (e.ang || 0) % 6.283;
-      const parts = enemyParts(v, ex, ez, e.face, s, e.stunT > 0 ? '#ffffff' : e.st === 'attack' ? '#ffd9d0' : null);
+      const hitNow = e.hitT !== undefined && w.t - e.hitT < 0.1;
+      const parts = enemyParts(v, ex, ez, e.face, s, e.stunT > 0 || hitNow ? '#ffffff' : e.st === 'attack' ? '#ffd9d0' : null);
+      // Bewegung: Hüpfen beim Laufen, Ausholen und Zustoßen beim Angriff, Zurückzucken bei Treffern, Schwanken bei Betäubung, ruhiges Atmen im Stand
+      {
+        const tA = performance.now() / 1000 + (e.ang || 0), b0 = e.beh || {};
+        let lift = 0, pitch = 0, roll = 0;
+        if (e.st === 'attack') { const u = 1 - Math.max(0, Math.min(1, e.t / (b0.windup || 0.3))); pitch = u < 0.6 ? -0.3 * (u / 0.6) : -0.3 + 0.85 * ((u - 0.6) / 0.4); }
+        else if (e.st === 'cast') { lift = Math.abs(Math.sin(tA * 14)) * 0.12 * s; pitch = -0.25; }
+        else if (e.stunT > 0) roll = Math.sin(tA * 9) * 0.22;
+        else if (mv) { lift = Math.abs(Math.sin(tA * (v.speed > 120 ? 11 : 8))) * 0.16 * s; pitch = 0.1; }
+        else lift = (Math.sin(tA * 2.4) * 0.5 + 0.5) * 0.03 * s;
+        if (hitNow) pitch -= 0.25;
+        if (lift || pitch || roll) tiltGroup(parts, ex, ez, e.face, pitch, roll, lift);
+      }
       if (e.slowT > 0) fx.push(['disc', ex, 0.05, ez, 0, 1.7 * s0, 1, 1.7 * s0, '#7fd0ff', 1]);
       out.push(...parts); xray.push(parts[0], parts[1], parts[2]);
       if (rk === 'rare' || rk === 'boss') fx.push(['disc', ex, 0.04, ez, 0, 2.4 * s0, 1, 2.4 * s0, rk === 'boss' ? '#ffb020' : '#b060ff', 1]);
       shadows.push(['disc', ex, 0.02, ez, 0, 1.0 * s, 1, 1.0 * s, '#000000', 0]);
       if (e.st === 'cast') fx.push(['disc', X(e.cx), 0.05, Z(e.cy), 0, 7.5, 1, 7.5, '#ff2030', 1]);
     }
-    for (const d of w.drops) { const x = X(d.x), z = Z(d.y); if (vis(x, z)) out.push(['box', x, 0.05, z, 0.7, 0.35, 0.35, 0.35, d.item === 'gold' ? '#ffd54a' : d.item === 'gems' ? '#5ee0ff' : d.item.startsWith('orb') ? '#ff6ad5' : d.item === '#xp' ? '#9dff7a' : '#cfd8dc', 0.5]); }
+    for (const d of w.drops) { const x = X(d.x), z = Z(d.y), tD = performance.now() / 1000 + d.x * 0.01; if (vis(x, z)) out.push(['box', x, 0.12 + Math.abs(Math.sin(tD * 3)) * 0.14, z, tD * 2.2, 0.35, 0.35, 0.35, d.item === 'gold' ? '#ffd54a' : d.item === 'gems' ? '#5ee0ff' : d.item.startsWith('orb') ? '#ff6ad5' : d.item === '#xp' ? '#9dff7a' : '#cfd8dc', 0.5]); }
     for (const b of w.proj) { const x = X(b.x), z = Z(b.y); out.push(['sphere', x, 0.6, z, 0, 0.3, 0.3, 0.3, b.hostile ? '#ff5a5a' : '#fff59d', 1]); }
-    if (!st.settings.reducedFx) for (const f of w.fx) fx.push(['disc', X(f.x), 0.06, Z(f.y), 0, (f.r * 2) / ppm, 1, (f.r * 2) / ppm, ['#ffffff', '#ffc850', '#ff3c3c'][f.k], 1]);
+    if (!st.settings.reducedFx) for (const f of w.fx) {
+      if (f.k === 3) { // Auflösung beim Tod: kleine Wölkchen steigen auf und schrumpfen
+        const u = 1 - f.t / 0.4, fx0 = X(f.x), fz0 = Z(f.y), R = f.r / ppm;
+        for (let k = 0; k < 6; k++) { const an = k * 1.047 + f.x; out.push(['sphere', fx0 + Math.cos(an) * R * (0.25 + u * 0.6), 0.25 + u * (0.9 + (k % 3) * 0.25), fz0 + Math.sin(an) * R * (0.25 + u * 0.6), 0, 0.42 * (1 - u), 0.42 * (1 - u), 0.42 * (1 - u), '#f4f1ea', 0.6]); }
+      } else fx.push(['disc', X(f.x), 0.06, Z(f.y), 0, (f.r * 2) / ppm, 1, (f.r * 2) / ppm, ['#ffffff', '#ffc850', '#ff3c3c'][f.k], 1]);
+    }
     return { out, shadows, fx, xray, px, pz };
   }
 

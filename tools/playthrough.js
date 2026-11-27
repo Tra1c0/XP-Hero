@@ -5,7 +5,7 @@ import { mk } from '../tests/helpers.js';
 import { currentQuests, questTarget } from '../src/core/meta.js';
 import * as prog from '../src/core/progress.js';
 const HOURS = Number(process.argv[2] || 4), { game, clock, s } = mk({ seed: 7 }), g = game.g, c = game.c;
-let deaths = 0, lastDone = 0, lastDoneT = 0, stuckNote = '';
+let sec0 = 0, deaths = 0, lastDone = 0, lastDoneT = 0, stuckNote = '';
 const log = [], cleared = {}, t0 = clock.t, hhmm = (sec) => `${Math.floor(sec / 3600)}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`;
 const spend = () => {
   // Gold: abwechselnd das günstigste aus Kraft/HP/Regeneration; Orbs und anderes: alles, was sich kaufen lässt
@@ -19,7 +19,9 @@ const spend = () => {
   const ws = s().weapons, best = [...ws.list].sort((a, b) => prog.weaponDmg(g, b) - prog.weaponDmg(g, a));
   best.slice(0, ws.unlocked).forEach((w, i) => { if (ws.slots[i] !== w.uid) game.try('equipWeapon', w.uid, i); });
   for (const uid of ws.slots) if (uid) game.try('weaponLevelUp', uid, 'max');
-  for (const b of c.t.gachaBoxes) game.try('openBox', b.id, 1);
+  // Truhen nur mit Schlüsseln öffnen; Gems bleiben für Quest-Ziele (z. B. Helden beschwören). Gratis-Angebote des Shops mitnehmen.
+  for (const b of c.t.gachaBoxes) { const co = b.costs.find((x) => /^key/.test(Object.keys(x)[0])); if (co && (s().inv[Object.keys(co)[0]] || 0) >= 1) game.try('openBox', b.id, 1); }
+  if (sec0 % 600 === 0) for (const sku of c.t.shop) if (!Object.keys(sku.price).length) game.try('buy', sku.id, 1);
   // Schlüsselhaus: erste Plätze freischalten, sobald es steht (nur in der Basis möglich)
   if (s().unlocks.keyhouse && !(s().keyhouse.slots || []).some((sl) => sl.open)) { if (s().world.area !== 'base') game.try('returnHome'); for (let i = 0; i < 3; i++) game.try('unlockKeySlot', i); }
   // fällige Truhen im Schlüsselhaus abholen (nur in der Basis möglich)
@@ -30,6 +32,7 @@ const quests = () => {
   reserve = 0;
   for (const { q, state } of currentQuests(g)) if (state === 'satisfied') game.try('claimQuest', q.id);
   for (const { q, state } of currentQuests(g)) { const o = q.obj[0]; if (state === 'active' && o.cond && o.cond.building) reserve = Math.max(reserve, c.get('buildings', o.cond.building).cost.gold || 0); }
+  for (const { q, state } of currentQuests(g)) { const o = q.obj[0]; if (state === 'active' && o.counter && o.counter.startsWith('upgrade:ab_')) { const pv = prog.upgradePreview(g, o.counter.slice(8), 1); if (pv.next && pv.next.gold) reserve = Math.max(reserve, pv.next.gold); } }
   for (const { q, state } of currentQuests(g)) {
     if (state !== 'active') continue;
     const o = q.obj[0], t = questTarget(g, q);
@@ -50,6 +53,7 @@ for (let sec = 0; sec < HOURS * 3600; sec++) {
   if (!p.alive) { deaths++; game.cmd('revive', 'base'); continue; }
   const walking = sec % 2 === 0 ? quests() : !!p.goal;
   if (!walking && !p.goal) p.auto = true;
+  sec0 = sec;
   if (sec % 10 === 0) spend();
   for (const a of c.t.areas) if (a.chapter === 1 && s().world.cleared[a.id] && !cleared[a.id]) { cleared[a.id] = sec; log.push(`${hhmm(sec)}  ${c.get('variants', a.boss).name} besiegt (${a.name}) · Level ${s().player.level} · Tode bisher ${deaths} · Kraft ${s().upgrades.ab_power || 0} · HP ${s().upgrades.ab_hp || 0} · Angriff ${g.stats.atk} · Leben ${g.stats.hp}`); }
   const done = Object.keys(s().quests.done).length;
