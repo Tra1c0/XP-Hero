@@ -134,9 +134,21 @@ export function gainXp(g, amount, source) {
 
 // ---- Upgrade-Pfade (Ability/Special/Extra/Soul/Blessing/Synergie) --------
 export const upDef = (g, id) => g.c.get('upgradeTracks', id);
-export const effAt = (def, L) => (L <= 0 ? 0 : interpRows(def.rows, L, (r) => r.eff));
+// Stützstufen der Referenz: [Stufe, Wert, Kosten des nächsten Schritts]. Zwischen zwei Stützstufen linear, außerhalb der Randwert.
+function refAt(rows, L, f) {
+  let a = rows[0], b = null;
+  for (const r of rows) { if (r[0] <= L) a = r; else { b = r; break; } }
+  if (!b || a[0] >= L) return f(a);
+  return f(a) + ((f(b) - f(a)) * (L - a[0])) / (b[0] - a[0]);
+}
+export const effAt = (def, L) => (def.ref && !def.refCostOnly ? (L < def.ref[0][0] ? 0 : Math.round(refAt(def.ref, L, (r) => r[1])) - (def.base || 0)) : L <= 0 ? 0 : interpRows(def.rows, L, (r) => r.eff));
 // Kosten für den Schritt (L-1) -> L. Währungen, die in beiden Stützzeilen stehen, linear; sonst Stufe der unteren Zeile.
 export function costAt(def, L) {
+  if (def.ref) { // Schritt (L-1) -> L kostet, was auf Stufe L-1 hinterlegt ist; Orbs nur genau auf einer Stützstufe
+    const from = L - 1, hit = def.ref.find((r) => r[0] === from) || (from < def.ref[0][0] ? def.ref[0] : null), out = { gold: Math.round(refAt(def.ref, from, (r) => r[2].gold || 0)) };
+    if (hit) for (const [cur, v] of Object.entries(hit[2])) if (cur !== 'gold') out[cur] = v;
+    return out;
+  }
   let a = def.rows[0], b = null;
   for (const r of def.rows) { if (r.lv <= L) a = r; else { b = r; break; } }
   const out = {};

@@ -6,6 +6,7 @@
 import { WORLD, BUILDINGS as W1_BUILDINGS, REF as W1 } from './world1.js';
 import { inPoly } from '../worldgrid.js';
 import { BESTIARY } from './bestiary_ref.js';
+import { ABILITY_REF } from './progression_ref.js';
 import { NPC_REF } from './npc_ref.js';
 
 export const SCHEMA = 1;
@@ -295,23 +296,20 @@ export function buildBaseContent(opt = {}) {
   const U = (id, family, name, stat, max, rows, x = {}) => up.push({ id, family, name, stat, max, scale: 1, rows: rows.map(([lv, eff, cost]) => ({ lv, eff, cost })), s: 'E', ...x });
   const own = (max, effMax, c1, cMax, cur = 'gold') => [[1, Math.max(1, Math.round(effMax / max)), { [cur]: c1 }],
     [Math.max(2, Math.round(max / 2)), Math.round(effMax / 2), { [cur]: Math.round(Math.sqrt(c1 * cMax)) }], [max, effMax, { [cur]: cMax }]];
-  U('ab_power', 'ability', 'Kraft', 'atk', 2000, [[1, 2, { gold: 10 }], [2, 3, { gold: 34 }], [4, 5, { gold: 120 }], [7, 8, { gold: 271 }], [106, 758, { gold: 3745 }],
-    [334, 4149, { gold: 32272 }], [572, 17945, { gold: 503809, orb_jungle: 1 }], [999, 48409, { gold: 1331790 }], [1282, 84228, { gold: 7234109, orb_hell: 30 }],
-    [2000, 175100, { gold: 16896389, orb_hell: 30 }]], { s: 'D', note: 'Stützzeilen D; Interpolation R; Effekt/Orbs L2000 E.', desc: 'Erhöhe deine Macht' });
-  // Reihenfolge, Namen, Maximalstufen und Orb-Zusatzkosten nach der Upgrade-Seite der Vorlage (B). Effekt- und Goldkurven eigen (E).
-  // eff in Zehnteln (scale 0.1), show: Anzeige = base + Effekt * mul.
-  const T10 = (max, effMax, c1, cMax, x) => own(max, effMax * 10, c1, cMax).map(([lv, e, c]) => [lv, e, { ...c, ...(x && lv >= x[0] ? x[1] : {}) }]);
-  U('ab_cargo', 'ability', 'Fracht', 'cargo', 1600, own(1600, 1600, 15, 5000000), { note: 'Max 1600 D.', desc: 'Frachtkapazität erhöhen' });
-  U('ab_hp', 'ability', 'HP', 'hp', 2000, [[1, 5, { gold: 10 }], [100, 1500, { gold: 3000 }], [1000, 150000, { gold: 1200000 }], [2000, 600000, { gold: 16000000 }]], { note: 'Max 2000 B.', desc: 'Erhöhe deine Gesundheit' });
-  U('ab_regen', 'ability', 'Lebenspunkte regenerieren', 'regen', 1000, [[1, 1, { gold: 50 }], [500, 300, { gold: 40000 }], [1000, 2000, { gold: 3000000 }]], { note: 'Max 1000 B.', desc: 'HP-Regeneration erhöhen' });
-  U('ab_crit', 'ability', 'Kritische Chance', 'critChance', 10, [[1, 2, { gold: 200 }], [5, 10, { gold: 30000 }], [10, 20, { gold: 4000000 }]], { note: 'Max 10 = 20 % B.', unit: '%', desc: 'Kritische Trefferchance erhöhen' });
-  U('ab_move', 'ability', 'Bewegungsgeschwindigkeit', 'moveSpeedPct', 35, [[1, 2, { gold: 120 }], [10, 20, { gold: 20000, orb_pink: 10, orb_red: 15 }], [35, 70, { gold: 1500000, orb_pink: 10, orb_red: 15 }]],
-    { note: 'Max 35, Anzeige 50 + Stufe, Orbs 10/15 bei Stufe 14 (B); Orbs ab Stufe 10 eigen.', show: { base: 50, mul: 0.5 }, desc: 'Bewegungsgeschwindigkeit erhöhen' });
-  U('ab_atkspeed', 'ability', 'Angriffsgeschwindigkeit', 'atkSpeedPct', 55, [[1, 33, { gold: 100 }], [3, 100, { gold: 400 }], [10, 333, { gold: 9000, orb_pink: 8, orb_red: 12 }], [55, 1833, { gold: 2000000, orb_pink: 8, orb_red: 12 }]],
-    { scale: 0.1, note: 'Max 55 D; +3,33 % je Stufe, Orbs 8/12 bei Stufe 11 (B); Orbs ab Stufe 10 eigen.', unit: '%', show: { base: 100, mul: 1 }, desc: 'Angriffsgeschwindigkeit erhöhen' });
-  U('ab_multi', 'ability', 'Doppelangriff', 'multiHit', 20, T10(20, 70, 400, 8000000), { scale: 0.1, note: 'Max 20 = 70 % B.', unit: '%', desc: 'Chance auf Doppelangriff erhöhen' });
-  U('ab_triple', 'ability', 'Dreifacher Angriff', 'tripleHit', 20, T10(20, 70, 400000, 12000000, [1, { orb_pink: 8, orb_red: 12 }]), { scale: 0.1, note: 'Max 20, 3,5 % je Stufe, Orbs 8/12 (B).', unit: '%', desc: 'Chance für Dreifachangriff erhöhen' });
-  U('ab_critdmg', 'ability', 'Kritischer Schaden', 'critDmg', 200, own(200, 200, 150, 6000000), { note: 'Zehnter Pfad laut Zählung D; in der Vorlage bis Level 67 nicht sichtbar, Zuordnung eigen.', unit: '%', desc: 'Kritischen Schaden erhöhen' });
+  // Fähigkeiten: Stützstufen 1:1 aus den Spieldaten der Referenz (D): Wert je Stufe und Kosten für den nächsten Schritt; dazwischen wird linear gerechnet,
+  // Orb-Kosten gelten nur genau auf einer Stützstufe. Gegenprobe mit Bildern der Vorlage: Kraft 360 -> 216K, HP 356 -> 212K, Fracht 193 -> 24,7K / 112K.
+  // base = Grundwert der Anzeige (z. B. Tempo 50), scale = Stat-Einheiten je Wertpunkt. "Critical Damage" hat in den Daten 0 Stufen und entfällt.
+  const AB = (id, refName, name, stat, desc, x = {}) => { const r = ABILITY_REF[refName]; U(id, 'ability', name, stat, r.max, [[1, 0, {}], [r.max, 0, {}]], { ref: r.rows, desc, s: 'D', ...x }); };
+  AB('ab_power', 'POWER', 'Kraft', 'atk', 'Erhöhe deine Macht');
+  AB('ab_cargo', 'CARGO', 'Fracht', 'cargo', 'Frachtkapazität erhöhen', { refCostOnly: true, rows: own(1600, 1600, 15, 5000000).map(([lv, eff, cost]) => ({ lv, eff, cost })), s: 'R',
+    note: 'Kosten D. Wirkung eigen: im Original zählt die Fracht den Goldwert (112K auf Stufe 193), hier Stückzahl.' });
+  AB('ab_hp', 'HP', 'HP', 'hp', 'Erhöhe deine Gesundheit');
+  AB('ab_regen', 'HP RECOVERY', 'Lebenspunkte regenerieren', 'regen', 'HP-Regeneration erhöhen');
+  AB('ab_crit', 'CRITICAL CHANCE', 'Kritische Chance', 'critChance', 'Kritische Trefferchance erhöhen', { scale: 0.1, unit: '%' });
+  AB('ab_move', 'MOVE SPEED', 'Bewegungsgeschwindigkeit', 'moveSpeedPct', 'Bewegungsgeschwindigkeit erhöhen', { base: 50, scale: 2, show: { base: 50, mul: 0.5 }, note: 'Wert 50 + Stufe (D); Umrechnung in Prozent Lauftempo eigen (1 Punkt = 2 %).' });
+  AB('ab_atkspeed', 'ATTACK SPEED', 'Angriffsgeschwindigkeit', 'atkSpeedPct', 'Angriffsgeschwindigkeit erhöhen', { base: 1000, scale: 0.1, unit: '%', show: { base: 100, mul: 1 } });
+  AB('ab_multi', 'DOUBLE ATTACK', 'Doppelangriff', 'multiHit', 'Chance auf Doppelangriff erhöhen', { scale: 0.1, unit: '%' });
+  AB('ab_triple', 'TRIPLE ATTACK', 'Dreifacher Angriff', 'tripleHit', 'Chance für Dreifachangriff erhöhen', { scale: 0.1, unit: '%' });
   // Spezial: 11 Pfade (D). Je Sternstufe 15 Stufen pro offenem Pfad; sind alle voll, steigt die Sternstufe (Vorlage: 3 Sterne, 3/135 = 9 Pfade x 15).
   // Werte bei Sternstufe 3 und Schrittweiten aus der Vorlage (B); Verlauf davor/danach und Freischaltsterne der ersten sieben eigen (E).
   const SPC = [['muscle', 'Massive Muskeln', 'atk', 1, 9, 0.6, 'Erhöhe zusätzliche Kraft', true], ['load', 'Lastmeister', 'cargo', 1, 15, 1, 'Zusätzlichen Frachtplatz erhöhen', true],
@@ -335,7 +333,7 @@ export function buildBaseContent(opt = {}) {
   [['bl_0', 'Blessing I', 'dmgPct', 150], ['bl_1', 'Blessing II', 'critDmg', 350], ['bl_2', 'Blessing III', 'goldPct', 300]].forEach(([id, nm, st, v]) =>
     U(id, 'blessing', nm, st, 50, own(50, v, 1, 40, 'exp'), { s: 'R', note: 'Endwerte 150/350/300 D; Stat-Zuordnung und Kosten E.' }));
   ['dmg', 'crit', 'gold'].forEach((gkey, k) => U(`syn_${gkey}`, 'synergy', `Synergie ${k + 1}`, 'synergyPct', 20, own(20, 100, 5, 200, 'synergy_point')));
-  T('upgradeTracks', 'R', 'Ability 10 / Special 11 (Sternstufen) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen.', up);
+  T('upgradeTracks', 'R', 'Ability 9 nutzbar (+ Critical Damage mit 0 Stufen) / Special 11 (Sternstufen) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen.', up);
 
   // ------------------------------------------------------------------ Waffen
   T('rarities', 'E', 'Seltenheitsnamen D; Multiplikatoren/Maxlevel eigen.', RARITIES.map((name, idx) =>

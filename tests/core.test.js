@@ -276,15 +276,17 @@ test('T11 Traits (Sperren, Preset) und Runen (Ausrüsten, Leveln, Zerlegen, Tomb
 test('T12 Upgrade-Pfade: Power-Stützzeilen, Mehrwährung, Max-Affordable, Cap, alle Familien', () => {
   const { game, g, s, give, unlock } = mk();
   const power = prog.upDef(g, 'ab_power');
-  for (const [lv, eff, gold] of [[1, 2, 10], [2, 3, 34], [4, 5, 120], [7, 8, 271], [106, 758, 3745], [334, 4149, 32272], [999, 48409, 1331790], [1282, 84228, 7234109]]) {
-    assert.equal(prog.effAt(power, lv), eff); assert.equal(prog.costAt(power, lv).gold, gold);
-  }
-  assert.deepEqual(prog.costAt(power, 572), { gold: 503809, orb_jungle: 1 });
-  assert.equal(prog.costAt(power, 1282).orb_hell, 30);
+  // Stützstufen der Referenz: Wert auf der Stufe, Kosten für den Schritt von dort zur nächsten
+  for (const [lv, eff, cost] of power.ref) { assert.equal(prog.effAt(power, lv), eff); if (lv < power.max) assert.equal(prog.costAt(power, lv + 1).gold, cost.gold); }
+  assert.deepEqual(prog.costAt(power, 14), { gold: 1123, orb_red: 1 }, 'Orbs genau auf der Stützstufe 13');
+  assert.equal(prog.costAt(power, 15).orb_red, undefined, 'zwischen Stützstufen nur Gold');
+  assert.equal(Math.round(prog.costAt(power, 361).gold / 1000), 216, 'Vorlage: Kraft Stufe 360 kostet 216K');
+  assert.equal(Math.round(prog.costAt(prog.upDef(g, 'ab_hp'), 357).gold / 1000), 213, 'Vorlage: HP Stufe 356 kostet 212,6K');
+  assert.deepEqual(prog.costAt(prog.upDef(g, 'ab_move'), 15), { gold: 214224, orb_pink: 10, orb_red: 15 }, 'Vorlage: Tempo Stufe 14');
   assert.equal(code(() => game.cmd('buyUpgrade', 'ab_power', 1)), 'locked');
   unlock('abilities', 'special', 'extra', 'soul', 'blessing', 'traits');
   assert.equal(code(() => game.cmd('buyUpgrade', 'ab_power', 1)), 'insufficient');
-  give('gold', 10 + 34 + 5);
+  give('gold', 10 + 10 + 5);
   const pv = game.cmd('buyUpgrade', 'ab_power', 'max');
   assert.equal(pv.to, 2); assert.equal(s().inv.gold, 5, 'Max-Affordable kauft nie über Budget');
   assert.equal(game.stats.atk, Math.round((3 + 3) * (1 + 0.05)));
@@ -307,7 +309,7 @@ test('T12 Upgrade-Pfade: Power-Stützzeilen, Mehrwährung, Max-Affordable, Cap, 
     assert.equal(code(() => game.cmd('buyUpgrade', u.id, 1)), 'max_level');
   }
   const fam = (f) => pack.tables.upgradeTracks.filter((u) => u.family === f);
-  assert.deepEqual(['ability', 'special', 'extra', 'soul', 'blessing'].map((f) => fam(f).length), [10, 11, 8, 9, 3]);
+  assert.deepEqual(['ability', 'special', 'extra', 'soul', 'blessing'].map((f) => fam(f).length), [9, 11, 8, 9, 3]);
   assert.deepEqual(fam('blessing').map((u) => prog.effAt(u, 50)), [150, 350, 300]);
   assert.ok(game.stats.critChance <= 100);
   assert.ok(s().totals.exp['upgrade:blessing'] < 0, 'Blessings kosten EXP, nicht Gold');

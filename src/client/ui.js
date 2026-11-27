@@ -222,7 +222,7 @@ P.weapons = () => {
   return [chips('exp', 'weapon_scroll', 'gold', 'gems'),
     h('div', { cls: 'equip' }, h('div', { cls: 'col' }, slot(0), slot(1), slot(2)),
       h('div', { cls: 'mid' }, h('div', { cls: 'power ot' }, icon('burst', '#ff8a2a', 24), fmt(game.stats.atk + mainDmg)), heroArt(c.get('heroes', s.heroes.active).look, 128), h('div', { cls: 'pedestal' }),
-        has('heroes') ? btn('Held', () => open('heroes'), false, 'sm') : null),
+        btn('Held', () => open('heroes'), false, 'sm')),
       h('div', { cls: 'col' }, slot(3), slot(4), slot(5))),
     ns && !ns.quest ? row(`Slot ${ns.slot} freischalten`, h('span', {}, `Level ${ns.level} · `, costEl(ns.cost)), btn('Freischalten', () => act('unlockWeaponSlot'), false, 'go')) : null,
     h('div', { cls: 'wbar' }, h('span', { cls: betterWeapon() ? 'badge thumbb' : '', style: 'position:relative' }, btn('Ausrüsten', autoEquip, !ws.list.length, 'pri')), h('b', { cls: 'ot' }, 'Waffe'),

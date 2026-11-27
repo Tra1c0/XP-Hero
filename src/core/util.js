@@ -70,7 +70,8 @@ export function fmt(n) {
   const u = ['K', 'M', 'B', 'T', 'Q'];
   let i = -1, v = a;
   while (v >= 1000 && i < u.length - 1) { v /= 1000; i++; }
-  return (n < 0 ? '-' : '') + (v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2)) + u[i];
+  const cut = (d) => (Math.floor(v * 10 ** d + 1e-9) / 10 ** d).toFixed(d); // abschneiden wie in der Vorlage (24.797 -> 24.7K), nicht runden
+  return (n < 0 ? '-' : '') + (v >= 100 ? cut(0) : v >= 10 ? cut(1) : cut(2)) + u[i];
 }
 export function fmtTime(ms) {
   let s = Math.max(0, Math.ceil(ms / 1000));
