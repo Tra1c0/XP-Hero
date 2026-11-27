@@ -49,12 +49,12 @@ export const SHAPES = {
 // ---------------------------------------------------------------- Farben
 export const hex = (h) => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
 export const BIOMES = {
-  town: { path: '#c2aa7e', patch: '#cdbb90', floor: ['#d9c9a3', '#cfbe96'], top: '#83ad5c', side: '#8a7356', sky: '#1d2a20' },
-  green: { path: '#c2a874', patch: '#6fb24c', floor: ['#88ca60', '#7ec058'], top: '#5c9c43', side: '#7a6449', sky: '#1b2a1a' },
+  town: { path: '#f0c98a', patch: '#f3d39b', floor: ['#f1cc8f', '#ecc586'], top: '#8fd066', side: '#8a7356', sky: '#1d2a20' },
+  green: { path: '#f0c98a', patch: '#9bdc74', floor: ['#8fd66a', '#88cf63'], top: '#79bf58', side: '#7a6449', sky: '#1b2a1a' },
   desert: { path: '#d8ae6e', patch: '#f4d899', floor: ['#efcf8a', '#e7c47c'], top: '#ddae64', side: '#c68b4e', sky: '#2b2316' },
   ebon: { path: '#57506e', patch: '#5d6a7c', floor: ['#6c6589', '#645d80'], top: '#4b4568', side: '#3b3551', sky: '#17151f' },
   frost: { path: '#c9d6e2', patch: '#d5e6f2', floor: ['#eef5fa', '#e2ecf4'], top: '#fbfdff', side: '#a8c2d8', sky: '#1a222b' },
-  verdant: { path: '#cbc19d', patch: '#7fc25e', floor: ['#9ad672', '#90cc69'], top: '#5ea64e', side: '#8b8e76', sky: '#192718' },
+  verdant: { path: '#e6dcae', patch: '#b3e58a', floor: ['#a3df7a', '#9ad672'], top: '#6fb85a', side: '#8b8e76', sky: '#192718' },
   hell: { path: '#3e2a27', patch: '#6b3a30', floor: ['#5c3a35', '#543530'], top: '#302425', side: '#6b3025', sky: '#1d1010' },
   ch2: { floor: ['#8fae7a', '#86a472'], top: '#5d7f4f', side: '#6f6151', sky: '#18201a' },
   ch3: { floor: ['#9a9ca3', '#90929a'], top: '#6d6f77', side: '#55565c', sky: '#15161a' },
@@ -94,7 +94,8 @@ export const PROPS = {
   obsidian: [P('cone6', [0, 0, 0], [1.0, 2.6, 1.0], 0, C.obsid), P('cone6', [0.55, 0, 0.3], [0.6, 1.6, 0.6], 0.5, '#3d2f45')],
   crystal_red_s: [P('cone6', [0, 0, 0], [0.5, 1.4, 0.5], 0, '#e2324a', 0.6)],
   fence_s: [P('box', [-0.9, 0, 0], [0.15, 0.9, 0.15], 0, C.wood), P('box', [0.9, 0, 0], [0.15, 0.9, 0.15], 0, C.wood), P('box', [0, 0.55, 0], [2, 0.12, 0.08], 0, C.wood)],
-  grass: [P('cone6', [0, 0, 0], [0.22, 0.5, 0.22], 0, C.leafL), P('cone6', [0.18, 0, 0.1], [0.18, 0.38, 0.18], 0, C.leafL), P('cone6', [-0.15, 0, 0.12], [0.18, 0.42, 0.18], 0, C.leaf)],
+  // Grasbüschel wie in der Vorlage: kräftige, spitze, blaugrüne Blätter in Gruppen
+  grass: [P('cone6', [0, 0, 0], [0.34, 1.0, 0.34], 0, '#2fbf8a'), P('cone6', [0.3, 0, 0.12], [0.3, 0.75, 0.3], 0.4, '#3fd09a'), P('cone6', [-0.26, 0, 0.16], [0.3, 0.82, 0.3], 0.8, '#27a878'), P('cone6', [0.08, 0, -0.28], [0.28, 0.62, 0.28], 0, '#3fd09a'), P('cone6', [-0.1, 0, 0.36], [0.24, 0.5, 0.24], 0, '#2fbf8a')],
   grass_dark: [P('cone6', [0, 0, 0], [0.22, 0.5, 0.22], 0, '#4c6b58'), P('cone6', [0.18, 0, 0.1], [0.18, 0.38, 0.18], 0, '#3f5a4b')],
   flowers_s: [P('sphere', [0, 0.05, 0], [0.22, 0.22, 0.22], 0, '#ff8fb3'), P('sphere', [0.3, 0.05, 0.15], [0.2, 0.2, 0.2], 0, '#ffe066'), P('sphere', [-0.2, 0.05, 0.25], [0.2, 0.2, 0.2], 0, '#ffffff')],
   pebble: [P('rock', [0, -0.05, 0], [0.45, 0.25, 0.4], 0, C.stone)],
@@ -121,8 +122,10 @@ export const PROPS = {
   tent: [P('pyr4', [0, 0, 0], [2.4, 1.8, 2.4], 0, C.clothB), P('box', [0, 0, 1.15], [0.6, 0.9, 0.05], 0, '#2a3a52')],
   flowers: [P('flowers_s', [0, 0, 0]), P('flowers_s', [0.9, 0, 0.4]), P('flowers_s', [-0.7, 0, 0.6]), P('flowers_s', [0.2, 0, -0.8])],
   stump: [P('cyl8', [0, 0, 0], [0.9, 0.5, 0.9], 0, C.bark), P('cyl8', [0, 0.5, 0], [0.75, 0.02, 0.75], 0, '#d6b07a')],
-  campfire: [P('cyl8', [0, 0, 0], [1.6, 0.18, 1.6], 0, C.stoneD), P('box', [0, 0.15, 0], [1.1, 0.18, 0.2], 0.5, C.bark), P('box', [0, 0.15, 0], [1.1, 0.18, 0.2], 2.1, C.bark),
-    P('cone6', [0, 0.2, 0], [0.7, 0.9, 0.7], 0, C.ember, 1)],
+  // Lagerfeuer mit Steinkreis
+  campfire: [...[0, 1, 2, 3, 4, 5, 6, 7].map((k) => P(k % 2 ? 'rock' : 'rock2', [Math.cos(k * 0.785) * 1.25, -0.12, Math.sin(k * 0.785) * 1.25], [0.85, 0.6, 0.75], k, '#a9adb6')),
+    P('box', [0, 0.05, 0], [1.3, 0.22, 0.26], 0.5, '#b5532e'), P('box', [0, 0.05, 0], [1.3, 0.22, 0.26], 2.1, '#b5532e'), P('box', [0, 0.05, 0], [1.3, 0.22, 0.26], 1.3, '#9a4526'),
+    P('cone6', [0, 0.2, 0], [0.8, 1.1, 0.8], 0, C.ember, 1), P('cone6', [0.1, 0.3, 0.05], [0.45, 0.8, 0.45], 0.5, '#ffd24a', 1)],
   tent_goblin: [P('cone6', [0, 0, 0], [2.6, 2.2, 2.6], 0, '#8f5a36'), P('box', [0, 0, 1.0], [0.6, 0.9, 0.3], 0, '#3a2a1e'), P('box', [0, 2.0, 0], [0.1, 0.8, 0.1], 0, C.bone)],
   mesa: [P('box', [0, 0, 0], [5, 2.8, 4.2], 0.25, C.sand), P('box', [0.3, 2.8, -0.2], [3.8, 1.2, 3.2], 0.25, C.sandD), P('box', [-0.6, 0, 1.8], [2.2, 1.2, 1.6], 0.6, C.sandD)],
   skull_big: [P('sphere', [0, 0, 0], [2.4, 1.8, 2.8], 0, C.bone), P('box', [0, 0.1, 1.2], [1.6, 0.5, 1.0], 0, C.bone), P('sphere', [0.5, 0.9, 1.0], [0.5, 0.5, 0.3], 0, '#3a3028'),
@@ -177,12 +180,12 @@ export const BUILDINGS3D = {
 // Streuregeln je Biom (Kunstregeln, deterministisch): edge = Wall-Kanten (dicht), deep = tiefer im Fels, floor = kleine Bodendeko.
 export const SCATTER = {
   town: { edge: [['tree_round', 3], ['bush', 3], ['fence_s', 1], ['rock_grey', 1]], edgeD: 0.45, deep: [['tree_round', 2], ['tree_round2', 1]], deepD: 0.12, floor: [['grass', 2], ['flowers_s', 1]], floorD: 0.03 },
-  green: { edge: [['tree_round', 5], ['tree_round2', 3], ['bush', 3], ['rock_grey', 2]], edgeD: 0.7, deep: [['tree_round', 3], ['tree_round2', 2]], deepD: 0.3, floor: [['grass', 6], ['flowers_s', 2], ['pebble', 1]], floorD: 0.12 },
+  green: { edge: [['tree_round', 5], ['tree_round2', 3], ['bush', 3], ['rock_grey', 2]], edgeD: 0.7, deep: [['tree_round', 3], ['tree_round2', 2]], deepD: 0.3, floor: [['grass', 6], ['flowers_s', 2], ['pebble', 1]], floorD: 0.07 },
   desert: { edge: [['rock_sand', 4], ['cactus', 3], ['mesa_s', 2], ['deadbush', 1]], edgeD: 0.6, deep: [['mesa_s', 2], ['rock_sand', 2]], deepD: 0.18, floor: [['pebble_sand', 3], ['deadbush', 1], ['bones_s', 1]], floorD: 0.07 },
   ebon: { edge: [['deadtree', 4], ['rock_dark', 3], ['shroom', 2], ['grave', 1]], edgeD: 0.65, deep: [['deadtree', 2], ['rock_dark', 2]], deepD: 0.2, floor: [['grass_dark', 4], ['shroom_s', 2], ['bones_s', 1]], floorD: 0.07 },
   frost: { edge: [['pine_snow', 5], ['rock_snow', 3], ['ice_crystal', 2]], edgeD: 0.7, deep: [['pine_snow', 3], ['rock_snow', 1]], deepD: 0.3, floor: [['snow_lump', 3], ['ice_shard_s', 1]], floorD: 0.05 },
   verdant: { edge: [['tree_round', 3], ['bush_rose', 2], ['pillar_broken_s', 2], ['rock_grey', 2], ['tree_round2', 2]], edgeD: 0.7, deep: [['tree_round', 3], ['bush', 1]], deepD: 0.3,
-    floor: [['grass', 5], ['flowers_s', 2], ['rubble', 2]], floorD: 0.13 },
+    floor: [['grass', 5], ['flowers_s', 2], ['rubble', 2]], floorD: 0.08 },
   hell: { edge: [['obsidian', 4], ['rock_red', 3], ['crystal_red_s', 1]], edgeD: 0.6, deep: [['obsidian', 2], ['rock_red', 1]], deepD: 0.18, floor: [['bones_s', 2], ['ember', 1], ['crack', 3]], floorD: 0.11 },
   ch2: { edge: [['tree_round2', 3], ['rock_grey', 2]], edgeD: 0.5, deep: [], deepD: 0, floor: [['grass', 2]], floorD: 0.03 },
   ch3: { edge: [['rock_grey', 3], ['rubble', 2]], edgeD: 0.5, deep: [], deepD: 0, floor: [['rubble', 1]], floorD: 0.02 },

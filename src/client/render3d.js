@@ -117,7 +117,7 @@ export class Renderer3D {
     const H = new Float32Array(n);
     for (let i = 0; i < n; i++) {
       const k = G.kind[i], r = (i / G.cols) | 0, c = i % G.cols;
-      H[i] = k === WALL && !G.flat[i] ? [1.3, 2.0, 2.7, 3.3][Math.min(3, Math.max(0, dist[i] - 1))] + hash(c, r) * 0.35 : k === WALL || k === FLOOR ? 0 : -0.35;
+      H[i] = k === WALL || k === FLOOR ? 0 : -0.35; // flaches Gelände wie in der Vorlage; Grenzen entstehen durch Felsränder, nicht durch Blöcke
     }
     // Laufwege: echte Pfade (Pfadsuche, alle Tore offen) von der Basis zu jedem Gebietseinstieg und zu den Stage-Truhen
     const path = new Uint8Array(n);
@@ -133,43 +133,43 @@ export class Renderer3D {
       }
       G.gateOpen.set(saved);
     }
-    // Boden-Farbübergänge: Mischung der Biome im 5x5-Umfeld (weiche Übergänge an Toren)
+    // Bodenfarben je Zelle, dann je ECKPUNKT gemittelt: weiche Übergänge zwischen Wiese, Sandweg, Biomen und Umland statt Schachbrett-Kanten.
+    const CC = new Float32Array(n * 3);
+    for (let r = 0; r < G.rows; r++) for (let c = 0; c < G.cols; c++) {
+      const i = r * G.cols + c, k = G.kind[i], P2 = pal(i);
+      let base;
+      if (k === FLOOR || G.flat[i]) {
+        base = col(P2.floor[0]).slice();
+        const nz = vnoise(c, r, 7), pc = col(P2.patch || P2.floor[1]), pm = Math.max(0, Math.min(1, (nz - 0.5) * 3)) * 0.75;
+        base = [base[0] + (pc[0] - base[0]) * pm, base[1] + (pc[1] - base[1]) * pm, base[2] + (pc[2] - base[2]) * pm];
+        if (path[i]) { const pa = col(P2.path || P2.floor[1]); base = [base[0] * 0.15 + pa[0] * 0.85, base[1] * 0.15 + pa[1] * 0.85, base[2] * 0.15 + pa[2] * 0.85]; }
+      } else if (k === WALL) { const t = col(P2.top), d = Math.min(1, dist[i] / 6) * 0.22; base = [t[0] * (1 - d), t[1] * (1 - d), t[2] * (1 - d)]; } else { const f = col(P2.side); base = [f[0] * 0.7, f[1] * 0.7, f[2] * 0.7]; }
+      CC.set(base, i * 3);
+    }
+    const corner = (c, r) => { // Mittel der bis zu vier angrenzenden Zellen
+      let a0 = 0, a1 = 0, a2 = 0, m = 0;
+      for (let dr = -1; dr <= 0; dr++) for (let dc = -1; dc <= 0; dc++) { const rr = r + dr, cc = c + dc; if (rr < 0 || cc < 0 || rr >= G.rows || cc >= G.cols) continue; const j = (rr * G.cols + cc) * 3; a0 += CC[j]; a1 += CC[j + 1]; a2 += CC[j + 2]; m++; }
+      return [a0 / m, a1 / m, a2 / m];
+    };
     const V = [];
-    const quad = (a, b, c2, d, nrm, cl) => { for (const p of [a, b, c2, a, c2, d]) V.push(p[0], p[1], p[2], nrm[0], nrm[1], nrm[2], cl[0], cl[1], cl[2], cl[3] || 0); };
+    const quad = (a, b, c2, d, nrm, cl) => { const cs4 = Array.isArray(cl[0]) ? cl : [cl, cl, cl, cl], P4 = [a, b, c2, d]; for (const k of [0, 1, 2, 0, 2, 3]) { const p = P4[k], q = cs4[k]; V.push(p[0], p[1], p[2], nrm[0], nrm[1], nrm[2], q[0], q[1], q[2], q[3] || 0); } };
     for (let r = 0; r < G.rows; r++) for (let c = 0; c < G.cols; c++) {
       const i = r * G.cols + c, k = G.kind[i], x0 = B.minX + c * cs, x1 = x0 + cs, z0 = r * cs - B.maxZ, z1 = z0 + cs, y = H[i];
-      let cl;
-      if (k === FLOOR || G.flat[i]) {
-        let acc = [0, 0, 0], m = 0, same = true;
-        const own = zoneBiome(i);
-        for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
-          const rr = r + dr, cc = c + dc;
-          if (rr < 0 || cc < 0 || rr >= G.rows || cc >= G.cols) continue;
-          const j = rr * G.cols + cc;
-          if (G.kind[j] !== FLOOR) continue;
-          const b = zoneBiome(j); if (b !== own) same = false;
-          const f = col(BIOMES[b].floor[0]); acc = [acc[0] + f[0], acc[1] + f[1], acc[2] + f[2]]; m++;
-        }
-        let base = same ? col(pal(i).floor[(r + c) & 1]) : acc.map((v) => v / m);
-        const nz = vnoise(c, r, 7), pc = col(pal(i).patch || pal(i).floor[0]), pm = Math.max(0, Math.min(1, (nz - 0.55) * 3)) * 0.6;
-        base = [base[0] + (pc[0] - base[0]) * pm, base[1] + (pc[1] - base[1]) * pm, base[2] + (pc[2] - base[2]) * pm];
-        if (path[i] && same) { const pa = col(pal(i).path || pal(i).floor[1]); base = [base[0] * 0.35 + pa[0] * 0.65, base[1] * 0.35 + pa[1] * 0.65, base[2] * 0.35 + pa[2] * 0.65]; }
-        const j = (hash(c * 3, r * 7) - 0.5) * 0.04 + (vnoise(c + 50, r + 50, 4) - 0.5) * 0.05;
-        cl = [base[0] + j, base[1] + j, base[2] + j, 0];
-        if (G.gate[i] >= 0) cl = [cl[0] * 0.92, cl[1] * 0.9, cl[2] * 0.88, 0];
-      } else if (k === WALL) { const t = col(pal(i).top), j = (hash(c, r * 3) - 0.5) * 0.06; cl = [t[0] + j, t[1] + j, t[2] + j, 0]; } else { const f = col(pal(i).side); cl = [f[0] * 0.7, f[1] * 0.7, f[2] * 0.7, 0]; }
-      quad([x0, y, z0], [x0, y, z1], [x1, y, z1], [x1, y, z0], [0, 1, 0], cl);
-      // Seitenflächen, wo der Nachbar tiefer liegt (Rand des Rasters fällt ins Tiefe ab)
-      const side = col(k === WALL ? pal(i).side : k === FLOOR ? pal(i).side : '#3a4a5a');
+      if (k === FLOOR || k === WALL) {
+        // große, kaum sichtbare Bodenkacheln (4 m) wie in der Vorlage
+        const tile = 1 + ((((c >> 1) + (r >> 1)) & 1) ? 0.022 : -0.022), t = (q) => [q[0] * tile, q[1] * tile, q[2] * tile, 0];
+        quad([x0, y, z0], [x0, y, z1], [x1, y, z1], [x1, y, z0], [0, 1, 0], [t(corner(c, r)), t(corner(c, r + 1)), t(corner(c + 1, r + 1)), t(corner(c + 1, r))]);
+      } else quad([x0, y, z0], [x0, y, z1], [x1, y, z1], [x1, y, z0], [0, 1, 0], [CC[i * 3], CC[i * 3 + 1], CC[i * 3 + 2], 0]);
+      if (k === FLOOR || k === WALL) continue;
+      const side = col('#3a4a5a');
       for (const [dr, dc, nrm] of [[-1, 0, [0, 0, -1]], [1, 0, [0, 0, 1]], [0, -1, [-1, 0, 0]], [0, 1, [1, 0, 0]]]) {
-        const rr = r + dr, cc = c + dc, out = rr < 0 || cc < 0 || rr >= G.rows || cc >= G.cols;
-        const yn = out ? -3 : H[rr * G.cols + cc];
-        if (yn >= y) continue;
-        const shade = nrm[2] > 0 ? 0.92 : nrm[0] !== 0 ? 0.8 : 0.7, sc2 = [side[0] * shade, side[1] * shade, side[2] * shade, 0];
-        if (dr === -1) quad([x1, yn, z0], [x1, y, z0], [x0, y, z0], [x0, yn, z0], nrm, sc2);
-        else if (dr === 1) quad([x0, yn, z1], [x0, y, z1], [x1, y, z1], [x1, yn, z1], nrm, sc2);
-        else if (dc === -1) quad([x0, yn, z0], [x0, y, z0], [x0, y, z1], [x0, yn, z1], nrm, sc2);
-        else quad([x1, yn, z1], [x1, y, z1], [x1, y, z0], [x1, yn, z0], nrm, sc2);
+        const rr = r + dr, cc = c + dc; if (rr < 0 || cc < 0 || rr >= G.rows || cc >= G.cols) continue;
+        const yn = H[rr * G.cols + cc]; if (yn <= y) continue;
+        const sc2 = [side[0], side[1], side[2], 0];
+        if (dr === -1) quad([x0, y, z0], [x0, yn, z0], [x1, yn, z0], [x1, y, z0], nrm, sc2);
+        else if (dr === 1) quad([x1, y, z1], [x1, yn, z1], [x0, yn, z1], [x0, y, z1], nrm, sc2);
+        else if (dc === -1) quad([x0, y, z1], [x0, yn, z1], [x0, yn, z0], [x0, y, z0], nrm, sc2);
+        else quad([x1, y, z0], [x1, yn, z0], [x1, yn, z1], [x1, y, z1], nrm, sc2);
       }
     }
     const tb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, tb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.STATIC_DRAW);
@@ -186,8 +186,8 @@ export class Renderer3D {
     for (const b of W.blockers || []) {
       if (b.kind !== 'water' && b.kind !== 'lava') continue;
       const cl = b.kind === 'lava' ? WATER.lava : WATER.water, em = b.kind === 'lava' ? 1 : 0.15;
-      if (b.c) { parts.push(['cyl8', b.c[0], -0.12, -b.c[1], 0.2, b.r * 2.25, 0.02, b.r * 2.25, cl, em]); for (let k = 0; k < 8; k++) { const a = (k / 8) * 6.283 + 0.3; expand(k % 2 ? 'pebble' : 'grass', b.c[0] + Math.cos(a) * (b.r + 1.2), 0, -b.c[1] + Math.sin(a) * (b.r + 1.2), a, 1.2, parts); } }
-      else { const xs = b.poly.map((p) => p[0]), zs = b.poly.map((p) => p[1]), cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2; parts.push(['cyl8', cx, -0.12, -cz, 0, Math.max(...xs) - Math.min(...xs) + 2, 0.02, Math.max(...zs) - Math.min(...zs) + 2, cl, em]); }
+      if (b.c) { parts.push(['cyl8', b.c[0], 0.03, -b.c[1], 0.2, b.r * 2.5, 0.02, b.r * 2.5, cl, em], ['cyl8', b.c[0] - b.r * 0.3, 0.05, -b.c[1] - b.r * 0.25, 0.6, b.r * 0.9, 0.01, b.r * 0.5, '#ffffff', 0.5]); for (let k = 0; k < 8; k++) { const a = (k / 8) * 6.283 + 0.3; expand(k % 2 ? 'pebble' : 'grass', b.c[0] + Math.cos(a) * (b.r + 1.2), 0, -b.c[1] + Math.sin(a) * (b.r + 1.2), a, 1.2, parts); } }
+      else { const xs = b.poly.map((p) => p[0]), zs = b.poly.map((p) => p[1]), cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2; parts.push(['cyl8', cx, 0.03, -cz, 0, Math.max(...xs) - Math.min(...xs) + 2, 0.02, Math.max(...zs) - Math.min(...zs) + 2, cl, em]); }
     }
     for (const lm of W.landmarks || []) {
       const zg = -lm.p[1], s = lm.s || 1;
@@ -199,8 +199,16 @@ export class Renderer3D {
     }
     for (let r = 0; r < G.rows; r++) for (let c = 0; c < G.cols; c++) {
       const i = r * G.cols + c, k = G.kind[i], rule = SCATTER[zoneBiome(i)] || SCATTER.arena, h1 = hash(c + 11, r + 5);
-      if (k === WALL && !G.flat[i]) {
-        const edge = dist[i] <= 2, list = edge ? rule.edge : rule.deep, d = edge ? rule.edgeD : rule.deepD;
+      if (k === WALL && !G.flat[i] && dist[i] === 1) {
+        // Felsrand: klobige, runde Brocken entlang jeder Grenze (verdeckt die Rasterkante, bildet die natürliche Begrenzung)
+        const rc = col(pal(i).side), x = B.minX + (c + 0.5) * cs, z = r * cs - B.maxZ + cs * 0.5;
+        for (let q2 = 0; q2 < 2; q2++) {
+          const j = hash(c * 3 + q2, r * 5 + q2), s2 = 1.9 + hash(c + q2 * 7, r * 3) * 1.3, sh = 0.82 + hash(c * 11 + q2, r) * 0.3;
+          parts.push([q2 ? 'rock2' : 'rock', x + (j - 0.5) * cs * 0.9, -0.35, z + (hash(c, r * 7 + q2) - 0.5) * cs * 0.9, j * 6.28, s2, s2 * 0.62, s2 * 0.9, [rc[0] * sh, rc[1] * sh, rc[2] * sh], 0]);
+        }
+        if (h1 < rule.edgeD * 0.35) expand(pick(rule.edge, hash(c * 5, r * 3)), x + (hash(c * 7, r) - 0.5) * cs, 0.5, z + (hash(c, r * 13) - 0.5) * cs, hash(c * 2, r * 2) * 6.28, 0.9, parts);
+      } else if (k === WALL && !G.flat[i]) {
+        const edge = dist[i] <= 3, list = edge ? rule.edge : rule.deep, d = edge ? rule.edgeD : rule.deepD;
         if (!list.length || h1 > d || (dist[i] > 6 && h1 > d * 0.5)) continue;
         const name = pick(list, hash(c * 5, r * 3)), s = 0.8 + hash(c, r * 9) * 0.55, x = B.minX + (c + 0.5) * cs + (hash(c * 7, r) - 0.5) * cs * 0.6, z = r * cs - B.maxZ + cs * 0.5 + (hash(c, r * 13) - 0.5) * cs * 0.6;
         expand(name, x, H[i], z, hash(c * 2, r * 2) * 6.28, s, parts);
