@@ -8,6 +8,8 @@ import * as econ from '../src/core/econ.js';
 import * as prog from '../src/core/progress.js';
 import * as gear from '../src/core/gear.js';
 import * as modes from '../src/core/modes.js';
+import { SHAPES } from '../src/client/assets3d.js';
+import { WEAPON_PARTS, buildWeaponParts, weaponInstances, weaponPartRotation } from '../src/client/weapons3d.js';
 import { mk, memStore, code, T0 } from './helpers.js';
 
 const DAY = 86400000;
@@ -42,6 +44,60 @@ test('Content: gültig, stabiler Fingerprint, Referenzsummen (T02/T05/T13)', () 
   assert.equal(tr('levelup').nodes.reduce((a, n) => a + n.reward.length, 0), 200, '200 Reward-Zeilen über 80 Meilensteine');
   assert.equal(T.giftChestLevels[0].gold, 12); assert.equal(T.giftChestLevels[399].gold, 1983356);
   assert.ok(T.keyHouseSlots.length === 15 && T.smithy.length === 8);
+});
+
+test('Waffenmodelle: eigene N-Formen, S-Stufen mit Seltenheitsfarben und Teilbudget', () => {
+  const { weapons, rarities, weaponClasses } = pack.tables;
+  const normalformen = new Set(), sonderformen = new Map();
+  const modelle = buildWeaponParts(rarities);
+  for (const w of weapons) {
+    assert.ok(Object.hasOwn(WEAPON_PARTS, w.id), `Modell fehlt für ${w.id}`);
+    const teile = WEAPON_PARTS[w.id];
+    assert.deepEqual(teile, modelle[w.id], `Basispalette ${w.id}`);
+    assert.ok(teile.length >= 1 && teile.length <= 8, `Teilbudget ${w.id}`);
+    const farbe = rarities.find(({ idx }) => idx === w.rarity).color;
+    const akzent = farbe.length === 4 ? '#' + [...farbe.slice(1)].map((k) => k + k).join('') : farbe;
+    for (const [i, t] of teile.entries()) {
+      assert.equal(t.length, 9, w.id);
+      const drehung = weaponPartRotation(t);
+      assert.ok(drehung.every(Number.isFinite), w.id);
+      assert.deepEqual(drehung, weaponPartRotation(modelle[w.id][i]), w.id);
+      assert.ok(Object.hasOwn(SHAPES, t[0]), `Unbekannte Grundform ${t[0]} in ${w.id}`);
+      assert.ok(t.slice(1, 7).every(Number.isFinite) && t.slice(4, 7).every((n) => n > 0), w.id);
+      assert.match(t[7], /^#[0-9a-f]{6}$/i, w.id);
+      assert.ok(t[8] >= 0 && t[8] <= 1, w.id);
+      if (t[8] > 0) assert.equal(t[7], akzent, w.id);
+    }
+    assert.ok(teile.some((t) => t[7] === akzent), `Seltenheitsakzent ${w.id}`);
+    const leuchten = Math.max(...teile.map((t) => t[8]));
+    assert.equal(leuchten > 0, w.rarity >= 3, w.id);
+    const form = JSON.stringify(teile.map((t) => [...t.slice(0, 7), ...weaponPartRotation(t)]));
+    if (w.series === 'n') {
+      assert.ok(!normalformen.has(form), `N-Form doppelt ${w.id}`);
+      normalformen.add(form);
+    } else {
+      const basis = sonderformen.get(w.cls);
+      if (basis) {
+        assert.equal(form, basis.form, w.id);
+        assert.ok(leuchten > basis.leuchten, w.id);
+      }
+      sonderformen.set(w.cls, { form, leuchten });
+    }
+  }
+  assert.equal(normalformen.size, 48);
+  assert.equal(new Set([...sonderformen.values()].map(({ form }) => form)).size, weaponClasses.length);
+  assert.ok([...sonderformen.values()].every(({ form }) => !normalformen.has(form)));
+
+  const klinge = WEAPON_PARTS.w_sword_n_0[3], [modellDrehung, neigung, rolle] = weaponPartRotation(klinge);
+  assert.equal(neigung, Math.PI / 2);
+  const [[, x, y, z, gier, breite, hoehe, laenge, , , pitch, roll]] =
+    weaponInstances([klinge], 2, 3, 4, Math.PI / 2, .5);
+  assert.ok(Math.abs(x - (2 + klinge[1] * .5)) < 1e-9);
+  assert.ok(Math.abs(z - (4 - klinge[2] * .5)) < 1e-9);
+  assert.equal(y, 3 + klinge[3] * .5);
+  assert.equal(gier, Math.PI / 2 + modellDrehung);
+  assert.deepEqual([breite, hoehe, laenge], klinge.slice(4, 7).map((n) => n * .5));
+  assert.deepEqual([pitch, roll], [neigung, rolle]);
 });
 
 test('Content-Validator erkennt ungültige IDs, Kosten und Questzyklen (T18)', () => {
