@@ -7,6 +7,7 @@ import * as home from '../core/home.js';
 import * as meta from '../core/meta.js';
 import * as modes from '../core/modes.js';
 import { icon, itemIcon, STAT_ICON, heroArt } from './skin.js';
+import { weaponIconSource } from './weaponIcons.js';
 import { BIOMES, WATER as WCOL, hex } from './assets3d.js';
 
 // Lokalisierung: t(Quelltext) -> Übersetzung; ohne Eintrag bleibt der deutsche Quelltext.
@@ -196,7 +197,12 @@ function betterWeapon() {
   if (eq.some((u) => !u)) return true;
   const min = Math.min(...eq.map((u) => prog.weaponDmg(g, ws.list.find((w) => w.uid === u)))); return free.some((w) => prog.weaponDmg(g, w) > min);
 }
-const wIcon = (w, size) => icon(game.c.get('weapons', w.def).cls, null, size);
+function weaponArt(def, size) {
+  const src = weaponIconSource(def, game.c);
+  return src ? h('img', { cls: 'ic', src, width: size, height: size, alt: def.name, draggable: 'false' })
+    : icon(def.cls, null, size);
+}
+const wIcon = (w, size) => weaponArt(game.c.get('weapons', w.def), size);
 const rarCol = (w) => game.c.get('rarities', game.c.get('weapons', w.def).rarity).color;
 // Waffenblatt (Aufbau nach Vorlage): Banner, Kachel + Stärke + Stufenbalken, Option, Fertigkeit, Verbinden, unten Ausrüsten / Aufwerten mit Kosten.
 function weaponSheet(w0) {
@@ -295,7 +301,7 @@ function rtile(e) {
   const g = game.g, c = game.c;
   if (e.goldKills !== undefined) return h('span', { cls: 'rt' }, itemIcon('gold', 30), h('b', { cls: 'ot' }, 'x' + fmt(Math.round(e.goldKills * econ.stageGold(g)))));
   if (e.weaponPool) return h('span', { cls: 'rt', style: `background:${c.get('rarities', e.weaponPool.rarity).color}` }, icon('sword', null, 30), h('b', { cls: 'ot' }, rarName(e.weaponPool.rarity)));
-  if (e.weapon) { const d = c.get('weapons', e.weapon); return h('span', { cls: 'rt', style: `background:${c.get('rarities', d.rarity).color}` }, icon(d.cls, null, 30), h('b', { cls: 'ot' }, 'Lv.1')); }
+  if (e.weapon) { const d = c.get('weapons', e.weapon); return h('span', { cls: 'rt', style: `background:${c.get('rarities', d.rarity).color}` }, weaponArt(d, 30), h('b', { cls: 'ot' }, 'Lv.1')); }
   if (e.heroPieces) return h('span', { cls: 'rt' }, icon('helmet', null, 30), h('b', { cls: 'ot' }, 'x' + e.heroPieces.n));
   if (e.flag) return h('span', { cls: 'rt' }, icon('star', null, 30), h('b', { cls: 'ot' }, 'Perk'));
   if (e.item) return h('span', { cls: 'rt', title: itemName(e.item) }, itemIcon(e.item, 30), h('b', { cls: 'ot' }, 'x' + fmt(e.n ?? e.min)));
@@ -446,7 +452,7 @@ P.fusion = () => {
   const mats = sel ? [tileW(sel), h('b', { cls: 'ot', style: 'font-size:1.4rem' }, '+'), ...Array.from({ length: need - 1 }, (_, k) => (fod[k] ? tileW(fod[k]) : empty()))] : [empty()];
   const list = ws.list.filter((w) => c.get('weapons', w.def).next).sort((a, b) => (gear.mergePreview(g, b.uid).ok ? 1 : 0) - (gear.mergePreview(g, a.uid).ok ? 1 : 0) || c.get('weapons', b.def).rarity - c.get('weapons', a.def).rarity);
   return [chips('gems', 'weapon_scroll', 'gold'),
-    h('div', { cls: 'forge' }, h('div', { cls: 'fres' }, nx ? h('span', { cls: 'tile big', style: `background:${c.get('rarities', nx.rarity).color}` }, icon(nx.cls, null, 54), h('span', { cls: 'lvt ot' }, `Lv.${Math.max(sel.level, ...fod.map((x) => x.level))}`)) : empty('big'),
+    h('div', { cls: 'forge' }, h('div', { cls: 'fres' }, nx ? h('span', { cls: 'tile big', style: `background:${c.get('rarities', nx.rarity).color}` }, weaponArt(nx, 54), h('span', { cls: 'lvt ot' }, `Lv.${Math.max(sel.level, ...fod.map((x) => x.level))}`)) : empty('big'),
         nx ? h('div', { cls: 'fcard' }, h('div', { cls: 'hban ot', style: `background:${c.get('rarities', nx.rarity).color};position:static;transform:none;margin:-14px auto 4px;font-size:.7rem` }, c.get('rarities', nx.rarity).name),
           h('b', {}, nx.name), h('div', { cls: 'ot' }, 'SCHADEN: ', dmgAt(d, sel.level), h('em', {}, ' > ' + dmgAt(nx, sel.level))), h('div', { cls: 'ot' }, 'MAX. LEVEL: ', c.get('rarities', d.rarity).maxLevel, h('em', {}, ' > ' + c.get('rarities', nx.rarity).maxLevel)),
           Object.keys(mp.cost || {}).length ? h('div', { cls: 'sub' }, 'Kosten: ', costEl(mp.cost)) : null, mp.ok ? null : h('div', { cls: 'sub', style: 'color:#b3382b' }, mp.reason)) : sel ? h('div', { cls: 'fcard' }, h('b', {}, d.name), h('div', { cls: 'sub' }, 'Endstufe dieser Reihe')) : h('div', { cls: 'fcard' }, h('div', { cls: 'sub' }, 'Wähle unten eine Waffe. Drei gleiche ergeben die nächste Stufe.'))),
