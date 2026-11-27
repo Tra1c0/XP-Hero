@@ -75,3 +75,38 @@ export function enemyParts(v, x, z, yaw, sc, tint) {
   for (const q of d.parts) out.push([q[0], x + (q[1] * cf + q[3] * sf) * sc, q[2] * sc, z + (-q[1] * sf + q[3] * cf) * sc, yaw + q[9], q[4] * sc, q[5] * sc, q[6] * sc, tint && q[10] ? tint : q[7], q[8]]);
   return out;
 }
+
+// ---------------------------------------------------------------- NPC-Figuren (eigene Entwürfe): klobiger Körper, großer Kopf, je Figur Farben und ein Erkennungsmerkmal
+const NPC = {
+  elder: { robe: '#4fb3c9', skin: '#f1c9a5', hair: '#ffffff', beard: true, staff: true, hat: null },
+  smith: { robe: '#e98a3a', skin: '#f1c9a5', hair: '#d9482f', apron: '#5a5e6c', goggles: true, hammer: true },
+  ryan: { robe: '#8a6a3a', skin: '#f1c9a5', hair: '#5a3a22', hat: '#a8743a', pack: true },
+  taid: { robe: '#3f8f5a', skin: '#f1c9a5', hair: '#2f6b45', hood: '#2f6b45', staff: true },
+  kain: { robe: '#6a4a8a', skin: '#e8b98f', hair: '#2a2233', hat: '#3a2a4a' },
+  hana: { robe: '#2a2233', skin: '#ffd9a0', hair: '#b04bd0', sword: true },
+  lina: { robe: '#e85d9a', skin: '#f1c9a5', hair: '#ffd24a' },
+  dnew: { robe: '#4a6fb0', skin: '#e8b98f', hair: '#33221a', hat: '#2f4f86' },
+  menivh: { robe: '#7a2f2f', skin: '#d9a57a', hair: '#1d1420', hood: '#4a1f1f' },
+  chairman: { robe: '#33334a', skin: '#f1c9a5', hair: '#b9b3c6', hat: '#1d1d2a', beard: true },
+};
+export function npcParts(char, x, z, yaw, time) {
+  const d = NPC[char] || NPC.taid, cy = Math.cos(yaw), sy = Math.sin(yaw), bob = Math.sin(time * 2 + x) * 0.02, out = [];
+  const q = (shape, r, y, f, sx, s2, sz, c, em = 0, rot = 0) => out.push([shape, x + r * cy + f * sy, y + (y > 0.3 ? bob : 0), z - r * sy + f * cy, yaw + rot, sx, s2, sz, c, em]);
+  q('box', -0.16, 0, 0, 0.2, 0.3, 0.24, '#5a3a22'); q('box', 0.16, 0, 0, 0.2, 0.3, 0.24, '#5a3a22');
+  q('box', 0, 0.26, 0, 0.7, 0.58, 0.46, d.robe); q('box', 0, 0.26, 0.02, 0.72, 0.1, 0.48, '#33221a');
+  if (d.apron) q('box', 0, 0.28, 0.22, 0.46, 0.5, 0.06, d.apron);
+  q('box', -0.44, 0.34, 0.03, 0.18, 0.42, 0.2, d.robe); q('box', 0.44, 0.34, 0.03, 0.18, 0.42, 0.2, d.robe);
+  q('box', 0, 0.82, 0, 0.66, 0.58, 0.6, d.skin);
+  q('box', -0.15, 1.08, 0.31, 0.1, 0.12, 0.04, '#1d1420'); q('box', 0.15, 1.08, 0.31, 0.1, 0.12, 0.04, '#1d1420');
+  if (d.goggles) { q('box', 0, 1.06, 0.32, 0.56, 0.16, 0.05, '#2a2a32'); q('box', -0.15, 1.08, 0.35, 0.16, 0.12, 0.03, '#7fd8ff', 0.4); q('box', 0.15, 1.08, 0.35, 0.16, 0.12, 0.03, '#7fd8ff', 0.4); }
+  if (d.hood) { q('box', 0, 1.22, -0.06, 0.74, 0.3, 0.66, d.hood); q('cone6', 0, 1.5, -0.1, 0.5, 0.4, 0.5, d.hood); }
+  else if (d.hat) { q('cyl8', 0, 1.38, 0, 1.0, 0.06, 1.0, d.hat); q('cyl8', 0, 1.42, 0, 0.56, 0.3, 0.56, d.hat); }
+  else q('box', 0, 1.32, -0.04, 0.7, 0.2, 0.62, d.hair);
+  if (!d.hood) { q('box', -0.34, 0.95, -0.05, 0.08, 0.4, 0.5, d.hair); q('box', 0.34, 0.95, -0.05, 0.08, 0.4, 0.5, d.hair); }
+  if (d.beard) { q('box', 0, 0.66, 0.3, 0.5, 0.3, 0.1, '#ffffff'); q('cone6', 0, 0.7, 0.3, 0.36, -0.4, 0.14, '#ffffff'); }
+  if (d.staff) { q('box', 0.62, 0, 0.16, 0.08, 1.7, 0.08, '#8a5a3c'); q('sphere', 0.62, 1.62, 0.16, 0.26, 0.26, 0.26, '#7fd8ff', 0.8); }
+  if (d.hammer) { q('box', -0.62, 0.3, 0.2, 0.08, 0.7, 0.08, '#8a5a3c'); q('box', -0.62, 0.9, 0.2, 0.4, 0.26, 0.26, '#6b6f7d'); }
+  if (d.pack) q('box', 0, 0.4, -0.34, 0.5, 0.5, 0.26, '#6a4a30');
+  if (d.sword) { q('box', 0.6, 0.3, 0.1, 0.08, 0.9, 0.14, '#e8eef5', 0.15); q('box', 0.6, 0.26, 0.1, 0.3, 0.07, 0.1, '#f0c14b'); }
+  return out;
+}

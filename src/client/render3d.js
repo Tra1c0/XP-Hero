@@ -4,7 +4,7 @@
 import { SHAPES, BIOMES, WATER, SCATTER, expand, hex } from './assets3d.js';
 import { FLOOR, WALL, WATER as K_WATER, LAVA, walkIdx, findPath } from '../core/worldgrid.js';
 import { npcStatus, currentQuests } from '../core/meta.js';
-import { enemyParts, enemyTop } from './enemy3d.js';
+import { enemyParts, enemyTop, npcParts } from './enemy3d.js';
 
 const VIEW_W = 11.5, TILT = (45 * Math.PI) / 180; // an der Vorlage vermessen: Figur ca. 1/13 der Bildbreite, Kreise auf dem Boden ca. 0,7-fach gestaucht; // sichtbare Breite in Metern (Hochformat), Neigung
 const INST = 13; // pos3, rot, scl3, rgba(em), Neigung (vor/zurück, seitlich)
@@ -275,7 +275,9 @@ export class Renderer3D {
       }
       else if (o.type === 'chest') { if (now >= (st.world.chests[o.id] || 0)) { out.push(['box', x, 0, z, 0.3, 1.1, 0.7, 0.8, '#8a5a32', 0], ['box', x, 0.7, z, 0.3, 1.12, 0.18, 0.82, '#e9b43a', 0.2]); shadows.push(['disc', x, 0.02, z, 0, 1.6, 1, 1.6, '#000000', 0]); } } else if (o.type === 'gift') { if (now >= (st.world.gifts[o.id] || 0)) { out.push(['box', x, 0, z, 0.6, 0.8, 0.8, 0.8, '#ff7fae', 0.15], ['box', x, 0, z, 0.6, 0.84, 0.84, 0.18, '#fff3b0', 0.3], ['box', x, 0, z, 0.6, 0.18, 0.84, 0.84, '#fff3b0', 0.3]); } } else if (o.type === 'areachest') { if (!st.claims[`areachest:${o.id}`]) { out.push(['box', x, 0, z, -0.2, 1.3, 0.9, 0.9, '#e9b43a', 0.25], ['box', x, 0.9, z, -0.2, 1.32, 0.2, 0.92, '#b5482f', 0]); } } else if (o.type === 'npc') {
         if (o.kind === 'raid') out.push(['box', x + 1.4, 0, z - 0.6, 0.4, 1.0, 2.6, 1.0, '#3d3a4a', 0], ['sphere', x + 1.4, 2.5, z - 0.6, 0, 0.6, 0.6, 0.6, '#c24bff', 0.9]);
-        { out.push(['cyl8', x, 0, z, 0, 0.7, 1.0, 0.7, '#3f8f5a', 0], ['sphere', x, 1.0, z, 0, 0.5, 0.5, 0.5, '#f1c9a5', 0], ['cone6', x, 1.42, z, 0, 0.6, 0.5, 0.6, '#2f6b45', 0]); shadows.push(['disc', x, 0.02, z, 0, 1.1, 1, 1.1, '#000000', 0]); }
+        { // NPC-Figur: schaut zur Spielfigur, wenn sie in der Nähe ist, sonst nach Süden zur Kamera
+          const dxn = w.p.x - o.x, dyn = w.p.y - o.y, yawN = dxn * dxn + dyn * dyn < (6 * ppm) ** 2 ? Math.atan2(dxn, dyn) : 0;
+          out.push(...npcParts(o.char, x, z, yawN, performance.now() / 1000)); shadows.push(['disc', x, 0.02, z, 0, 1.1, 1, 1.1, '#000000', 0]); }
       } else if (o.type === 'decor') expand(o.kind, x, 0, z, 0, 1, out);
       else if (o.type === 'gatebar') {
         const gt = o.def, dx = gt.b[0] - gt.a[0], dz = -(gt.b[1] - gt.a[1]), ang = Math.atan2(dx, dz), half = gt.w / 2, px = Math.cos(ang) * half, pz = -Math.sin(ang) * half;

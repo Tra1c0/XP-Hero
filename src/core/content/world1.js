@@ -44,7 +44,7 @@ export const onFloor = (X, Z) => { const row = MAP1.z[Math.floor((MAP1.maxZ - Z)
 // Raid-Turm rechts, Zelt links, Sandweg nach Süden. Angaben als Versatz zum Lagerfeuer [Ost, Nord] in Metern; die Abstände sind gegenüber
 // der Vorlage auf ca. 3/4 gestaucht, damit alles in der Schutzzone liegt. Sägewerk und Steinbruch kommen in der Vorlage nicht vor (Lage eigen).
 const F = MAP1.base.c, at = (dx, dz) => { const p = [Math.round((F[0] + dx) * 10) / 10, Math.round((F[1] + dz) * 10) / 10]; return onFloor(p[0], p[1]) ? p : nearestFloor(p[0], p[1], 'base'); };
-export const BASE = { fire: F, elder: at(3.2, -0.8), smith: at(3.6, 1.9) };
+export const BASE = { fire: F, elder: at(3.2, -0.8), smith: at(4.6, 1.5) };
 export const BUILDINGS = { bonfire: F, smithy: at(3.6, 3.6), chesthouse: at(-5.6, 6.2), portal: at(-2.6, 8.8), raidcamp: at(8.8, 3.4), costumeshop: at(-8.6, 0.4), lumbermill: at(-6.4, -6.6), quarry: at(6.6, -6.8) };
 const lm = (t, dx, dz, x = {}) => ({ t, p: [F[0] + dx, F[1] + dz], ...x });
 LANDMARKS.push(lm('sandpatch', 0.4, 0.2), lm('sandpath', 0, -7.4), lm('storechest', -2.3, 0.7, { r: 12 }), lm('boulder_grey', 5.2, 8.2, { s: 1.1 }), lm('boulder_grey', 6.6, 7.2, { r: 80 }),
