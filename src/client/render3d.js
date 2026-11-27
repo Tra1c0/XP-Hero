@@ -6,6 +6,8 @@ const TREE = { a1_1: 'tree_round', a1_2: 'palm', a1_4: 'pine_snow' }; // fällba
 import { FLOOR, WALL, WATER as K_WATER, LAVA, walkIdx, findPath } from '../core/worldgrid.js';
 import { npcStatus, currentQuests } from '../core/meta.js';
 import { enemyParts, enemyTop, npcParts, heroBody, WEAPON_PARTS } from './enemy3d.js';
+import { parseGlb } from './glb.js';
+import { Rig, HeroAnim } from './rig.js';
 
 const VIEW_W = 11.5, TILT = (45 * Math.PI) / 180; // an der Vorlage vermessen: Figur ca. 1/13 der Bildbreite, Kreise auf dem Boden ca. 0,7-fach gestaucht; // sichtbare Breite in Metern (Hochformat), Neigung
 const INST = 13; // pos3, rot, scl3, rgba(em), Neigung (vor/zurück, seitlich)
@@ -24,6 +26,20 @@ void main(){ if(flatC.a>0.){ o=flatC; return; }
  float d=max(dot(normalize(vN),L),0.); float h=vN.y*.5+.5;
  vec3 col=vC.rgb*(0.50+0.42*d+0.16*h); col=mix(col, vC.rgb*1.25+0.08, vC.a);
  o=vec4(col, alpha); }`;
+
+// Figuren mit Skelett: Haut wird im Shader über bis zu 32 Gelenkmatrizen verformt. grow > 0 bläht entlang der Normalen auf (dunkler Umriss über Rückseiten).
+const VS_S = `#version 300 es
+layout(location=0) in vec3 p; layout(location=1) in vec3 n; layout(location=2) in vec4 c; layout(location=3) in vec2 uv; layout(location=4) in vec4 j; layout(location=5) in vec4 w;
+uniform mat4 vp; uniform mat4 M; uniform mat4 J[32]; uniform float grow; uniform float zb; out vec3 vN; out vec4 vC; out vec2 vUV;
+void main(){ mat4 S=w.x*J[int(j.x)]+w.y*J[int(j.y)]+w.z*J[int(j.z)]+w.w*J[int(j.w)];
+ vec4 q=S*vec4(p,1.); vec3 m=normalize(mat3(S)*n); q.xyz+=m*grow; vN=normalize(mat3(M)*m); vC=c; vUV=uv; gl_Position=vp*(M*vec4(q.xyz,1.)); gl_Position.z-=zb; }`;
+const FS_S = `#version 300 es
+precision mediump float; in vec3 vN; in vec4 vC; in vec2 vUV; uniform sampler2D tex; uniform sampler2D etex; uniform vec3 L; uniform vec3 emf; uniform vec4 flatC; uniform float flash; out vec4 o;
+void main(){ if(flatC.a>0.){ o=flatC; return; }
+ vec3 N=normalize(vN); float d=max(dot(N,L),0.); float h=N.y*.5+.5;
+ // Farben des Modells liegen linear vor (Vertex-Farbe) bzw. als sRGB-Bild: linear multiplizieren, dann für die Anzeige zurückwandeln
+ vec3 base=pow(pow(texture(tex,vUV).rgb,vec3(2.2))*vC.rgb,vec3(1./2.2)); vec3 col=base*(0.60+0.36*d+0.14*h)+texture(etex,vUV).rgb*emf;
+ o=vec4(mix(col,vec3(1.),flash),1.); }`;
 
 function compile(gl, vs, fs) {
   const p = gl.createProgram();
@@ -64,6 +80,8 @@ export class Renderer3D {
     this.pI = compile(gl, VS_I, FS); this.pT = compile(gl, VS_T, FS);
     this.U = {}; this.zb = gl.getUniformLocation(this.pI, 'zb');
     for (const [k, p] of [['i', this.pI], ['t', this.pT]]) this.U[k] = { vp: gl.getUniformLocation(p, 'vp'), L: gl.getUniformLocation(p, 'L'), alpha: gl.getUniformLocation(p, 'alpha'), flat: gl.getUniformLocation(p, 'flatC') };
+    this.pS = compile(gl, VS_S, FS_S); this.US = {}; for (const k of ['vp', 'M', 'J', 'grow', 'zb', 'tex', 'etex', 'L', 'emf', 'flatC', 'flash']) this.US[k] = gl.getUniformLocation(this.pS, k);
+    this.heroes = new Map(); this.heroDraw = null;
     this.mesh = {};
     for (const [name, data] of Object.entries(SHAPES)) {
       const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
@@ -94,6 +112,46 @@ export class Renderer3D {
   }
   // Teil-Liste [shape, x, y, z, rot, sx, sy, sz, hexColor, em] -> pro Form Float32Array
   shake(a) { this.sh = Math.max(this.sh || 0, Math.min(1, a)); }
+  // Heldenmodell mit Skelett: wird beim ersten Bedarf geladen; bis dahin (oder bei Fehler) zeichnet die Figur aus Grundformen weiter.
+  heroModel(id) {
+    let h = this.heroes.get(id);
+    if (!h) {
+      h = { state: 'loading' }; this.heroes.set(id, h);
+      (async () => {
+        const res = await fetch(`models/heroes/hero_${id}.glb`); if (!res.ok) throw new Error('HTTP ' + res.status);
+        const g = parseGlb(await res.arrayBuffer()), gl = this.gl;
+        if (!g.skin || !g.joints || g.skin.joints.length > 32) throw new Error('Skelett fehlt oder hat mehr als 32 Gelenke');
+        const V = new Float32Array(g.nv * 20);
+        for (let k = 0; k < g.nv; k++) { V.set(g.pos.subarray(k * 3, k * 3 + 3), k * 20); V.set(g.nrm.subarray(k * 3, k * 3 + 3), k * 20 + 3); V.set(g.col.subarray(k * 4, k * 4 + 4), k * 20 + 6); V.set(g.uv.subarray(k * 2, k * 2 + 2), k * 20 + 10); V.set(g.joints.subarray(k * 4, k * 4 + 4), k * 20 + 12); V.set(g.weights.subarray(k * 4, k * 4 + 4), k * 20 + 16); }
+        const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+        const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, V, gl.STATIC_DRAW);
+        [[0, 3, 0], [1, 3, 12], [2, 4, 24], [3, 2, 40], [4, 4, 48], [5, 4, 64]].forEach(([loc, size, off]) => { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 80, off); });
+        const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, Uint16Array.from(g.idx), gl.STATIC_DRAW);
+        gl.bindVertexArray(null);
+        const tex = async (im, fallback) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+          if (im) { const bmp = await createImageBitmap(new Blob([im.bytes], { type: im.mime })); gl.bindTexture(gl.TEXTURE_2D, t); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bmp); }
+          else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(fallback));
+          for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+          return t; };
+        h.tex = await tex(g.baseColor, [255, 255, 255, 255]); h.etex = await tex(g.emissive, [0, 0, 0, 255]); h.emf = g.emissive ? g.emissiveFactor : [0, 0, 0];
+        h.vao = vao; h.count = g.idx.length; h.rig = new Rig(g); h.anim = new HeroAnim(h.rig); h.J = new Float32Array(32 * 16); h.state = 'ready';
+      })().catch((e) => { h.state = 'failed'; console.warn('Heldenmodell ' + id + ' nicht geladen:', e && e.message); });
+    }
+    return h.state === 'ready' ? h : null;
+  }
+  // Zeichnet die Figur mit Skelett. mode 0 = normal, 1 = Umriss (aufgeblähte Rückseiten), 2 = Silhouette hinter Hindernissen
+  drawHero(vp, L, mode) {
+    const d = this.heroDraw, gl = this.gl; if (!d) return;
+    const U = this.US, c = Math.cos(d.yaw), s = Math.sin(d.yaw), k = d.scale;
+    gl.useProgram(this.pS); gl.uniformMatrix4fv(U.vp, false, vp); gl.uniformMatrix4fv(U.M, false, new Float32Array([c * k, 0, -s * k, 0, 0, k, 0, 0, s * k, 0, c * k, 0, d.x, 0, d.z, 1]));
+    gl.uniformMatrix4fv(U.J, false, d.h.J); gl.uniform3fv(U.L, L); gl.uniform3fv(U.emf, d.h.emf); gl.uniform1f(U.flash, mode === 0 ? d.flash : 0);
+    gl.uniform1f(U.grow, mode === 1 ? 0.022 : 0); gl.uniform1f(U.zb, mode === 2 ? 0.022 : 0);
+    if (mode === 0) gl.uniform4f(U.flatC, 0, 0, 0, 0); else if (mode === 1) gl.uniform4f(U.flatC, 0.13, 0.1, 0.16, 1); else gl.uniform4f(U.flatC, 0.55, 0.75, 1.0, 0.45);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, d.h.tex); gl.uniform1i(U.tex, 0); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, d.h.etex); gl.uniform1i(U.etex, 1); gl.activeTexture(gl.TEXTURE0);
+    gl.enable(gl.CULL_FACE); gl.cullFace(mode === 1 ? gl.FRONT : gl.BACK);
+    gl.bindVertexArray(d.h.vao); gl.drawElements(gl.TRIANGLES, d.h.count, gl.UNSIGNED_SHORT, 0);
+    gl.cullFace(gl.BACK);
+  }
   pack(parts, buckets = {}) {
     for (const t of parts) {
       const b = (buckets[t[0]] ||= []);
@@ -336,6 +394,17 @@ export class Renderer3D {
       else { this.fall = 0; if (this.wamp > 0.02) tiltGroup(ch, px, pz, f, 0.13 * this.wamp); }
       if (p.hurtT !== undefined && w.t - p.hurtT < 0.12) for (const t of ch) t[8] = '#ffffff';
     }
+    // Figur mit Skelett (wenn das Modell des Helden geladen ist): Zustand aus der Simulation -> Clips; die Hand trägt die Hauptwaffe
+    let hand = null; const hm = this.heroModel(game.stats.heroId);
+    if (hm) {
+      const tH = performance.now() / 1000, dtH = Math.min(0.1, tH - (this.heroT || tH)); this.heroT = tH;
+      const l0 = w.loadout()[0], fr0 = (w.p.wfire || {})[0];
+      const J = hm.anim.update({ dt: dtH, alive: p.alive, speed: (Math.hypot(p.x - p.px, p.y - p.py) / ppm) * 30, fireT: fr0 ? fr0.t : undefined, hurtT: p.hurtT, cls: l0 ? l0.cls.id : 'fist', interval: l0 ? l0.interval : 0.5 });
+      hm.J.set(J);
+      const hp = hm.rig.point('HandSocket.R');
+      if (hp) { const [hx, hz] = at(hp[0], hp[2]); hand = [hx, hp[1], hz]; }
+      this.heroDraw = { h: hm, x: px, z: pz, yaw: f, scale: 1, flash: p.hurtT !== undefined && w.t - p.hurtT < 0.12 ? 0.8 : 0 };
+    } else this.heroDraw = null;
     // Waffen: Hauptwaffe in der Hand mit Schwungbogen, Nebenwaffen schweben im Kreis um die Figur und stoßen beim Angriff zum Ziel (eigene Darstellung, Zeit aus der Simulation)
     {
       const tm = w.t + a / 30, load = w.loadout(), subs = load.filter((l) => l.slot > 0), wf = w.p.wfire || {}, ws = [];
@@ -359,7 +428,8 @@ export class Renderer3D {
           // Hauptwaffe: Nahkampf schwingt in einem Bogen von rechts nach links durch die Zielrichtung, Fernwaffen zucken zurück
           if (u >= 0) this.face = fr.a;
           const base = this.face, sw = u >= 0 && l.cls.melee ? (0.5 - u) * 2.6 : 0.9, rec = u >= 0 && !l.cls.melee ? -0.18 * ease(u) : 0, yaw = base + sw;
-          model(l.cls.id, px + Math.sin(yaw) * (0.45 + rec), 0.62, pz + Math.cos(yaw) * (0.45 + rec), yaw, 1);
+          if (hand) model(l.cls.id, hand[0] + Math.sin(yaw) * rec, hand[1], hand[2] + Math.cos(yaw) * rec, yaw, 1);
+          else model(l.cls.id, px + Math.sin(yaw) * (0.45 + rec), 0.62, pz + Math.cos(yaw) * (0.45 + rec), yaw, 1);
           if (u >= 0 && l.cls.melee) for (let k2 = 0; k2 < 5; k2++) { const ya = base + (0.5 - (u - k2 * 0.05)) * 2.6; if (u - k2 * 0.05 > 0) fx.push(['disc', px + Math.sin(ya) * 1.35, 0.5, pz + Math.cos(ya) * 1.35, 0, 0.5 - k2 * 0.08, 1, 0.5 - k2 * 0.08, '#ffffff', 1]); }
         } else {
           const n = subs.length, k2 = subs.indexOf(l), oa = tm * 1.1 + (k2 / n) * 6.283, bob = Math.sin(tm * 2.6 + k2 * 1.7) * 0.1;
@@ -372,7 +442,8 @@ export class Renderer3D {
       ch.push(...ws);
     }
     fx.push(['disc', px, 0.04, pz, 0, 3.2, 1, 3.2, '#8dff7a', 1]);
-    out.push(...ch); xray.push(...ch); shadows.push(['disc', px, 0.02, pz, 0, 1.2, 1, 1.2, '#000000', 0]);
+    { const body = hm ? ch.slice(10) : ch; out.push(...body); xray.push(...body); } // mit Skelett entfallen die zehn Körperteile aus Grundformen
+    shadows.push(['disc', px, 0.02, pz, 0, 1.2, 1, 1.2, '#000000', 0]);
     // Gegner
     for (const e of w.enemies) {
       if (!e.alive) continue;
@@ -470,6 +541,7 @@ export class Renderer3D {
     gl.disable(gl.CULL_FACE); // Formen sind nicht alle geschlossen orientiert -> beidseitig
     this.drawBuckets(sc.inst);
     this.drawBuckets(this.dynUpload('o', dy.out));
+    if (this.heroDraw) { this.drawHero(vp, L, 0); this.drawHero(vp, L, 1); gl.useProgram(this.pI); gl.disable(gl.CULL_FACE); }
     // Transparenz: Schatten, Effekte
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
     gl.uniform4f(this.U.i.flat, 0, 0, 0, 0.22); this.drawBuckets(sc.shadow); this.drawBuckets(this.dynUpload('s', dy.shadows));
@@ -478,6 +550,7 @@ export class Renderer3D {
     // Verdeckte Figuren als Silhouette sichtbar halten (Kamera-Sichtbarkeit hinter Felsen/Bäumen)
     // Bias: nur Verdeckungen mit > ~1,5 m Abstand (nicht die eigene Rückseite der Figur)
     gl.depthFunc(gl.GREATER); gl.uniform1f(this.zb, 0.022); gl.uniform4f(this.U.i.flat, 0.55, 0.75, 1.0, 0.45); this.drawBuckets(this.dynUpload('x', dy.xray));
+    if (this.heroDraw) { this.drawHero(vp, L, 2); gl.useProgram(this.pI); gl.disable(gl.CULL_FACE); }
     gl.uniform1f(this.zb, 0); gl.uniform4f(this.U.i.flat, 0, 0, 0, 0); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND);
     gl.bindVertexArray(null);
     this.overlay(game, sc);

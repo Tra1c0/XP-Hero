@@ -502,3 +502,17 @@ test('Haptik: Presets, Aus-Schalter, Mindestabstand (stärker löst schwächer a
     assert.equal(haptic.play('failure'), true); assert.equal(calls.at(-1), '22,220;60,0;22,160;60,0;34,255');
   } finally { Date.now = realNow; delete globalThis.window; }
 });
+
+test('Heldenmodelle: jede Heldin/jeder Held hat ein lesbares Modell mit Skelett (höchstens 32 Gelenke), 12 Clips, Handpunkt; Ruhelage deckt sich mit dem Mesh', async () => {
+  const fs = await import('node:fs'); const { parseGlb } = await import('../src/client/glb.js'); const { Rig, HeroAnim } = await import('../src/client/rig.js');
+  for (const h of pack.tables.heroes) {
+    const b = fs.readFileSync(new URL(`../src/client/models/heroes/hero_${h.id}.glb`, import.meta.url)), m = parseGlb(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+    assert.ok(m.skin && m.skin.joints.length <= 32 && m.tris <= 900 && m.nv < 65536, `${h.id}: Skelett/Größe`);
+    for (const c of ['Idle', 'Run', 'Attack_1', 'Attack_2', 'Aim_Shoot', 'Cast', 'Hit', 'Death']) assert.ok(m.clips[c] && m.clips[c].dur > 0, `${h.id}: Clip ${c}`);
+    assert.ok(m.clips.Attack_1.markers.Hit > 0 && m.clips.Aim_Shoot.markers.Release > 0, `${h.id}: Ereigniszeitpunkte`);
+    const r = new Rig(m), J = r.solve(r.rest); let dev = 0;
+    for (let v = 0; v < m.nv; v += 7) { let x = 0, y = 0, z = 0; for (let k = 0; k < 4; k++) { const j = m.joints[v * 4 + k], w = m.weights[v * 4 + k]; if (!w) continue; const M = J.subarray(j * 16, j * 16 + 16), px = m.pos[v * 3], py = m.pos[v * 3 + 1], pz = m.pos[v * 3 + 2]; x += w * (M[0] * px + M[4] * py + M[8] * pz + M[12]); y += w * (M[1] * px + M[5] * py + M[9] * pz + M[13]); z += w * (M[2] * px + M[6] * py + M[10] * pz + M[14]); } dev = Math.max(dev, Math.hypot(x - m.pos[v * 3], y - m.pos[v * 3 + 1], z - m.pos[v * 3 + 2])); }
+    assert.ok(dev < 1e-3, `${h.id}: Ruhelage weicht ab (${dev})`); assert.ok(r.point('HandSocket.R'), `${h.id}: Handpunkt`);
+    const a = new HeroAnim(r); for (let k = 0; k < 90; k++) { const out = a.update({ dt: 1 / 30, alive: k < 70, speed: k > 20 && k < 40 ? 5 : 0, fireT: k > 5 && k < 60 ? Math.floor(k / 12) : undefined, hurtT: k > 62 ? 1 : undefined, cls: h.mastery, interval: 0.45 }); assert.ok(out.every(Number.isFinite), `${h.id}: Pose endlich`); }
+  }
+});
