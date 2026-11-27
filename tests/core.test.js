@@ -10,6 +10,7 @@ import * as gear from '../src/core/gear.js';
 import * as modes from '../src/core/modes.js';
 import { SHAPES } from '../src/client/assets3d.js';
 import { WEAPON_PARTS, buildWeaponParts, weaponInstances, weaponPartRotation } from '../src/client/weapons3d.js';
+import { weaponIconSvg } from '../src/client/weaponIcons.js';
 import { mk, memStore, code, T0 } from './helpers.js';
 
 const DAY = 86400000;
@@ -98,6 +99,29 @@ test('Waffenmodelle: eigene N-Formen, S-Stufen mit Seltenheitsfarben und Teilbud
   assert.equal(gier, Math.PI / 2 + modellDrehung);
   assert.deepEqual([breite, hoehe, laenge], klinge.slice(4, 7).map((n) => n * .5));
   assert.deepEqual([pitch, roll], [neigung, rolle]);
+});
+
+test('Waffensymbole übernehmen Geometrie und Seltenheitsakzente der Modelle', () => {
+  const { weapons, rarities } = pack.tables, modelle = buildWeaponParts(rarities);
+  const icons = new Set(), normalformen = new Set(), sonderformen = new Map();
+  for (const w of weapons) {
+    const svg = weaponIconSvg(modelle[w.id], w.cls);
+    assert.doesNotMatch(svg, /NaN|Infinity/, w.id);
+    assert.ok(!icons.has(svg), w.id);
+    icons.add(svg);
+    const kontur = svg.match(/<path d="([^"]+)"/)?.[1];
+    assert.ok(kontur, w.id);
+    if (w.series === 'n') {
+      assert.ok(!normalformen.has(kontur), w.id);
+      normalformen.add(kontur);
+    } else {
+      if (sonderformen.has(w.cls)) assert.equal(kontur, sonderformen.get(w.cls), w.id);
+      sonderformen.set(w.cls, kontur);
+    }
+  }
+  assert.equal(icons.size, 84);
+  assert.equal(normalformen.size, 48);
+  assert.equal(new Set(sonderformen.values()).size, 6);
 });
 
 test('Content-Validator erkennt ungültige IDs, Kosten und Questzyklen (T18)', () => {
