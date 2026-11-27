@@ -73,7 +73,7 @@ test('Weltpositionen sind über Content/Backend änderbar und werden validiert',
   assert.deepEqual(validateContent(p), []);
   const { game } = mk({ pack: p });
   const sm = game.world.map.objects.find((o) => o.id === 'smithy'), q = game.world.G.toPx(12, 1);
-  assert.deepEqual([Math.round(sm.x), Math.round(sm.y)], [Math.round(q.x), Math.round(q.y)]);
+  assert.deepEqual([Math.round(sm.bx), Math.round(sm.by)], [Math.round(q.x), Math.round(q.y)]);
   p.tables.worlds[0].entries.a1_3 = [200, 200];
   assert.match(validateContent(p).join(), /Einstieg a1_3 nicht begehbar/);
 });
@@ -90,4 +90,18 @@ test('Kartenwelt: Gelände aus der Originalkarte, Gebiete öffnen sich in Kampag
     assert.deepEqual([...zs].sort(), ['base', ...[1, 2, 3, 4, 5, 6].filter((n) => n <= step + 1).map((n) => `a1_${n}`)].sort(), `nach ${step} Bossen`);
   }
   for (const [a, p] of Object.entries(WORLD.entries)) { const q = G.toPx(p[0], p[1]); assert.equal(G.zoneIds[G.zone[Math.floor(q.y / G.cpx) * G.cols + Math.floor(q.x / G.cpx)]], a, `Einstieg ${a} liegt im eigenen Gebiet`); }
+});
+
+test('Trittfeld: jedes Gebäude hat ein begehbares Feld vor sich; Betreten meldet das Gebäude, Verlassen hebt es auf', () => {
+  const { game, clock } = mk(); const w = game.world, G = w.G, ppm = G.ppm;
+  const bs = w.map.objects.filter((o) => o.type === 'building');
+  assert.equal(bs.length, game.c.t.buildings.length);
+  for (const o of bs) {
+    assert.ok(o.bx !== undefined && Math.hypot(o.x - o.bx, o.y - o.by) > 1.5 * ppm, `${o.id}: Feld liegt vor dem Gebäude, nicht darin`);
+    for (const p of bs) if (p !== o) assert.ok(Math.hypot(o.x - p.x, o.y - p.y) > o.r + p.r, `${o.id}/${p.id}: Felder überlappen nicht`);
+    w.p.x = w.p.px = o.x; w.p.y = w.p.py = o.y; for (let k = 0; k < 12; k++) { game.tick(1 / 30); clock.t += 33; }
+    assert.equal(w.near && w.near.id, o.id, `${o.id}: auf dem Feld`);
+    const far = w.map.entryOf('a1_1'); w.p.x = w.p.px = far.x; w.p.y = w.p.py = far.y; for (let k = 0; k < 12; k++) { game.tick(1 / 30); clock.t += 33; }
+    assert.ok(!w.near || w.near.id !== o.id, `${o.id}: Feld verlassen`);
+  }
 });

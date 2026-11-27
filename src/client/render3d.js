@@ -274,16 +274,18 @@ export class Renderer3D {
       if (!vis(x, z, 6)) continue;
       // Gestrichelter Kreis um NPCs mit Anliegen: wer ihn betritt, wird angesprochen
       { const m = this.npcSt && this.npcSt[o.id]; if (o.type === 'npc' && (m === 'offer' || m === 'turnin')) { const R = o.r / ppm; for (let k = 0; k < 20; k++) { const a = (k / 20) * 6.283; out.push(['box', x + Math.cos(a) * R, 0.03, z + Math.sin(a) * R, -a, 0.14, 0.03, R * 0.17, '#5fe07a', 0.9]); } } }
-      if (o.type === 'building') {
-        const built = !!st.buildings[o.id], tB = performance.now() / 1000;
+      if (o.type === 'building') { const padX = x, padZ = z; {
+        const built = !!st.buildings[o.id], tB = performance.now() / 1000, x = X(o.bx ?? o.x), z = Z(o.by ?? o.y);
         expand(built ? o.id : 'plot', x, 0, z, 0, 1, out);
         // Lebendige Details: Feuer flackert, Schmiede raucht und glüht, Portal pulsiert, Fackeln am Raid-Turm lodern, Bauplatz-Ring pulsiert
         if (!built) { const k = 1.75 + Math.sin(tB * 3) * 0.12; fx.push(['disc', x, 0.09, z, 0, k * 1.15, 1, k * 1.15, '#ffffff', 1]); }
         else if (o.id === 'bonfire') for (let k = 0; k < 3; k++) { const fl = 0.75 + Math.sin(tB * (9 + k * 3) + k) * 0.25; out.push(['cone6', x + Math.sin(k * 2.1) * 0.18, 0.15, z + Math.cos(k * 2.1) * 0.18, tB * (k + 1), 0.55 * fl, (1.0 + k * 0.25) * fl, 0.55 * fl, ['#ff7a2a', '#ffb53a', '#ffe27a'][k], 1]); }
         else if (o.id === 'smithy') { for (let k = 0; k < 4; k++) { const u = (tB * 0.45 + k / 4) % 1; out.push(['sphere', x + Math.sin(u * 5 + k) * 0.25, 3.3 + u * 2.2, z, 0, 0.3 + u * 0.55, 0.3 + u * 0.55, 0.3 + u * 0.55, '#5c5850', 0]); } out.push(['box', x, 0.3, z + 1.06, 0, 0.8, 0.4, 0.04, '#ffd24a', 0.6 + Math.sin(tB * 7) * 0.4]); }
         else if (o.id === 'portal') { const k = 0.9 + Math.sin(tB * 2.4) * 0.1; out.push(['box', x, 0.4 + (1 - k) * 0.8, z - 0.14, 0, 1.3 * k, 1.5 * k, 0.24, '#e0a8ff', 1]); fx.push(['disc', x, 0.3, z + 0.9, 0, 2.2 + Math.sin(tB * 2.4) * 0.3, 1, 1.2, '#b04cff', 1]); }
-        else if (o.id === 'raidcamp') for (const sx of [-1.25, 1.25]) { const fl = 0.8 + Math.sin(tB * 11 + sx * 3) * 0.2; out.push(['sphere', x + sx, 1.75, z + 1.75, 0, 0.5 * fl, 0.85 * fl, 0.5 * fl, '#ff8a3a', 1]); }
-      }
+        // Trittfeld: heller Fleck mit pulsierendem Ring; steht die Figur darauf, leuchtet es grün
+        { const on = w.near === o, k = 1 + Math.sin(tB * 3.2) * 0.07, R = (o.r / ppm) * 2; out.push(['cyl8', padX, 0.02, padZ, 0, R, 0.03, R, on ? '#b9f58a' : '#fff3c4', on ? 0.6 : 0.25], ['cyl8', padX, 0.05, padZ, 0, R * 0.62, 0.02, R * 0.62, on ? '#7fe04a' : '#ffd86a', 0.5]);
+          fx.push(['disc', padX, 0.1, padZ, 0, R * k, 1, R * k, on ? '#9cff6a' : '#ffffff', 1]); }
+      } }
       else if (o.type === 'chest') { if (now >= (st.world.chests[o.id] || 0)) { out.push(['box', x, 0, z, 0.3, 1.1, 0.7, 0.8, '#8a5a32', 0], ['box', x, 0.7, z, 0.3, 1.12, 0.18, 0.82, '#e9b43a', 0.2]); shadows.push(['disc', x, 0.02, z, 0, 1.6, 1, 1.6, '#000000', 0]); } } else if (o.type === 'gift') { if (now >= (st.world.gifts[o.id] || 0)) { out.push(['box', x, 0, z, 0.6, 0.8, 0.8, 0.8, '#ff7fae', 0.15], ['box', x, 0, z, 0.6, 0.84, 0.84, 0.18, '#fff3b0', 0.3], ['box', x, 0, z, 0.6, 0.18, 0.84, 0.84, '#fff3b0', 0.3]); } } else if (o.type === 'areachest') { if (!st.claims[`areachest:${o.id}`]) { out.push(['box', x, 0, z, -0.2, 1.3, 0.9, 0.9, '#e9b43a', 0.25], ['box', x, 0.9, z, -0.2, 1.32, 0.2, 0.92, '#b5482f', 0]); } } else if (o.type === 'npc') {
         if (o.kind === 'raid') out.push(['box', x + 1.4, 0, z - 0.6, 0.4, 1.0, 2.6, 1.0, '#3d3a4a', 0], ['sphere', x + 1.4, 2.5, z - 0.6, 0, 0.6, 0.6, 0.6, '#c24bff', 0.9]);
         { // NPC-Figur: schaut zur Spielfigur, wenn sie in der Nähe ist, sonst nach Süden zur Kamera
@@ -509,7 +511,7 @@ export class Renderer3D {
     for (const o of w.map.objects) {
       const x = X(o.x), z = Z(o.y), d = Math.hypot(x - px, z - pz);
       if (d > 13) continue;
-      if (o.type === 'building') label(st.buildings[o.id] ? o.name : `${o.name} (bauen)`, x, 4.2, z, st.buildings[o.id] ? '#fff' : '#ffe08a');
+      if (o.type === 'building') label(st.buildings[o.id] ? o.name : `${o.name} (bauen)`, X(o.bx ?? o.x), 4.2, Z(o.by ?? o.y), st.buildings[o.id] ? '#fff' : '#ffe08a');
       else if (o.type === 'npc') { label(o.name, x, 2.5, z, '#bfffcf'); const m = this.npcSt[o.id]; if (m && m !== 'busy') { ctx.font = '800 22px system-ui'; label(m === 'turnin' ? '?' : '!', x, 3.5, z, m === 'turnin' ? '#7dff9a' : '#ffd24a'); ctx.font = '600 12px system-ui'; } }
       else if (o.type === 'gatebar' && !o.open()) { const ar = game.c.by.areas.get(o.needs); label(`🔒 ${ar ? game.c.get('variants', ar.boss).name + ' besiegen' : ''}`, x, 3.4, z, '#ffb3c6'); } else if (o.type === 'gate') label(o.open() ? '▲ Weiter' : '🔒', x, 4.6, z, '#9fe3ff');
       else if (o.type === 'areachest' && !st.claims[`areachest:${o.id}`]) label('Gebietstruhe', x, 1.8, z, '#ffe08a');

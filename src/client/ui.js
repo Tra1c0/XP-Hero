@@ -107,6 +107,22 @@ function autoTalk(w) {
   const st = meta.npcStatus(game.g, o);
   if (st === 'turnin' || st === 'offer') talk(o);
 }
+// Trittfeld eines Gebäudes betreten -> es öffnet sich von selbst (einmal je Besuch; erst nach dem Verlassen wieder). Unfertige Gebäude werden gebaut,
+// wenn die Mittel reichen, sonst nennt ein Hinweis die Kosten. Kein Knopf, kein Tippen nötig.
+let steppedOn = null;
+const BPANEL = { bonfire: ['hero', 'abilities'], smithy: ['smithy', 'craft'], chesthouse: ['base'], portal: ['map'], raidcamp: ['modes', 'raid'], costumeshop: ['heroes', 'heroes'], lumbermill: ['base'], quarry: ['base'] };
+function autoOpen(w) {
+  const o = w.near && w.near.type === 'building' ? w.near : null;
+  if (!o) { steppedOn = null; return; }
+  if (steppedOn === o.id || cur || speech || document.querySelector('.modal,.reveal')) return;
+  steppedOn = o.id;
+  const g = game.g, d = game.c.get('buildings', o.id), st = game.state.buildings[o.id];
+  if (st && w.p.auto) return; // Auto-Jagd läuft nur über das Feld hinweg: nichts aufklappen
+  if (!st) { if (econ.canAfford(g, d.cost)) act('build', o.id); else toast(`${d.name} bauen: ${fmtCost(d.cost)}`); return; }
+  if (d.produce && home.production(g, o.id) > 0) { act('collectProduction', o.id); return; }
+  const [panel, feat] = BPANEL[o.id] || ['base'];
+  open(feat && !has(feat) ? 'base' : panel);
+}
 // ---------------------------------------------------------------- Panels
 const P = {};
 P.quests = () => {
@@ -676,8 +692,8 @@ export function hud() {
   $('auto').classList.toggle('on', w.p.auto);
   $('homebtn').hidden = !!w.mode || s.world.area === 'base'; $('abort').hidden = !w.mode;
   $('bonus').hidden = !meta.randomRewardReady(g) || !!w.mode;
-  if (!w.mode) autoTalk(w);
-  $('ctx').hidden = !w.near || !!speech || !!document.querySelector('.modal'); if (w.near) $('ctx').textContent = w.near.type === 'building' ? `${w.near.name} öffnen` : `Mit ${w.near.name} sprechen`;
+  if (!w.mode) { autoTalk(w); autoOpen(w); }
+  { const n = w.near && w.near.type === 'npc' ? w.near : null; $('ctx').hidden = !n || !!speech || !!document.querySelector('.modal'); if (n) $('ctx').textContent = `Mit ${n.name} sprechen`; }
   $('area').textContent = w.mode ? 'Arena' : s.world.area === 'base' ? 'Basis' : game.c.get('areas', s.world.area).name;
   document.documentElement.style.fontSize = `${16 * s.settings.textScale}px`;
   drawNav();
@@ -711,5 +727,5 @@ export function init(gm, nt) {
   $('homebtn').addEventListener('click', () => act('returnHome'));
   $('abort').addEventListener('click', () => modal('Runde abbrechen?', 'Das Ticket ist verbraucht, es gibt keine Belohnung.', [['Weiter spielen', null], ['Abbrechen', () => act('abortMode'), 'warn']]));
   $('bonus').addEventListener('click', () => reward('Bonus', act('claimRandomReward')));
-  $('ctx').addEventListener('click', () => { const o = game.world.near; if (o && o.type === 'npc') talk(o); else open('base'); });
+  $('ctx').addEventListener('click', () => { const o = game.world.near; if (o && o.type === 'npc') talk(o); });
 }

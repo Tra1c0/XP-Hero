@@ -3,7 +3,7 @@
 import { rnd, clamp } from './util.js';
 import { weaponDmg } from './progress.js';
 import { mobStats } from './content/base.js';
-import { buildGrid, slide, snap, walkable, zoneAt, los, findPath, cellAt } from './worldgrid.js';
+import { buildGrid, slide, snap, walkable, blocked, zoneAt, los, findPath, cellAt } from './worldgrid.js';
 
 const CELL = 180;
 const dist2 = (ax, ay, bx, by) => (ax - bx) * (ax - bx) + (ay - by) * (ay - by);
@@ -24,7 +24,17 @@ function buildWorldMap(g, W) {
   const at = (pos, zone, roam) => { const q = G.toPx(pos[0], pos[1]); return snap(G, q.x, q.y, 40, roam || !zone ? -1 : G.zoneIds.indexOf(zone)) || q; };
   const objects = [];
   const add = (type, row, r, extra = {}) => { const q = at(row.pos, null); objects.push({ ...row, type, x: q.x, y: q.y, r: r * ppm, ...extra }); };
-  for (const b of c.t.buildings) if (b.pos) { const q = G.toPx(b.pos[0], b.pos[1]); objects.push({ type: 'building', id: b.id, name: b.name, x: q.x, y: q.y, r: 2.4 * ppm, pos: b.pos }); }
+  // Gebäude: Das Trittfeld liegt vor dem Gebäude (zur Kamera hin). Wer es betritt, öffnet das Gebäude – kein Knopf nötig.
+  // x/y = Trittfeld (Interaktion, Wegziel), bx/by = Standort des Gebäudes (Darstellung).
+  for (const b of c.t.buildings) if (b.pos) {
+    const q = G.toPx(b.pos[0], b.pos[1]); let pad = null;
+    for (const [dx, dz] of [[0, -2.7], [0, -3.3], [1.8, -2.4], [-1.8, -2.4], [2.8, -0.6], [-2.8, -0.6], [0, 3]]) {
+      const f = G.toPx(b.pos[0] + dx, b.pos[1] + dz);
+      if (walkable(G, f.x, f.y) && !blocked(G, f.x, f.y, 0.5 * ppm) && !c.t.buildings.some((o) => o !== b && o.pos && Math.hypot(o.pos[0] - b.pos[0] - dx, o.pos[1] - b.pos[1] - dz) < 2.6)) { pad = f; break; }
+    }
+    pad = pad || snap(G, q.x, q.y + 2.7 * ppm, 6) || q;
+    objects.push({ type: 'building', id: b.id, name: b.name, x: pad.x, y: pad.y, bx: q.x, by: q.y, r: 1.15 * ppm, pos: b.pos });
+  }
   for (const n of c.t.npcs) if (n.pos && inW(n.area)) add('npc', n, 2.2);
   for (const s of c.t.chestSpawners) if (s.pos && inW(s.area)) add('chest', s, 1.6);
   for (const s of c.t.giftSpawners) if (s.pos && inW(s.area)) add('gift', s, 1.6);
