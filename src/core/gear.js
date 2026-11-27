@@ -103,9 +103,9 @@ export function smithyTier(g) { return (g.state.buildings.smithy || {}).level ||
 export function craft(g, n = 1) {
   need(g, 'craft');
   const tier = smithyTier(g) || fail('locked', 'Smithy fehlt');
-  const row = g.c.get('smithy', tier), gold = g.c.cfg.craftCost[tier - 1];
+  const row = g.c.get('smithy', tier), crystal = g.c.cfg.craftCost[tier - 1];
   if (!(n >= 1 && n <= 100)) fail('bad_amount');
-  pay(g, { gold }, 'craft', '', n);
+  pay(g, { crystal }, 'craft', '', n);
   const rows = [...row.rates.map((r) => ({ w: r.w, rarity: r.rarity })), { w: row.otherW, other: true }], out = [];
   for (let k = 0; k < n; k++) {
     const r = pickWeighted(g.state.rng, 'craft', rows);

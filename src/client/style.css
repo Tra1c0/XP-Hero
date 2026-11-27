@@ -170,3 +170,20 @@ input { background:var(--cream); color:var(--ink); border:3px solid var(--ink); 
 .fcard { flex:1; min-width:0; background:var(--cream); color:var(--woodDD); border:3px solid var(--ink); border-radius:10px; padding:8px; font-size:.8rem; display:grid; gap:2px; } .fcard .ot { font-size:.8rem; }
 .farrow { padding-left:26px; } .fmats { display:flex; align-items:center; gap:8px; } .fmats .tile { width:62px; flex:0 0 62px; } .forge > .b { justify-self:end; }
 .hpage .sub, .fcard .sub { color:#7a5a3c; }
+
+/* Waffenblatt */
+.wsheet { position:relative; padding:0 12px 12px; overflow:visible auto; }
+.wbanner { margin:0 48px 12px 22px; border-top:0; border-radius:0 0 10px 10px; padding:6px 8px 9px; text-align:center; text-transform:uppercase; font-size:1.05rem; color:#fff; background:linear-gradient(#ffc44d,var(--pri)); border:3px solid var(--ink); border-radius:10px; clip-path:polygon(0 0,100% 0,100% 78%,50% 100%,0 78%); }
+.wbanner small { display:block; font-size:.78rem; color:#ffe9b8; -webkit-text-stroke:0; text-shadow:none; }
+.wsheet .x { position:absolute; right:7px; top:7px; width:40px; height:40px; border-radius:11px; border:3px solid var(--ink); background:linear-gradient(#f06a55,var(--red)); color:#fff; font:900 18px/1 system-ui; }
+.wtop { display:flex; align-items:center; gap:10px; margin-bottom:10px; } .wtile { position:relative; flex:0 0 78px; height:78px; display:grid; place-items:center; border:3px solid var(--ink); border-radius:12px; box-shadow:inset 0 0 0 3px #fff5; }
+.wtile .lvt { position:absolute; left:4px; top:2px; font-size:.7rem; color:#fff; } .wpow { flex:1; min-width:0; } .wpow .big { display:flex; align-items:center; gap:6px; font-size:1.7rem; color:#fff; line-height:1.1; }
+.bar.wlv { height:18px; background:#5e4a3c; border:2px solid var(--ink); } .bar.wlv i { background:linear-gradient(#ffe45a,#f0b429); } .bar.wlv span { line-height:14px; font-size:.74rem; color:#fff; text-align:left; padding-left:8px; }
+.b.sq { flex:0 0 40px; width:40px; min-height:40px; padding:0; display:grid; place-items:center; background:linear-gradient(#e58a6a,#c9603f); }
+.wsec { background:var(--creamD); border-radius:10px; overflow:hidden; margin-bottom:9px; } .wsh { background:#c9a57a; color:#fff; text-align:center; font-size:.85rem; padding:2px; -webkit-text-stroke-width:2.5px; } .wsb { padding:7px 9px; font-size:.82rem; }
+.wopt { display:inline-flex; gap:14px; align-items:center; background:var(--cream); border-radius:8px; padding:3px 10px; font-weight:800; color:#a4502a; } .wopt b { color:#fff; }
+.wskill { display:flex; gap:9px; align-items:center; } .wski { flex:0 0 46px; height:46px; display:grid; place-items:center; background:linear-gradient(#ffc44d,var(--pri)); border:3px solid var(--ink); border-radius:9px; } .wskill b { color:#7a2d14; font-size:.95rem; }
+.wmerge { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.wfoot { display:flex; gap:9px; align-items:flex-end; margin-top:4px; } .wcol { flex:1; min-width:0; display:grid; gap:4px; } .wcol .b.big { width:100%; min-height:50px; font-size:1.05rem; display:flex; align-items:center; justify-content:center; gap:5px; }
+.wcost { display:flex; justify-content:center; gap:10px; background:#c9a57a; border-radius:8px 8px 0 0; margin:0 10px -4px; padding:2px 6px 5px; font-size:.74rem; color:#fff; } .wcost span { display:flex; align-items:center; gap:2px; } .wcost .miss { color:#ffb0a6; }
+.wmini { display:flex; justify-content:center; } .wsheet .umax { text-align:center; font-size:1.3rem; color:#fff; padding:10px 0; }

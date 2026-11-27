@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 201yrhtygd6).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint u9q6fvald).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -11,7 +11,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 
 | Tabelle | Zeilen | Status | Zeilen nach Status | Hinweis |
 |---|---|---|---|---|
-| items | 31 | D | D:23 ?:1 E:6 B:1 | Währungen/Items laut Abschnitt 11; nicht alle 116 Originalitems bekannt. |
+| items | 32 | D | D:23 ?:1 E:6 B:2 | Währungen/Items laut Abschnitt 11; nicht alle 116 Originalitems bekannt. |
 | areas | 20 | D | D:20 | 20 Gebiete, 19 Gates; Kartenlayout/Koordinaten eigen (E). |
 | monsters | 138 | E | E:138 | 206 Monster/246 Varianten im Original; hier dokumentierte Beispiele (D) + eigene Platzhalter. |
 | variants | 141 | E | D:10 E:89 B:42 | Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops). |
@@ -79,7 +79,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | statCaps | E | `{"critChance":100,"cooldownPct":70,"atkSpeedPct":400,"moveSpeedPct":150,"lifesteal":50,"multiHit":100,"trip…` | Obergrenzen; Kritchance <= 100. |
 | combat | R | `{"subIntervalMult":2.2,"subDmgMult":0.6,"dropDespawnSec":90,"respawnOfflineContinues":true,"defaultRespawnS…` | Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt. |
 | weaponLevelCost | E | `{"scrollPer5":1,"goldBase":50}` | Scrolls = ceil(L/5)*(1+r); Gold = goldBase*L*(1+r)^2. |
-| craftCost | E | `[20,60,200,500,1500,4000,10000,25000]` | Gold je Schmiedevorgang pro Schmiedestufe. |
+| craftCost | R | `[3,5,8,12,18,25,35,50]` | Kristalle je Schmiedevorgang pro Schmiedestufe: Währung nach Vorlage (B), Mengen eigen. |
 | weaponSlots | ? | `[{"slot":1},{"slot":2,"quest":true},{"slot":3,"level":20,"cost":{"gold":20000}},{"slot":4,"level":40,"cost"…` | Slot 2 per Quest (D); Slots 3-6 eigene Kosten. |
 | traits | ? | `{"slots":5,"presets":3,"rerollCost":{"attr_point":10},"lockSurcharge":0.5}` | Slotzahl, Rollkosten und Lockkosten eigen. |
 | runes | ? | `{"slots":6,"slotLevels":[1,60,90,120,160,200],"dismantleRefundPct":80,"milestoneEvery":10,"milestonePct":10}` | Slots und Refund eigen. |

@@ -52,7 +52,7 @@ export function buildBaseContent(opt = {}) {
   C('combat', { subIntervalMult: 2.2, subDmgMult: 0.6, dropDespawnSec: 90, respawnOfflineContinues: true, defaultRespawnSec: 30, bossRespawnSec: 3600, tick: 1 / 30 }, 'R',
     'Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt.');
   C('weaponLevelCost', { scrollPer5: 1, goldBase: 50 }, 'E', 'Scrolls = ceil(L/5)*(1+r); Gold = goldBase*L*(1+r)^2.');
-  C('craftCost', [20, 60, 200, 500, 1500, 4000, 10000, 25000], 'E', 'Gold je Schmiedevorgang pro Schmiedestufe.');
+  C('craftCost', [3, 5, 8, 12, 18, 25, 35, 50], 'R', 'Kristalle je Schmiedevorgang pro Schmiedestufe: Währung nach Vorlage (B), Mengen eigen.');
   C('weaponSlots', [{ slot: 1 }, { slot: 2, quest: true }, { slot: 3, level: 20, cost: { gold: 20000 } }, { slot: 4, level: 40, cost: { gold: 200000 } },
     { slot: 5, level: 70, cost: { gold: 1500000 } }, { slot: 6, level: 110, cost: { gold: 8000000 } }], '?', 'Slot 2 per Quest (D); Slots 3-6 eigene Kosten.');
   C('traits', { slots: 5, presets: 3, rerollCost: { attr_point: 10 }, lockSurcharge: 0.5 }, '?', 'Slotzahl, Rollkosten und Lockkosten eigen.');
@@ -88,6 +88,7 @@ export function buildBaseContent(opt = {}) {
     I('invasion_coin', 'Invasion Coin'), I('raid_coin', 'Boss-Rank-Münze', 'currency', { s: 'E' }), I('spin_ticket', 'Spin-Ticket', 'ticket', { s: 'E' }),
     I('loot_c1', 'Beute Kap. 1', 'cargo', { cargo: 1, sell: 4, s: 'E' }), I('loot_c2', 'Beute Kap. 2', 'cargo', { cargo: 1, sell: 60, s: 'E' }),
     I('loot_c3', 'Beute Kap. 3', 'cargo', { cargo: 1, sell: 600, s: 'E' }),
+    I('crystal', 'Kristall', 'currency', { cargo: 1, s: 'B', note: 'Grüner Kristall der Kopfleiste: Schmiede-Währung (B). Wird als Fracht getragen und in der Basis gutgeschrieben; Drop-Mengen eigen.' }),
   ]);
 
   // ------------------------------------------------------------------ Welt
@@ -223,6 +224,7 @@ export function buildBaseContent(opt = {}) {
   for (const a of areas) { ci = a.chapter === pc ? ci + 1 : 1; pc = a.chapter; a.minimap = a.chapter === 1 ? MM1[ci - 1] : [{ item: 'gems', n: ci === 7 ? 1000 : 200 }]; }
   T('areas', 'D', '20 Gebiete, 19 Gates; Kartenlayout/Koordinaten eigen (E).', areas);
   T('monsters', 'E', '206 Monster/246 Varianten im Original; hier dokumentierte Beispiele (D) + eigene Platzhalter.', monsters);
+  for (const v of variants) if (v.drops.length) v.drops.push(v.rank === 'normal' ? { item: 'crystal', n: 1, count: 1, chance: 0.5 } : { item: 'crystal', n: v.rank === 'boss' ? 10 : 3, count: 1, chance: 1 });
   T('variants', 'E', 'Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops).', variants);
   T('spawnGroups', 'R', 'Kapitel 1: 124 platzierte Spawnknoten mit Monster, Position, Respawn und Patrol aus den Szenendaten (D). Kapitel 2/3: 71/58 Gruppen (D), Position eigen.', groups);
   T('resourceGroups', 'E', 'Rohstoffstellen als angreifbare Knoten.', resGroups);

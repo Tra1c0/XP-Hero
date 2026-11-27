@@ -50,7 +50,7 @@ const ICONS = {
   hero: () => `<g ${O}><ellipse cx="24" cy="44" rx="14" ry="3" fill="#0003" stroke="none"/><path d="M15 26H33V38H27V44H21V38H15Z" fill="#ffb02e"/><path d="M8 27H15V36H8ZM33 27H40V36H33Z" fill="#8a5a3c"/><path d="M15 31H33V35H15Z" fill="#7a4a2c"/><rect x="14" y="6" width="20" height="20" rx="5" fill="#ffc94a"/><path d="M22 6H26V26H22Z" fill="#3f8ee0"/><path d="M19 2H29V7H19Z" fill="#7a5236"/></g>`,
 };
 const ITEM = { gold: ['coin'], gems: ['gem'], exp: ['drop', '#ff9a2e'], orb_red: ['orb', '#ff5a5a'], orb_pink: ['orb', '#ff7fd0'], orb_ice: ['orb', '#7fd8ff'], orb_jungle: ['orb', '#6fd36a'], orb_hell: ['orb', '#b04bff'],
-  bluestone: ['crystal', '#5aa9ff'], rune_dust: ['star', '#b7f0ff'], weapon_scroll: ['scroll'], wood: ['log'], stone: ['rock'], evo_coin: ['coin', '#c68bff'], attr_point: ['gem', '#6fd36a'], synergy_point: ['gem', '#ffb02e'],
+  bluestone: ['crystal', '#5aa9ff'], crystal: ['crystal'], rune_dust: ['star', '#b7f0ff'], weapon_scroll: ['scroll'], wood: ['log'], stone: ['rock'], evo_coin: ['coin', '#c68bff'], attr_point: ['gem', '#6fd36a'], synergy_point: ['gem', '#ffb02e'],
   key_warrior: ['key', '#7fd8ff'], key_stier: ['key', '#c24bff'], key_special_hero: ['key', '#ffd24a'], hero_select_ticket: ['ticket', '#ff7fd0'], ticket_tower: ['ticket', '#8f7ad9'], ticket_invasion: ['ticket', '#5aa9e6'],
   ticket_raid: ['ticket', '#e5503f'], ticket_tomb: ['ticket', '#6fd8ff'], ticket_pvp: ['ticket', '#f0c14b'], invasion_coin: ['coin', '#5aa9e6'], raid_coin: ['coin', '#e5503f'], spin_ticket: ['ticket', '#4fd34a'],
   loot_c1: ['bag'], loot_c2: ['bag'], loot_c3: ['bag'] };

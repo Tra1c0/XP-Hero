@@ -160,18 +160,33 @@ function betterWeapon() {
 }
 const wIcon = (w, size) => icon(game.c.get('weapons', w.def).cls, null, size);
 const rarCol = (w) => game.c.get('rarities', game.c.get('weapons', w.def).rarity).color;
-function weaponSheet(w) {
-  const g = game.g, c = game.c, ws = game.state.weapons, d = c.get('weapons', w.def), eq = ws.slots.indexOf(w.uid), mp = gear.mergePreview(g, w.uid), mx = c.get('rarities', d.rarity).maxLevel;
-  const free = ws.slots.findIndex((u, i) => i > 0 && i < ws.unlocked && !u), b = [];
-  if (eq !== 0) b.push(['Haupt', () => act('equipWeapon', w.uid, 0), 'pri']);
-  if (ws.unlocked > 1 && eq < 1) b.push(['Neben', () => act('equipWeapon', w.uid, free > 0 ? free : 1), 'blue']);
-  if (eq >= 0) b.push(['Ablegen', () => act('unequipWeapon', eq)]);
-  if (w.level < mx) b.push(['+1', () => { act('weaponLevelUp', w.uid, 1); }, 'go'], ['Max', () => act('weaponLevelUp', w.uid, 'max'), 'go']);
-  if (mp.ok) b.push(['Verbinden', () => act('mergeWeapon', w.uid), 'blue']);
-  b.push([w.lock ? 'Entsperren' : 'Sperren', () => act('toggleWeaponLock', w.uid)], ['Schließen', null]);
-  modal(d.name, h('div', {}, h('p', {}, `Stufe ${w.level}/${mx} · Schaden ${fmt(prog.weaponDmg(g, w))}${d.skill ? ' · Skill: ' + c.get('skills', d.skill).name : ''}`),
-    w.level < mx ? h('p', {}, 'Nächste Stufe: ', costEl(gear.weaponLevelCost(g, w, w.level + 1))) : null,
-    mp.next ? h('p', { cls: 'sub' }, `Verbinden → ${mp.next.name}: ${mp.ok ? 'möglich' : mp.reason}`) : h('p', { cls: 'sub' }, 'Endstufe dieser Reihe')), b);
+// Waffenblatt (Aufbau nach Vorlage): Banner, Kachel + Stärke + Stufenbalken, Option, Fertigkeit, Verbinden, unten Ausrüsten / Aufwerten mit Kosten.
+function weaponSheet(w0) {
+  const uid = w0.uid, m = h('div', { cls: 'modal' }), shut = () => m.remove();
+  m.addEventListener('click', (e) => { if (e.target === m) shut(); });
+  const draw = () => {
+    const g = game.g, c = game.c, ws = game.state.weapons, w = ws.list.find((x) => x.uid === uid);
+    if (!w) return shut();
+    const d = c.get('weapons', w.def), rar = c.get('rarities', d.rarity), cl = c.get('weaponClasses', d.cls), eq = ws.slots.indexOf(w.uid), mp = gear.mergePreview(g, w.uid), mx = rar.maxLevel;
+    const free = ws.slots.findIndex((u, i) => i > 0 && i < ws.unlocked && !u), cost = w.level < mx ? gear.weaponLevelCost(g, w, w.level + 1) : null, can = cost && econ.canAfford(g, cost);
+    const sk = d.skill ? c.get('skills', d.skill) : null, go = (...a) => { act(...a); draw(); };
+    const sect = (title, ...kids) => h('div', { cls: 'wsec' }, h('div', { cls: 'wsh ot' }, '✦ ', t(title), ' ✦'), h('div', { cls: 'wsb' }, ...kids));
+    const mainEq = eq === 0, better = !mainEq && betterWeapon();
+    m.replaceChildren(h('div', { cls: 'box wsheet' },
+      h('div', { cls: 'wbanner ot' }, d.name.replace(/\s*\(.*\)$/, ''), h('small', {}, rar.name)), h('button', { cls: 'x', 'aria-label': 'Schließen', on: shut }, '✕'),
+      h('div', { cls: 'wtop' }, h('div', { cls: 'wtile', style: `background:${rar.color}` }, h('span', { cls: 'lvt ot' }, `Lv.${w.level}`), wIcon(w, 58)),
+        h('div', { cls: 'wpow' }, h('div', { cls: 'ot big' }, icon('sword', null, 26), fmt(prog.weaponDmg(g, w))), h('div', { cls: 'bar wlv' }, h('i', { style: `width:${(100 * w.level) / mx}%` }), h('span', { cls: 'ot' }, `Lv: ${w.level}/${mx}`))),
+        h('button', { cls: 'b sq' + (w.lock ? ' warn' : ''), 'aria-label': w.lock ? 'Entsperren' : 'Sperren', title: w.lock ? 'Gesperrt: wird nicht verbunden' : 'Sperren', on: () => go('toggleWeaponLock', w.uid) }, icon('lock', '#fff', 22))),
+      cl.passive && cl.passive.v ? sect('Option', h('div', { cls: 'wopt' }, h('span', {}, sn(cl.passive.stat).replace(' %', '')), h('b', { cls: 'ot' }, `${Math.round(cl.passive.v * (1 + d.rarity * 0.25) * 100) / 100}%`))) : null,
+      sk ? sect('Fertigkeit', h('div', { cls: 'wskill' }, h('span', { cls: 'wski' }, icon(STAT_ICON.skillDmgPct, null, 30)), h('div', {}, h('b', {}, sk.name), h('div', { cls: 'sub' }, `Trifft ${sk.hits > 1 ? sk.hits + '-mal ' : ''}mit ${Math.round(sk.mult * 100)} % Schaden · Abklingzeit ${sk.cd}s`)))) : null,
+      sect('Verbinden', mp.next ? h('div', { cls: 'wmerge' }, h('span', {}, `${d.mergeCount}× gleiche Waffe → ${mp.next.name}`), mp.ok ? btn('Verbinden', () => go('mergeWeapon', w.uid), false, 'blue') : h('span', { cls: 'sub' }, mp.reason)) : h('div', { cls: 'sub' }, 'Endstufe dieser Reihe')),
+      h('div', { cls: 'wfoot' },
+        h('div', { cls: 'wcol' }, ws.unlocked > 1 && eq !== 0 ? h('div', { cls: 'wmini' }, eq > 0 ? btn('Ablegen', () => go('unequipWeapon', eq), false, 'sm') : btn('Als Nebenwaffe', () => go('equipWeapon', w.uid, free > 0 ? free : 1), false, 'sm blue')) : null,
+          h('span', { cls: better ? 'badge thumbb' : '', style: 'position:relative;display:block' }, mainEq ? btn('Ablegen', () => go('unequipWeapon', 0), false, 'big') : btn('Ausrüsten', () => go('equipWeapon', w.uid, 0), false, 'big pri'))),
+        h('div', { cls: 'wcol' }, cost ? h('div', { cls: 'wcost ot' }, Object.entries(cost).map(([i, n]) => h('span', { cls: econ.bal(g, i) >= n ? '' : 'miss' }, itemIcon(i, 18), `${fmt(econ.bal(g, i))}/${fmt(n)}`))) : null,
+          cost ? h('button', { cls: 'b big ' + (can ? 'go' : ''), on: () => go('weaponLevelUp', w.uid, 1) }, icon('up', null, 22), t('Aufwerten')) : h('b', { cls: 'umax ot' }, 'MAX')))));
+  };
+  draw(); document.body.append(m);
 }
 P.weapons = () => {
   const g = game.g, s = game.state, ws = s.weapons, c = game.c, ns = gear.nextWeaponSlot(g);
@@ -198,7 +213,7 @@ P.smithy = () => {
   const g = game.g, c = game.c, tier = gear.smithyTier(g), sm = tier && c.get('smithy', tier), up = home.buildingUpgradeCost(g, 'smithy');
   if (!tier) return [h('p', { cls: 'center' }, t('Baue zuerst die Smithy in der Basis.'))];
   return [chips('orb_red', 'orb_pink', 'gold'), sec(`Schmiede Stufe ${tier}/8`, h('p', { cls: 'sub' }, 'Raten: ' + sm.rates.map((r) => `${c.get('rarities', r.rarity).name} ${r.w}%`).join(' · ') + (sm.otherW ? ` · Sonstiges ${sm.otherW}% (eigener Wert)` : '')),
-    row('Schmieden', costEl({ gold: c.cfg.craftCost[tier - 1] }), btn('x1', () => reward('Geschmiedet', act('craft', 1)), false, 'pri'), btn('x10', () => reward('Geschmiedet', act('craft', 10)), false, 'pri')),
+    row('Schmieden', costEl({ crystal: c.cfg.craftCost[tier - 1] }), btn('x1', () => reward('Geschmiedet', act('craft', 1)), false, 'pri'), btn('x10', () => reward('Geschmiedet', act('craft', 10)), false, 'pri')),
     up ? row('Schmiede verbessern', costEl(up), btn('Upgrade', () => act('upgradeBuilding', 'smithy'), false, 'go')) : row('Endstufe erreicht', ''))];
 };
 const KIND_COL = { currency: '#f7b24a', key: '#f58fb0', ticket: '#cfd8e3', material: '#cfd8e3', cargo: '#b7c7d9' };
@@ -512,13 +527,13 @@ export function render() {
 }
 function drawNav() {
   const g = game.g, tier = gear.smithyTier(g), cost = tier ? game.c.cfg.craftCost[tier - 1] : 0;
-  const n = notices(), key = BAR.map(([, , f]) => (f.some(has) ? 1 : 0)).join('') + cur + tier + (econ.bal(g, 'gold') >= cost) + [n.merge, n.better, n.modes, n.shop].join();
+  const n = notices(), key = BAR.map(([, , f]) => (f.some(has) ? 1 : 0)).join('') + cur + tier + (econ.bal(g, 'crystal') >= cost) + [n.merge, n.better, n.modes, n.shop].join();
   if (drawNav.key === key) return;
   drawNav.key = key;
   $('nav').replaceChildren(...BAR.map(([id, ic, f]) => {
     const ok = f.some(has), locked = () => toast('Noch nicht freigeschaltet – folge den Quests.');
     if (id === 'craft') return h('button', { cls: 'nb craft' + (ok ? '' : ' locked'), 'aria-label': 'Schmieden', on: () => (!ok ? locked() : !tier ? toast('Baue zuerst die Smithy in der Basis.') : reward('Geschmiedet', act('craft', 1))) },
-      tier ? h('span', { cls: 'tier ot' }, tier) : null, icon(ic, null, 38), h('span', { cls: 'info ot' }, 'x1', h('small', { cls: econ.bal(g, 'gold') >= cost ? '' : 'cost miss' }, tier ? [itemIcon('gold', 13), fmt(cost)] : '—')));
+      tier ? h('span', { cls: 'tier ot' }, tier) : null, icon(ic, null, 38), h('span', { cls: 'info ot' }, 'x1', h('small', { cls: econ.bal(g, 'crystal') >= cost ? '' : 'cost miss' }, tier ? [itemIcon('crystal', 13), fmt(cost)] : '—')));
     const mark = ok && ((id === 'modes' && n.modes) || (id === 'shop' && n.shop));
     return h('button', { cls: 'nb' + (cur === id ? ' on' : '') + (ok ? '' : ' locked') + (mark ? ' badge' : ''), 'aria-label': TITLES[id], on: () => (!ok ? locked() : cur === id ? close() : open(id)) }, icon(ic, null, 36),
       id === 'weapons' && ok && n.better ? h('span', { cls: 'thumb' }, icon('thumb', null, 14)) : null,
@@ -542,7 +557,7 @@ export function hud() {
   const g = game.g, s = game.state, w = game.world, st = game.stats, p = s.player;
   const need = prog.xpNeed(g, Math.min(p.level, game.c.t.playerLevels.length));
   $('lv').textContent = p.level; $('xpf').style.width = `${Math.min(100, (100 * p.xp) / need)}%`; $('xpt').textContent = `${fmt(p.xp)}/${fmt(need)}`;
-  $('c_gold').textContent = fmt(econ.bal(g, 'gold')); $('c_gems').textContent = fmt(econ.bal(g, 'gems')); $('c_third').textContent = fmt(econ.bal(g, 'weapon_scroll'));
+  $('c_gold').textContent = fmt(econ.bal(g, 'gold')); $('c_gems').textContent = fmt(econ.bal(g, 'gems')); $('c_third').textContent = fmt(econ.bal(g, 'crystal'));
   const used = home.cargoUsed(g);
   $('cargo').textContent = w.mode ? `${w.mode.kind.toUpperCase()} · Welle ${w.wave + 1}/${w.mode.waves.length} · ${Math.ceil(w.timer)}s` : `FRACHT (${fmt(used)}/${fmt(st.cargo)})`;
   $('cargo').style.setProperty('--p', w.mode ? '0%' : `${Math.min(100, (100 * used) / Math.max(1, st.cargo))}%`);
@@ -588,7 +603,7 @@ export function init(gm, nt) {
   game = gm; net = nt;
   const put = (id, ic, col, size = 28) => $(id).append(icon(ic, col, size));
   put('b_menu', 'menu'); put('b_pass', 'pass'); put('bonus', 'gift'); put('b_missions', 'missions'); put('b_map', 'map'); put('b_chest', 'chest'); put('homebtn', 'home'); put('auto', 'target');
-  document.querySelector('#p_gold .slot').append(icon('coin', null, 26)); document.querySelector('#p_gems .slot').append(icon('gem', null, 26)); document.querySelector('#p_third .slot').append(icon('scroll', null, 26));
+  document.querySelector('#p_gold .slot').append(icon('coin', null, 26)); document.querySelector('#p_gems .slot').append(icon('gem', null, 26)); document.querySelector('#p_third .slot').append(icon('crystal', null, 26));
   $('pclose').addEventListener('click', close);
   $('b_menu').addEventListener('click', () => (cur === 'menu' ? close() : open('menu')));
   $('b_pass').addEventListener('click', () => { notes.t = 0; tab.ev = notices().passTab || tab.ev || 'level'; open('events'); });

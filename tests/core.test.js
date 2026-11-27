@@ -185,7 +185,7 @@ test('T08 Gacha: Kosten atomar, Pity, Meilensteine, deterministische Seeds, Rate
 
 test('T09 Waffen: Schmiede, Slots, Merge schützt ausgerüstete/gesperrte Waffen, kein Downgrade', () => {
   const { game, g, s, give, unlock } = mk({ seed: 3 });
-  unlock('craft', 'weaponVault'); give('gold', 1e9); give('weapon_scroll', 1e6);
+  unlock('craft', 'weaponVault'); give('gold', 1e9); give('crystal', 1e6); give('weapon_scroll', 1e6);
   assert.equal(code(() => game.cmd('craft', 1)), 'locked');
   game.cmd('build', 'smithy');
   const made = game.cmd('craft', 50);
