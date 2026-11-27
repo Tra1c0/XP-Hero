@@ -146,6 +146,8 @@ export function progress(g, cond, ctx = {}) {
   if (cond.flag !== undefined) return [s.flags[cond.flag] ? 1 : 0, 1];
   if (cond.unlock !== undefined) return [s.unlocks[cond.unlock] ? 1 : 0, 1];
   if (cond.cleared !== undefined) return [s.world.cleared[cond.cleared] ? 1 : 0, 1];
+  if (cond.questDone !== undefined) return [s.quests.done[cond.questDone] ? 1 : 0, 1];
+  if (cond.areaOpen !== undefined) { const a = g.c.by.areas.get(cond.areaOpen); return [a && (a.prev === 'base' || s.world.cleared[a.prev]) ? 1 : 0, 1]; }
   if (cond.building !== undefined) return [(s.buildings[cond.building] || {}).level || 0, cond.lv || 1];
   if (cond.upgrade !== undefined) return [s.upgrades[cond.upgrade] || 0, cond.gte];
   if (cond.towerBest !== undefined) return [s.modes.tower.best, cond.towerBest];

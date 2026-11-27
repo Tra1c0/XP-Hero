@@ -5,6 +5,7 @@
 // Zeilen können mit Feld `s` einen abweichenden Zeilenstatus tragen. Nichts hiervon ist Gameplay-Code.
 import { WORLD, BUILDINGS as W1_BUILDINGS, REF as W1 } from './world1.js';
 import { inPoly } from '../worldgrid.js';
+import { NPC_REF } from './npc_ref.js';
 
 export const SCHEMA = 1;
 export const RARITIES = ['Normal', 'Fine', 'Rare', 'Epic', 'Legendary', 'Ancient', 'Mythic', 'Exotic', 'Eternal'];
@@ -406,18 +407,40 @@ export function buildBaseContent() {
     { id: 'quarry', name: 'Quarry', x: 1220, y: 420, cost: { gold: 1613, wood: 15 }, unlock: [], max: 1, produce: { item: 'stone', perHour: 20, cap: 40 } },
     { id: 'costumeshop', name: 'CostumeShop', x: 620, y: 300, cost: { gold: 3954, wood: 20, stone: 10, orb_red: 5 }, unlock: [], max: 1 },
     { id: 'portal', name: 'Portal', x: 980, y: 300, cost: { gold: 5170 }, unlock: ['portal'], max: 1 },
+    { id: 'raidcamp', name: 'Raid Camp', x: 700, y: 500, cost: { gold: 8000, wood: 20, stone: 20 }, unlock: [], max: 1, s: 'B', note: 'Gebäude aus Ryans Questkette (D); Kosten eigen.' },
   ].map((b) => ({ ...b, pos: W1_BUILDINGS[b.id] })));
-  T('npcs', 'E', 'NPC-Daten/Dialoge des Originals nicht erfasst; eigene Platzhalter.', [
-    { id: 'npc_elder', name: 'Älteste', area: 'base', pos: [14, -6], text: 'Willkommen. Rings um die Siedlung liegen sechs Gebiete – Greenhaven im Süden ist offen.' },
-    { id: 'npc_scout', name: 'Späherin', area: 'a1_1', pos: W1.cain, text: 'Rootling haust zwischen den Wurzeln westlich von hier.' },
-    { id: 'npc_smith', name: 'Schmied', area: 'base', pos: [6, -7], text: 'Bring mir Gold, dann schmiede ich dir Waffen.' },
-    // Wegwächter an den Toren (Positionen = NPC_Taid_Stage2..5 der Referenz; Hellfire-Wächter eigen)
-    ...[...W1.guides, [6, 2, 44]].map(([st, X, Z]) => ({ id: `npc_guide_${st}`, name: 'Wegwächter', area: zoneOf(X, Z), pos: [X, Z], s: st === 6 ? 'E' : 'D',
-      text: `Der Weg nach ${AREA[st - 1][1]} öffnet sich, sobald ${AREA[st - 2][2]} besiegt ist.` })),
-    // Boss-Raid-Eingänge (Positionen = NPC_BossRaid_Stage_1..6 der Referenz)
-    ...W1.raids.map(([st, X, Z]) => ({ id: `npc_raid_${st}`, name: 'Raid-Stein', area: zoneOf(X, Z), pos: [X, Z], kind: 'raid', s: 'D',
-      text: 'Ein Raid-Stein. Boss Raids startest du im Menü „Modi“, sobald sie freigeschaltet sind.' })),
-  ]);
+  // Figuren und Standorte nach NpcData der Referenz (D). Dialogtexte sind EIGENE Texte; nur die Szenenstruktur (Anzahl, Freischaltquest) folgt der Referenz.
+  const SC = (id, after, ...lines) => ({ id, after, lines });
+  const stageArea = (n) => areas[n - 1];
+  const KAIN = [SC('k1', null, 'Du kommst von jenseits des Meeres? Dann bist du unsere letzte Hoffnung.', 'Sieben Tage hat der Angriff gedauert. Übrig ist nur diese Siedlung.'),
+    SC('k2', null, 'Die Mandragoras wühlen die Felder um. Fang mit ihnen an.'),
+    SC('k3', { questDone: 'q_001' }, 'Gut gemacht. Am Lagerfeuer in der Siedlung kannst du deine Kräfte ausbauen.'),
+    SC('k4', { cleared: 'a1_1' }, 'Rootling ist gefallen! Der Weg nach Westen in die Wüste ist frei.', 'Halte dort Ausschau nach Taid. Er kennt die Gegend.'),
+    SC('k5', { cleared: 'a1_2' }, 'Die Spinnenkönigin ist besiegt. Hinter der Wüste liegt Ebonhollow – dort scheint keine Sonne.'),
+    SC('k6', { cleared: 'a1_3' }, 'Der Gargoyle wachte über das Tor zum Eis. Zieh dich warm an.'),
+    SC('k7', { cleared: 'a1_4' }, 'Frostfang war nur ein Wächter. In den Ruinen herrscht die Elfenkönigin.'),
+    SC('k8', { cleared: 'a1_5' }, 'Bleibt nur noch der Schlund. Baal hat das alles begonnen.'),
+    SC('k9', { cleared: 'a1_6' }, 'Du hast die Zuflucht befreit. Hinter dem Schlund liegt eine neue Welt – man wird dich dort brauchen.')];
+  const TAID = { 2: 'Die Wüste verzeiht nichts. Ich habe Arbeit für dich, wenn du Gold und Orbs brauchst.', 3: 'Hier unten hört man die Toten flüstern. Hilf mir, dann helfe ich dir.',
+    4: 'Kalt genug? Die Frostgoblins plündern alles. Ich zahle gut.', 5: 'Schöne Ruinen, tödliche Rosen. Ich hätte da ein paar Aufträge.' };
+  const RYAN = ['Ich bin Ryan, Jäger alter Geheimnisse. In jedem Gebiet schläft ein uraltes Wesen – ich habe ihre Lager gefunden.',
+    'Hier haust die Kristallkrabbe. Sie kam übers Meer wie du.', 'Dieses Ödland war ein Schlachtfeld. Etwas Altes ruht darunter.', 'In diese Kathedrale fällt kein Licht. Nach dir.',
+    'Die Kälte hier kommt nicht vom Wetter. Ich warte am Feuer.', 'Die Feenkönigin der Ruinen – ist das nicht aufregend?', 'Man sagt, hier liege das Tor zur Hölle. Sei vorsichtig.'];
+  const npcRows = [
+    { id: 'npc_elder', char: 'elder', name: 'Älteste', area: 'base', pos: [14, -6], s: 'E', scenes: [SC('e1', null, 'Willkommen. Rings um die Siedlung liegen sechs Gebiete – Greenhaven im Süden ist offen.')] },
+    { id: 'npc_smith', char: 'smith', name: 'Schmied', area: 'base', pos: [6, -7], s: 'E', scenes: [SC('s1', null, 'Bring mir Gold, dann schmiede ich dir Waffen.')] },
+    { id: 'npc_kain', char: 'kain', name: 'Kain', area: 'a1_1', pos: W1.cain, s: 'D', scenes: KAIN },
+    ...W1.guides.map(([st, X, Z]) => ({ id: `npc_taid_${st}`, char: 'taid', name: 'Taid', area: zoneOf(X, Z), home: `a1_${st}`, pos: [X, Z], s: 'D', scenes: [SC(`t${st}`, null, TAID[st])] })),
+    { id: 'npc_ryan_0', char: 'ryan', name: 'Ryan', area: 'base', pos: [25, 1], s: 'R', scenes: [SC('r0', null, RYAN[0], 'Bau mir ein Raid-Lager, dann zeige ich dir, wie man sie herausfordert.')] },
+    ...W1.raids.map(([st, X, Z]) => ({ id: `npc_ryan_${st}`, char: 'ryan', name: 'Ryan', area: zoneOf(X, Z), pos: [X, Z], kind: 'raid', raid: `raid_${st}`, s: 'D', scenes: [SC(`r${st}`, null, RYAN[st], 'Wirst du das uralte Wesen herausfordern?')] })),
+    { id: 'npc_dnew', char: 'dnew', name: 'Dnew', area: 'a1_6', pos: [2, 66], s: 'D', scenes: [SC('d1', null, 'Bis hierher hat es kaum jemand geschafft. Der Schlund nimmt sich jeden.')] },
+    // Kapitel 2/3: Standort je Gebiet nach Referenz, Position auf der Einzelkarte eigen
+    ...[['lina', 'Lina', [7], 'Die Festung hält – noch. Gut, dass du da bist.'], ['hana', 'Hana', [8, 14], 'Triff mich vor der Hütte. Es gibt ein Grab, das du sehen solltest.'],
+      ['menivh', 'Menivh', [8, 9, 10, 11, 12], 'Die gefallenen Königreiche zahlen für jede helfende Hand.'], ['hero-chairman', 'Chairman', [15, 16, 17, 18, 19, 20], 'Du kämpfst. Ich finde heraus, wer dahintersteckt.']]
+      .flatMap(([ch, nm, stages, line], ci) => stages.map((st) => ({ id: `npc_${ch.replace('hero-', '')}_${st}`, char: ch.replace('hero-', ''), name: nm, area: stageArea(st).id, home: stageArea(st).id,
+        x: W / 2 + (ci % 2 ? 190 : -190), y: H - 300 - (ci > 1 ? 130 : 0), s: 'D', scenes: [SC(`${ch}_${st}`, null, line)] }))),
+  ];
+  T('npcs', 'R', '8 Figuren, 27 Standorte, Szenen-Freischaltung nach Referenz (D-Struktur); alle Dialogtexte und Älteste/Schmied sind eigen.', npcRows);
   T('worldObjects', 'D', 'Invasionsportale (Positionen der Referenz, dekorativ: Invasion läuft über das Menü) und Lagerfeuer.', [
     ...W1.invasion.map(([X, Z], k) => ({ id: `inv_${k}`, type: 'invportal', area: zoneOf(X, Z), pos: [X, Z] })),
     ...W1.campfires.map(([nm, X, Z], k) => ({ id: `fire_${k}`, type: 'campfire', ref: nm, area: zoneOf(X, Z), pos: [X, Z] })),
@@ -442,7 +465,7 @@ export function buildBaseContent() {
   Q('q_007', 'Baue die Smithy', { cond: { building: 'smithy' } }, G(60), { unlock: ['craft'], unlockOn: 'clear', s: 'D' });
   Q('q_008', 'Schmiede 3 Waffen', { counter: 'craft', n: 3, from: 'life' }, G(60));
   Q('q_009', 'Besiege 6 Mushrooms', kill('mushroom', 6), G(60));
-  Q('q_010', 'Sprich mit der Späherin', { counter: 'talk:npc_scout', n: 1, from: 'life' }, G(40));
+  Q('q_010', 'Sprich mit Kain', { counter: 'talk:npc_kain', n: 1, from: 'life' }, G(40));
   Q('q_011', 'Besiege 6 Spinnen', kill('spider', 6), G(80));
   const feat = {
     2: [['Besiege 15 Kakteen', kill('cactus', 15), { unlock: ['codex'], unlockOn: 'clear', s: 'D' }],
@@ -461,8 +484,6 @@ export function buildBaseContent() {
       ['Nutze ein Extra-Upgrade', { counter: 'upgrade:extra', n: 1, from: 'life' }, { unlock: ['extra'], unlockOn: 'receive', grant: [{ item: 'orb_ice', n: 6 }], s: 'E' }]],
     7: [['Wirke ein Soul-Upgrade', { counter: 'upgrade:soul', n: 1, from: 'life' }, { unlock: ['soul'], unlockOn: 'receive', grant: [{ item: 'orb_hell', n: 6 }], s: 'D' }],
       ['Rolle einen Trait', { counter: 'traitRoll', n: 1, from: 'life' }, { unlock: ['traits'], unlockOn: 'receive', grant: [{ item: 'attr_point', n: 30 }], s: 'D' }]],
-    8: [['Boss-Raid-Vorbereitung (#901003)', { cond: { level: 1 } }, { id: 'q_901003', unlock: ['raid'], unlockOn: 'clear', s: 'D' }]],
-    9: [['Betritt das Tomb of Heroes (#902002)', { counter: 'mode:tomb:clear', n: 1, from: 'life' }, { id: 'q_902002', unlock: ['tomb'], unlockOn: 'receive', unlock2: ['runes'], s: 'D' }]],
   };
   for (const a of areas) {
     const s = a.stage, ms = variants.filter((v) => v.rank === 'normal' && groups.some((g) => g.area === a.id && g.v === v.id));
@@ -471,7 +492,54 @@ export function buildBaseContent() {
     Q(`q_${a.id}_boss`, `Besiege ${a.name}-Boss ${AREA[s - 1][2]}`, { cond: { cleared: a.id } }, [{ item: 'gold', n: 150 * s * s }, { item: 'weapon_scroll', n: 3 }, ...(s === 5 ? [] : [])],
       s === 5 ? { unlock: ['heroEvolution', 'heroCollection'], unlockOn: 'clear', s: 'D' } : {});
   }
-  T('quests', 'R', 'Hauptquestkette (Original ca. 850 Einträge nicht erfasst): dokumentierte Unlock-Kopplungen (s=D) + eigene Gebietsquests.', quests);
+  // ---- NPC-Questketten aus QuestData der Referenz (Ziel, Menge, Belohnung = D). Annahme und Abgabe beim Questgeber.
+  const ABIL = { 'Hp Recovery': 'ab_regen', 'Critical Chance': 'ab_crit', 'Move Speed': 'ab_move', 'Attack Speed': 'ab_atkspeed' };
+  const ALIAS = { 'the elephant': 'gold_elephant', dragon: 'red_dragon', 'the dragon': 'red_dragon' };
+  const RAIDN = ['Crystal Crab', 'Anubis', 'Blood Lord', 'Frozen Bloom', 'Rosalia', 'Cerberus'];
+  const monstersIn = (areaId) => new Set(groups.filter((g) => g.area === areaId).map((g) => variants.find((v) => v.id === g.v).monster));
+  function npcObj(text, n, areaId) {
+    let m;
+    if (/^Hunt Any Enemies/.test(text)) return [`Besiege ${n} Gegner`, { counter: 'kill:any', n, from: 'accept' }];
+    if (/^Pick up Coins/.test(text)) return [`Sammle ${n} Gold von Gegnern`, { counter: 'coins', n, from: 'accept' }];
+    if (/^Hunt Any Boss/.test(text)) return ['Besiege einen Boss oder seltenen Gegner', { counter: 'kill:bossAny', n: 1, from: 'accept' }];
+    if (/^Upgrade any Ability/.test(text)) return ['Verbessere eine Ability', { counter: 'upgrade:ability', n: n || 1, from: 'accept' }];
+    if ((m = /^Upgrade (.+) to Lv\.(\d+)/.exec(text))) return [`Verbessere ${m[1]} auf Stufe ${m[2]}`, { cond: { upgrade: ABIL[m[1]], gte: Number(m[2]) } }];
+    if (/^Find and Bring the Chest/.test(text)) return ['Finde eine Feldtruhe und bring sie ins Key House', { counter: 'chest:pickup', n: 1, from: 'accept' }];
+    if ((m = /^Defeat the Raid Boss, (.+) \(Normal\)/.exec(text))) return [`Besiege den Raid-Boss ${m[1]}`, { counter: `raid:clear:raid_${RAIDN.indexOf(m[1]) + 1}`, n: 1, from: 'life' }];
+    if (/Speak with Hunter Ryan/.test(text)) return ['Sprich mit Jäger Ryan', { counter: 'talk:char:ryan', n: 1, from: 'life' }];
+    if (/^Build a Raid Camp/.test(text)) return ['Baue das Raid Camp', { cond: { building: 'raidcamp' } }];
+    if (/^Meet Hana/.test(text)) return ['Triff Hana vor der Hütte', { counter: 'talk:char:hana', n: 1, from: 'life' }];
+    if (/^Clear Heroes' Tomb/.test(text)) return ['Schließe Tomb of Heroes Stufe 1 ab', { counter: 'mode:tomb:clear', n: 1, from: 'life' }];
+    if ((m = /^(?:Hunt|Slay) (.+)/.exec(text))) {
+      const raw = m[1].toLowerCase(), have = monstersIn(areaId), cands = [ALIAS[raw], raw, raw.replace(/^the /, ''), raw.replace(/es$/, ''), raw.replace(/s$/, '')].filter(Boolean).map((x) => x.replace(/[^a-z0-9]+/g, '_'));
+      const hit = cands.find((c) => have.has(c));
+      if (hit) return [`Besiege ${n || 1}x ${m[1]}`, { counter: `kill:${hit}`, n: n || 1, from: 'accept' }];
+      const el = variants.find((v) => v.id === `e_${areaId}`); // Monster der Referenz existiert bei uns (noch) nicht -> Elite des Gebiets
+      return [`Besiege ${n || 1}x ${m[1]} (hier: ${el ? el.name : 'Elite'})`, { counter: `kill:${el ? el.monster : 'any'}`, n: n || 1, from: 'accept' }, 'E'];
+    }
+    return [text, { counter: 'kill:any', n: 10, from: 'accept' }, '?'];
+  }
+  function npcReward(text) {
+    const m = /^([\d,]+)×? (.+)$/.exec(text) || [], n = Number((m[1] || '1').replace(/,/g, '')), k = (m[2] || '').trim();
+    const map = { Gold: 'gold', 'Red Orb': 'orb_red', 'Pink Orb': 'orb_pink', 'Warrior Chest Key': 'key_warrior', 'Special Hero Chest Key': 'key_special_hero', 'Expert Chest Key': 'key_stier' };
+    if (map[k]) return [{ item: map[k], n }];
+    if (/^(Crimson|Azure|Soul) Orb$/.test(k)) return [{ alias: k.split(' ')[0].toLowerCase(), min: n, max: n }];
+    if (k === 'Hero Rune') return [{ rune: { rarity: 2, type: 'hero' } }];
+    if (k === 'EXP') return [{ item: 'gold', n: 500 }]; // EXP-Menge der Referenz bezieht sich auf die unbekannte Original-XP-Kurve
+    return [{ item: 'weapon_scroll', n: 5 }]; // Raid-Seelen (Water/Earth/... Orb) haben bei uns kein Gegenstück
+  }
+  const chainQ = (char, at, areaId, rows, start, extra = {}) => rows.forEach(([qid, text, n, rw], k) => {
+    const [name, obj, st] = npcObj(text, n, areaId);
+    quests.push({ id: `nq_${qid}`, name, giver: char, at, chain: `${char}:${at || 'all'}`, prereq: k ? [`nq_${rows[k - 1][0]}`] : [], start: k ? null : start, obj: [obj], reward: npcReward(rw), s: st || 'D', ...(extra[qid] || {}) });
+  });
+  for (const [char, key] of [['taid', 'taid'], ['menivh', 'menivh'], ['chairman', 'hero-chairman']]) {
+    const ref = NPC_REF[key], by = {};
+    for (const q of ref.quests) (by[Math.floor(q[0] / 1000)] ||= []).push(q);
+    Object.keys(by).sort((a, b) => a - b).forEach((g, k) => { const a = stageArea(ref.zones[k]); if (a) chainQ(char, `npc_${char}_${ref.zones[k]}`, a.id, by[g], { areaOpen: a.id }); });
+  }
+  chainQ('ryan', null, 'base', NPC_REF.ryan.quests, { cleared: 'a1_1' }, { 901001: { unlock: ['raid'], unlockOn: 'clear' } });
+  chainQ('hana', null, 'a2_2', NPC_REF.hana.quests, { areaOpen: 'a2_2' }, { 902001: { unlock: ['tomb'], unlockOn: 'clear' }, 902002: { unlock: ['runes'], unlockOn: 'clear' } });
+  T('quests', 'R', 'Hauptquestkette (Original ca. 850 Einträge nicht erfasst): dokumentierte Unlock-Kopplungen (s=D) + eigene Gebietsquests. Dazu 268 NPC-Kettenquests (id nq_*, Ziel/Menge/Belohnung D, Abgabe beim Questgeber).', quests);
 
   // ------------------------------------------------------------------ Claim-Tracks
   const tracks = [];
@@ -581,7 +649,7 @@ export function buildBaseContent() {
       waves: boss ? [[{ rank: 'normal', count: 6 }], [{ rank: 'boss', count: 1 }]] : [[{ rank: 'normal', count: 5 }], [{ rank: 'normal', count: 5 }, { rank: 'elite', count: 1 }]],
       first: [{ item: 'gems', n: 5 + Math.floor(f / 5) }, { item: 'gold', n: 100 * f * f }, ...(boss ? [{ item: 'synergy_point', n: 5 }, { item: 'exp', n: 2 }] : [])],
       repeat: [{ item: 'gold', n: 20 * f * f }], s: f === 151 ? 'D' : 'E' }; }));
-  T('raidBosses', 'E', '6 Spezialbosse (B); Namen, Werte, Wertung eigen.', [1, 2, 3, 4, 5, 6].map((k) => ({ id: `raid_${k}`, name: `Raid-Boss ${k}`, level: 100 + k * 45, hpMult: 60,
+  T('raidBosses', 'R', '6 Raid-Bosse mit Namen aus Ryans Questkette (D); Werte und Wertung eigen.', [1, 2, 3, 4, 5, 6].map((k) => ({ id: `raid_${k}`, name: ['Crystal Crab', 'Anubis', 'Blood Lord', 'Frozen Bloom', 'Rosalia', 'Cerberus'][k - 1], level: 100 + k * 45, hpMult: 60,
     tiers: [5, 20, 50, 100].map((pct, t) => ({ pct, reward: [{ item: 'weapon_scroll', n: 10 * (t + 1) * k }, { item: 'raid_coin', n: 30 * (t + 1) }, { item: ['orb_red', 'orb_pink', 'orb_ice', 'orb_jungle', 'orb_hell', 'orb_hell'][k - 1], n: 3 * (t + 1) }] })) })));
   T('tombTiers', 'R', '20 Schwierigkeits-/Dropstufen (D); Gegner, Typ-/Raritätsgewichte eigen.', Array.from({ length: 20 }, (_, k) => ({ tier: k + 1, level: 150 + k * 13,
     waves: [[{ rank: 'normal', count: 8 }], [{ rank: 'elite', count: 2 }, { rank: 'normal', count: 4 }], [{ rank: 'boss', count: 1 }]],

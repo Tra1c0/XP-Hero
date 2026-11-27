@@ -63,7 +63,7 @@ export const LANDMARKS = [
 ];
 
 // Basisgebäude (Gebäudedaten selbst bleiben in buildings). Portal an der Referenzposition des Stadtportals.
-export const BUILDINGS = { bonfire: [21, -3], smithy: [9, -2], chesthouse: [30, -4], lumbermill: [2, -6], quarry: [37, -5], costumeshop: [-5, 7], portal: REF.townPortal };
+export const BUILDINGS = { bonfire: [21, -3], smithy: [9, -2], chesthouse: [30, -4], lumbermill: [2, -6], quarry: [37, -5], costumeshop: [-5, 7], portal: REF.townPortal, raidcamp: [29, 0] };
 
 export const ENTRIES = { base: [19, -7], a1_1: [16, -29], a1_2: [-17, -6], a1_3: [8, 30], a1_4: [52, -12], a1_5: [74, 42], a1_6: [4, 63] };
 

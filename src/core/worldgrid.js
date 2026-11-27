@@ -117,9 +117,14 @@ export function snap(G, x, y, maxCells = 40, zone = -1) {
   return null;
 }
 // Sichtlinie über begehbare Zellen (Supercover in halben Zellschritten)
-export function los(G, ax, ay, bx, by) {
-  const d = Math.hypot(bx - ax, by - ay), n = Math.ceil(d / (G.cpx * 0.5));
-  for (let k = 1; k < n; k++) { const t = k / n; if (!walkIdx(G, cellAt(G, ax + (bx - ax) * t, ay + (by - ay) * t))) return false; }
+// rad > 0: Korridor in Körperbreite (zwei Parallelstrahlen), damit geglättete Wege nicht an Ecken hängen bleiben.
+export function los(G, ax, ay, bx, by, rad = 0) {
+  const d = Math.hypot(bx - ax, by - ay), n = Math.ceil(d / (G.cpx * 0.5)), ox = d ? (-(by - ay) / d) * rad : 0, oy = d ? ((bx - ax) / d) * rad : 0;
+  for (let k = 1; k <= n; k++) {
+    const t = k / n, x = ax + (bx - ax) * t, y = ay + (by - ay) * t;
+    if (!walkIdx(G, cellAt(G, x, y))) return false;
+    if (rad && (!walkIdx(G, cellAt(G, x + ox, y + oy)) || !walkIdx(G, cellAt(G, x - ox, y - oy)))) return false;
+  }
   return true;
 }
 // A* (8 Richtungen, keine Eckabkürzung). Liefert Wegpunkte in px (ohne Start) oder null.
@@ -158,7 +163,7 @@ export function findPath(G, ax, ay, bx, by, maxExp = 6000) {
   const out = [];
   let px = ax, py = ay;
   for (let k = 0; k < path.length; k++) {
-    if (k + 1 < path.length && los(G, px, py, path[k + 1].x, path[k + 1].y)) continue;
+    if (k + 1 < path.length && los(G, px, py, path[k + 1].x, path[k + 1].y, 20)) continue;
     out.push(path[k]); px = path[k].x; py = path[k].y;
   }
   return out;

@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint nxdhusj9n1).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint sjqxunwwh6).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -44,12 +44,12 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | runeGrades | 8 | R | R:8 | Levelgrenzen ca. 10-80 je Grad (D); Kosten/Refund eigen. |
 | rateGroups | 7 | R | E:5 R:1 D:1 | Rate-Gruppe 4001 = 65/30/4/1 (D); übrige Gewichte eigen. |
 | gachaBoxes | 12 | R | R:10 ?:1 D:1 | 26 Boxdefinitionen im Original; hier 12 belegbare (inkl. 8 Runentruhen, Special Hero Chest). Gem-Preise eigen, kein universeller 10er-Preis. |
-| buildings | 7 | D | D:7 | 26 Gebäudedefinitionen im Original; hier die 7 dokumentierten Einstiegskosten (Gold D, Materialmengen E). |
-| npcs | 14 | E | E:4 D:10 | NPC-Daten/Dialoge des Originals nicht erfasst; eigene Platzhalter. |
+| buildings | 8 | D | D:7 B:1 | 26 Gebäudedefinitionen im Original; hier die 7 dokumentierten Einstiegskosten (Gold D, Materialmengen E). |
+| npcs | 29 | R | E:2 D:26 R:1 | 8 Figuren, 27 Standorte, Szenen-Freischaltung nach Referenz (D-Struktur); alle Dialogtexte und Älteste/Schmied sind eigen. |
 | worldObjects | 15 | D | D:15 | Invasionsportale (Positionen der Referenz, dekorativ: Invasion läuft über das Menü) und Lagerfeuer. |
 | worlds | 1 | R | R:1 | Zusammenhängende Kapitel-1-Welt: Zonen, Tore, Hindernisse, Landmarken (Level-Design E um Referenzpunkte D). Meter, X=Ost, Z=Nord. |
 | unlocks | 7 | D | D:4 E:2 R:1 | Levelgebundene Freischaltungen (D); blessing/spin/special/extra/pvp eigen platziert. |
-| quests | 87 | R | R:66 D:17 ?:1 E:3 | Hauptquestkette (Original ca. 850 Einträge nicht erfasst): dokumentierte Unlock-Kopplungen (s=D) + eigene Gebietsquests. |
+| quests | 353 | R | R:66 D:270 ?:1 E:16 | Hauptquestkette (Original ca. 850 Einträge nicht erfasst): dokumentierte Unlock-Kopplungen (s=D) + eigene Gebietsquests. Dazu 268 NPC-Kettenquests (id nq_*, Ziel/Menge/Belohnung D, Abgabe beim Questgeber). |
 | tracks | 13 | R | R:4 D:4 E:5 | Generische Claim-Tracks (Meilensteine, Missionen, Pässe, Events). Status je Track im Feld s. |
 | shop | 42 | R | D:5 E:11 R:25 ?:1 | Rein spielinterner Katalog. Royal-Perks (D) als erspielbare Einmal-Angebote; Preise eigen. EXP-Perk (Wert 1000, Einheit ungeklärt) nicht angewendet. |
 | perks | 5 | D | D:4 ?:1 | Royal-Lifetime-Perkwerte; Einheit von cargo/exp ungeklärt (cargo als flacher Wert angewendet = R, exp nicht angewendet). |
@@ -57,7 +57,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | randomReward | 1 | R | R:1 | IngameRV: 393 Levelzeilen (als Band L8-400, R); Gem-Gewicht 0,10 Menge 10 (D); Orb-Mengenbereiche D, Orb-Gewichte E. Crimson/Azure/Soul unzugeordnet = deaktiviert. |
 | spinSegments | 7 | E | E:7 | 7 Segmentdefinitionen (D-Zählung, 192 Originalzeilen nicht erfasst); Bedingungen und Rewardzeilen eigen. |
 | towerFloors | 250 | R | E:249 D:1 | 250 Etagen (D); Etage 151 = 35 Gems (D). Gegner, Wellen, übrige Rewards eigen (Gems = 5 + floor(Etage/5)). |
-| raidBosses | 6 | E | E:6 | 6 Spezialbosse (B); Namen, Werte, Wertung eigen. |
+| raidBosses | 6 | R | R:6 | 6 Raid-Bosse mit Namen aus Ryans Questkette (D); Werte und Wertung eigen. |
 | tombTiers | 20 | R | R:20 | 20 Schwierigkeits-/Dropstufen (D); Gegner, Typ-/Raritätsgewichte eigen. |
 | invasionTiers | 6 | R | R:6 | 6 Tiers (D); Auf-/Abstieg nach Top-Perzentil, Rewards eigen. |
 | events | 1 | E | E:1 | Eigene Live-Events (EventDef). Zeitfenster UTC; per Admin-Panel pflegbar. |

@@ -19,7 +19,7 @@ export function newState(c, now, seed = (now ^ 0x9e3779b9) | 0, profileId = null
     runes: { seq: 0, list: [], loadouts: {} },
     buildings: {}, keyhouse: { slots: c.t.keyHouseSlots.map(() => ({ open: false, chest: null })) },
     world: { area: 'base', respawn: {}, cleared: {}, bossKills: {}, fog: {}, chests: {}, gifts: {}, lastArea: null, rrAt: 0 },
-    quests: { active: {}, done: {} },
+    quests: { active: {}, done: {} }, npc: { seen: {} },
     gacha: {}, shop: { bought: {}, merchant: {} },
     modes: { session: null, tower: { best: 0 }, raid: { best: {} }, tomb: { best: 0 }, pvp: { rating: cfg.pvp.startRating, wins: 0 },
       invasion: { rating: cfg.invasion.startRating, tier: 0, streak: 0, bank: 0, bankAt: now, history: [], season: 0, defense: null, revenge: [] } },

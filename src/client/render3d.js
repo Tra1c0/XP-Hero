@@ -3,6 +3,7 @@
 // Liest den Spielzustand nur. Koordinaten: GL x = Ost, y = oben, z = Süden (= Simulations-y).
 import { SHAPES, BIOMES, WATER, SCATTER, expand, hex } from './assets3d.js';
 import { FLOOR, WALL, WATER as K_WATER, LAVA, walkIdx, findPath } from '../core/worldgrid.js';
+import { npcStatus, currentQuests } from '../core/meta.js';
 
 const VIEW_W = 21, TILT = (52 * Math.PI) / 180; // sichtbare Breite in Metern (Hochformat), Neigung
 const INST = 11; // pos3, rot, scl3, rgba(em)
@@ -228,8 +229,8 @@ export class Renderer3D {
       if (!vis(x, z, 6)) continue;
       if (o.type === 'building') expand(st.buildings[o.id] ? o.id : 'plot', x, 0, z, 0, 1, out);
       else if (o.type === 'chest') { if (now >= (st.world.chests[o.id] || 0)) { out.push(['box', x, 0, z, 0.3, 1.1, 0.7, 0.8, '#8a5a32', 0], ['box', x, 0.7, z, 0.3, 1.12, 0.18, 0.82, '#e9b43a', 0.2]); shadows.push(['disc', x, 0.02, z, 0, 1.6, 1, 1.6, '#000000', 0]); } } else if (o.type === 'gift') { if (now >= (st.world.gifts[o.id] || 0)) { out.push(['box', x, 0, z, 0.6, 0.8, 0.8, 0.8, '#ff7fae', 0.15], ['box', x, 0, z, 0.6, 0.84, 0.84, 0.18, '#fff3b0', 0.3], ['box', x, 0, z, 0.6, 0.18, 0.84, 0.84, '#fff3b0', 0.3]); } } else if (o.type === 'areachest') { if (!st.claims[`areachest:${o.id}`]) { out.push(['box', x, 0, z, -0.2, 1.3, 0.9, 0.9, '#e9b43a', 0.25], ['box', x, 0.9, z, -0.2, 1.32, 0.2, 0.92, '#b5482f', 0]); } } else if (o.type === 'npc') {
-        if (o.kind === 'raid') out.push(['box', x, 0, z, 0.4, 1.0, 2.6, 1.0, '#3d3a4a', 0], ['box', x, 1.2, z + 0.51, 0.4, 0.5, 0.8, 0.02, '#c24bff', 0.9]);
-        else { out.push(['cyl8', x, 0, z, 0, 0.7, 1.0, 0.7, '#3f8f5a', 0], ['sphere', x, 1.0, z, 0, 0.5, 0.5, 0.5, '#f1c9a5', 0], ['cone6', x, 1.42, z, 0, 0.6, 0.5, 0.6, '#2f6b45', 0]); shadows.push(['disc', x, 0.02, z, 0, 1.1, 1, 1.1, '#000000', 0]); }
+        if (o.kind === 'raid') out.push(['box', x + 1.4, 0, z - 0.6, 0.4, 1.0, 2.6, 1.0, '#3d3a4a', 0], ['sphere', x + 1.4, 2.5, z - 0.6, 0, 0.6, 0.6, 0.6, '#c24bff', 0.9]);
+        { out.push(['cyl8', x, 0, z, 0, 0.7, 1.0, 0.7, '#3f8f5a', 0], ['sphere', x, 1.0, z, 0, 0.5, 0.5, 0.5, '#f1c9a5', 0], ['cone6', x, 1.42, z, 0, 0.6, 0.5, 0.6, '#2f6b45', 0]); shadows.push(['disc', x, 0.02, z, 0, 1.1, 1, 1.1, '#000000', 0]); }
       } else if (o.type === 'decor') expand(o.kind, x, 0, z, 0, 1, out);
       else if (o.type === 'gatebar') {
         const gt = o.def, dx = gt.b[0] - gt.a[0], dz = -(gt.b[1] - gt.a[1]), ang = Math.atan2(dx, dz), half = gt.w / 2, px = Math.cos(ang) * half, pz = -Math.sin(ang) * half;
@@ -336,12 +337,18 @@ export class Renderer3D {
     ctx.clearRect(0, 0, this.w, this.h);
     const X = (x) => B.minX + x / ppm, Z = (y) => y / ppm - B.maxZ, px = X(w.p.x), pz = Z(w.p.y);
     ctx.textAlign = 'center'; ctx.font = '600 12px system-ui';
+    // Questmarker und Ziel höchstens 2x pro Sekunde neu bestimmen (nicht pro Bild)
+    const tnow = performance.now();
+    if (!this.npcSt || tnow - this.stT > 500) {
+      this.stT = tnow; this.npcSt = {};
+      if (!w.mode) { for (const o of w.map.objects) if (o.type === 'npc') this.npcSt[o.id] = npcStatus(game.g, o); const q = currentQuests(game.g)[0]; this.goal = q ? game.questGoal(q.q) : null; } else this.goal = null;
+    }
     const label = (txt, x, y, z, color = '#fff') => { const [sx, sy] = this.project(x, y, z); if (sx < -50 || sx > this.w + 50 || sy < 0 || sy > this.h) return; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.65)'; ctx.strokeText(txt, sx, sy); ctx.fillStyle = color; ctx.fillText(txt, sx, sy); };
     for (const o of w.map.objects) {
       const x = X(o.x), z = Z(o.y), d = Math.hypot(x - px, z - pz);
       if (d > 13) continue;
       if (o.type === 'building') label(st.buildings[o.id] ? o.name : `${o.name} (bauen)`, x, 4.2, z, st.buildings[o.id] ? '#fff' : '#ffe08a');
-      else if (o.type === 'npc') label(o.name, x, 2.5, z, '#bfffcf');
+      else if (o.type === 'npc') { label(o.name, x, 2.5, z, '#bfffcf'); const m = this.npcSt[o.id]; if (m && m !== 'busy') { ctx.font = '800 22px system-ui'; label(m === 'turnin' ? '?' : '!', x, 3.5, z, m === 'turnin' ? '#7dff9a' : '#ffd24a'); ctx.font = '600 12px system-ui'; } }
       else if (o.type === 'gatebar' && !o.open()) { const ar = game.c.by.areas.get(o.needs); label(`🔒 ${ar ? game.c.get('variants', ar.boss).name + ' besiegen' : ''}`, x, 3.4, z, '#ffb3c6'); } else if (o.type === 'gate') label(o.open() ? '▲ Weiter' : '🔒', x, 4.6, z, '#9fe3ff');
       else if (o.type === 'areachest' && !st.claims[`areachest:${o.id}`]) label('Gebietstruhe', x, 1.8, z, '#ffe08a');
     }
@@ -360,6 +367,16 @@ export class Renderer3D {
       ctx.strokeText(s, sx, sy); ctx.fillStyle = t.kind === 3 ? '#ff6b6b' : t.kind === 2 ? '#ffd54a' : '#fff'; ctx.fillText(s, sx, sy);
     }
     ctx.globalAlpha = 1;
+    // Zielanzeige: Markierung am Ziel oder Pfeil am Bildrand in dessen Richtung
+    if (this.goal) {
+      const gx = X(this.goal.x), gz = Z(this.goal.y), [sx, sy] = this.project(gx, 2.8, gz), m = 34, top = 150, bot = this.h - 90;
+      ctx.fillStyle = '#ffd24a'; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3;
+      if (sx > m && sx < this.w - m && sy > top && sy < bot) { ctx.font = '800 20px system-ui'; ctx.strokeText('▼', sx, sy); ctx.fillText('▼', sx, sy); } else {
+        const [cx, cy] = this.project(px, 1, pz), a = Math.atan2(sy - cy, sx - cx), ex = Math.max(m, Math.min(this.w - m, cx + Math.cos(a) * 1000)), ey = Math.max(top, Math.min(bot, cy + Math.sin(a) * 1000));
+        const k = Math.min((ex - cx) / (Math.cos(a) * 1000 || 1e-9), (ey - cy) / (Math.sin(a) * 1000 || 1e-9)), ax = cx + Math.cos(a) * 1000 * Math.min(1, Math.abs(k)), ay = cy + Math.sin(a) * 1000 * Math.min(1, Math.abs(k));
+        ctx.save(); ctx.translate(Math.max(m, Math.min(this.w - m, ax)), Math.max(top, Math.min(bot, ay))); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-10, -10); ctx.lineTo(-10, 10); ctx.closePath(); ctx.stroke(); ctx.fill(); ctx.restore();
+      }
+    }
     this.minimap(game, sc);
   }
   minimap(game, sc) {
@@ -385,6 +402,7 @@ export class Renderer3D {
     ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.strokeRect(x0 + 0.5, y0 + 0.5, mw - 1, mh - 1);
     const sx = mw / G.w, sy = mh / G.h;
     for (const e of w.enemies) if (e.alive && e.v.rank === 'boss') { ctx.fillStyle = '#ffd24a'; ctx.fillRect(x0 + e.x * sx - 2, y0 + e.y * sy - 2, 4, 4); }
+    if (this.goal) { ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(x0 + this.goal.x * sx, y0 + this.goal.y * sy, 3.5, 0, 7); ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke(); }
     ctx.fillStyle = '#4fc3f7'; ctx.fillRect(x0 + w.p.x * sx - 2.5, y0 + w.p.y * sy - 2.5, 5, 5);
   }
 }

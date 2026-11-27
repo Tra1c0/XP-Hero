@@ -61,12 +61,39 @@ const sn = (k) => t(STAT[k] || k), fn = (k) => t(FEAT[k] || k);
 const tabs = (key, list) => { tab[key] ||= list[0][0]; return h('div', { cls: 'tabs' }, list.map(([id, label]) => h('button', { cls: 'tab' + (tab[key] === id ? ' on' : ''), on: () => { tab[key] = id; render(); } }, t(label)))); };
 const cap = (key, list, n = 40) => { const lim = more[key] || n; return [...list.slice(0, lim), list.length > lim ? btn(`mehr anzeigen (${list.length - lim})`, () => { more[key] = lim + n * 2; render(); }) : null]; };
 
+// Zielführung: Figur läuft per Pfadsuche zum Questziel (manuelle Eingabe bricht ab).
+function walkTo(q) {
+  const goal = game.questGoal(q);
+  if (!goal) return toast('Dieses Ziel liegt nicht in diesem Gebiet.');
+  if (game.world.mode) return toast('Im Modus nicht möglich.');
+  game.world.p.auto = false; game.world.goTo(goal.x, goal.y); close(); toast(`Unterwegs zu: ${goal.label}`);
+}
+// Gespräch: Zeilen nacheinander (überspringbar), danach Abgaben, neue Aufträge und Fortschritt.
+function talk(o) {
+  const r = act('talkNpc', o.id);
+  if (!r.ok) return;
+  const v = r.value, parts = [];
+  for (const c of v.claimed) parts.push(`✅ ${c.name}: ${fmtReward(c.got)}`);
+  for (const a of v.accepted) parts.push(`❗ Neuer Auftrag: ${a}`);
+  for (const a of v.active) if (!v.accepted.includes(a.name)) parts.push(`… ${a.name} ${a.obj.map((x) => `${fmt(x.cur)}/${fmt(x.need)}`).join(' ')}`);
+  const end = () => {
+    const btns = [['Schließen', null]];
+    if (o.raid && has('raid')) btns.push([`Raid: ${game.c.get('raidBosses', o.raid).name}`, () => { if (act('startMode', 'raid', o.raid).ok) close(); }, 'pri']);
+    if (parts.length || btns.length > 1) modal(v.npc, h('div', {}, parts.length ? parts.map((x) => h('p', {}, x)) : 'Ryan zeigt auf den Raid-Stein.'), btns);
+  };
+  const step = (i) => { if (i >= v.lines.length) return end(); modal(v.npc, `„${v.lines[i]}“`, [['Überspringen', end], [i + 1 < v.lines.length ? 'Weiter' : 'Ok', () => step(i + 1), 'pri']]); };
+  step(0);
+}
 // ---------------------------------------------------------------- Panels
 const P = {};
 P.quests = () => {
   const g = game.g, list = meta.currentQuests(g), done = Object.keys(game.state.quests.done).length;
-  return [sec('Aktive Quests', list.length ? list.map(({ q, state, obj }) => row(q.name, `${obj.map((o) => `${fmt(o.cur)}/${fmt(o.need)}`).join(' · ')} — Belohnung: ${fmtReward(q.reward)}${q.unlock ? ' · schaltet frei: ' + q.unlock.map(fn).join(', ') : ''}`,
-    btn('Abschließen', () => reward('Quest', act('claimQuest', q.id)), state !== 'satisfied', 'pri'))) : h('p', {}, t('Alle verfügbaren Quests abgeschlossen.'))),
+  const giverName = (q) => (game.c.t.npcs.find((n) => (q.at ? n.id === q.at : n.char === q.giver)) || {}).name;
+  const offers = game.c.t.quests.filter((q) => q.giver && meta.questState(g, q) === 'available');
+  return [sec('Aktive Quests', list.length ? list.map(({ q, state, obj }) => row(`${q.giver ? `[${giverName(q)}] ` : ''}${q.name}`, `${obj.map((o) => `${fmt(o.cur)}/${fmt(o.need)}`).join(' · ')} — Belohnung: ${fmtReward(q.reward)}${q.unlock ? ' · schaltet frei: ' + q.unlock.map(fn).join(', ') : ''}`,
+    game.questGoal(q) ? btn('Zum Ziel', () => walkTo(q)) : null,
+    q.giver ? (state === 'satisfied' ? h('span', { cls: 'cost' }, `bei ${giverName(q)} abgeben`) : null) : btn('Abschließen', () => reward('Quest', act('claimQuest', q.id)), state !== 'satisfied', 'pri'))) : h('p', {}, t('Alle verfügbaren Quests abgeschlossen.'))),
+  offers.length ? sec('Neue Aufträge bei', offers.map((q) => row(giverName(q), q.name, game.questGoal(q) ? btn('Hinlaufen', () => walkTo(q)) : h('span', { cls: 'sub' }, 'in anderem Gebiet')))) : null,
   h('p', { cls: 'sub' }, `${done} / ${game.c.t.quests.length} Quests abgeschlossen`)];
 };
 function upgradeRows(family) {
@@ -319,7 +346,7 @@ export function hud() {
   $('auto').textContent = w.p.auto ? 'Auto: AN' : 'Auto: AUS'; $('auto').className = 'b' + (w.p.auto ? ' pri' : '');
   $('homebtn').hidden = !!w.mode || s.world.area === 'base'; $('abort').hidden = !w.mode;
   $('bonus').hidden = !meta.randomRewardReady(g) || !!w.mode;
-  $('ctx').hidden = !w.near; if (w.near) $('ctx').textContent = w.near.type === 'building' ? `${w.near.name} öffnen` : `${w.near.name}`;
+  $('ctx').hidden = !w.near || !!document.querySelector('.modal'); if (w.near) $('ctx').textContent = w.near.type === 'building' ? `${w.near.name} öffnen` : `Mit ${w.near.name} sprechen`;
   $('area').textContent = w.mode ? 'Arena' : s.world.area === 'base' ? 'Basis' : game.c.get('areas', s.world.area).name;
   document.documentElement.style.fontSize = `${16 * s.settings.textScale}px`;
   drawNav();
@@ -329,7 +356,7 @@ export function handleEvents(events) {
   for (const e of events) {
     if (e.type === 'toast') toast(e.msg);
     else if (e.type === 'reward') toast(`${e.title}: ${fmtReward(e.got)}`, 3000);
-    else if (e.type === 'dialog') toast(`${e.name}: „${e.text}“`, 4500); // nicht blockierend: Vorbeilaufen unterbricht das Spiel nicht
+    else if (e.type === 'zone') toast(game.c.get('areas', e.area).name, 1800);
     else if (e.type === 'levelup') toast(`Level ${e.level}!`);
     else if (e.type === 'unlock') toast(`Freigeschaltet: ${fn(e.feature)}`, 3500);
     else if (e.type === 'quest') toast(`Neue Quest: ${e.name}`);
@@ -346,5 +373,5 @@ export function init(gm, nt) {
   $('abort').addEventListener('click', () => modal('Runde abbrechen?', 'Das Ticket ist verbraucht, es gibt keine Belohnung.', [['Weiter spielen', null], ['Abbrechen', () => act('abortMode'), 'warn']]));
   $('bonus').addEventListener('click', () => reward('Bonus', act('claimRandomReward')));
   $('quest').addEventListener('click', () => { const q = meta.currentQuests(game.g)[0]; if (q && q.state === 'satisfied') reward('Quest', act('claimQuest', q.q.id)); else open('quests'); });
-  $('ctx').addEventListener('click', () => open('base'));
+  $('ctx').addEventListener('click', () => { const o = game.world.near; if (o && o.type === 'npc') talk(o); else open('base'); });
 }

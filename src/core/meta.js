@@ -109,7 +109,7 @@ export function questState(g, q) {
   const s = g.state.quests;
   if (s.done[q.id]) return 'completed';
   if (s.active[q.id]) return objectives(g, q).every((o) => o.cur >= o.need) ? 'satisfied' : 'active';
-  return (q.prereq || []).every((p) => s.done[p]) ? 'available' : 'unavailable';
+  return (q.prereq || []).every((p) => s.done[p]) && (!q.start || check(g, q.start)) ? 'available' : 'unavailable';
 }
 export function objectives(g, q) {
   const a = g.state.quests.active[q.id];
@@ -123,7 +123,13 @@ export function objectives(g, q) {
 export function refreshQuests(g) {
   const s = g.state.quests;
   for (const q of g.c.t.quests) {
-    if (s.done[q.id] || s.active[q.id] || !(q.prereq || []).every((p) => s.done[p])) continue;
+    if (q.giver || s.done[q.id] || s.active[q.id] || !(q.prereq || []).every((p) => s.done[p])) continue; // Questgeber-Quests nimmt man beim NPC an
+    acceptQuest(g, q);
+  }
+}
+function acceptQuest(g, q) {
+  const s = g.state.quests;
+  {
     const base = {};
     for (const o of q.obj) if (o.counter && o.from === 'accept') base[o.counter] = g.state.counters[o.counter] || 0;
     s.active[q.id] = { base, t: g.now() };
@@ -132,8 +138,9 @@ export function refreshQuests(g) {
     if (g.events) g.events.push({ type: 'quest', id: q.id, name: q.name });
   }
 }
-export function claimQuest(g, id) {
+export function claimQuest(g, id, atNpc = false) {
   const q = g.c.get('quests', id), st = questState(g, q);
+  if (q.giver && !atNpc) fail('at_npc', `Abgabe bei ${npcName(g, q)}`);
   if (st !== 'satisfied') fail(st === 'completed' ? 'already_claimed' : 'not_ready', 'Quest nicht abschließbar');
   g.state.quests.done[id] = g.now();
   delete g.state.quests.active[id];
@@ -143,6 +150,53 @@ export function claimQuest(g, id) {
   emit(g, 'quest:done');
   refreshQuests(g);
   return got;
+}
+// ---- NPCs: Dialogszenen, Questgeber, Marker
+const npcName = (g, q) => (g.c.t.npcs.find((n) => (q.at ? n.id === q.at : n.char === q.giver)) || { name: 'dem Questgeber' }).name;
+const givesHere = (q, npc) => q.giver === npc.char && (!q.at || q.at === npc.id);
+export function npcScenes(g, npc) { return (npc.scenes || []).filter((sc) => !sc.after || check(g, sc.after)); }
+// 'turnin' = Quest abgabebereit, 'offer' = neue Quest oder ungesehene Szene, 'busy' = laufende Quest, null = nichts Neues
+export function npcStatus(g, npc) {
+  let offer = false, busy = false;
+  for (const q of g.c.t.quests) {
+    if (!q.giver || !givesHere(q, npc)) continue;
+    const st = questState(g, q);
+    if (st === 'satisfied') return 'turnin';
+    if (st === 'available') offer = true; else if (st === 'active') busy = true;
+  }
+  if (offer || npcScenes(g, npc).some((sc) => !g.state.npc.seen[`${npc.id}:${sc.id}`])) return 'offer';
+  return busy ? 'busy' : null;
+}
+// Gespräch: Abgaben und Annahmen in einem Schritt (atomar über Game.cmd), dann die nächste ungesehene Szene (sonst die letzte verfügbare).
+export function talkNpc(g, npcId) {
+  const npc = g.c.get('npcs', npcId), out = { npc: npc.name, lines: [], claimed: [], accepted: [], active: [] };
+  emit(g, `talk:${npc.id}`); emit(g, `talk:char:${npc.char}`);
+  for (let pass = 0, again = true; again && pass < 6; pass++) {
+    again = false;
+    for (const q of g.c.t.quests) {
+      if (!q.giver || !givesHere(q, npc)) continue;
+      const st = questState(g, q);
+      if (st === 'satisfied') { out.claimed.push({ name: q.name, got: claimQuest(g, q.id, true) }); again = true; } else if (st === 'available') { acceptQuest(g, q); out.accepted.push(q.name); again = true; }
+    }
+  }
+  for (const q of g.c.t.quests) if (q.giver && givesHere(q, npc) && g.state.quests.active[q.id]) out.active.push({ name: q.name, obj: objectives(g, q) });
+  const scenes = npcScenes(g, npc), sc = scenes.find((x) => !g.state.npc.seen[`${npc.id}:${x.id}`]) || scenes[scenes.length - 1];
+  if (sc) { g.state.npc.seen[`${npc.id}:${sc.id}`] = g.now(); out.lines = sc.lines; }
+  return out;
+}
+// Wohin führt die Quest? Beschreibung des Ziels; die Weltposition löst Game.questGoal auf.
+export function questTarget(g, q) {
+  const st = questState(g, q), o = q.obj[0];
+  if (q.giver && (st === 'satisfied' || st === 'available')) return { npc: q.at, char: q.giver };
+  if (o.cond) { if (o.cond.building) return { building: o.cond.building }; if (o.cond.cleared) return { boss: o.cond.cleared }; return null; }
+  if (o.counter.startsWith('talk:char:')) return { char: o.counter.slice(10) };
+  if (o.counter.startsWith('talk:')) return { npc: o.counter.slice(5) };
+  if (o.counter === 'kill:any' || o.counter === 'coins') return { monster: '*' };
+  if (o.counter === 'kill:bossAny') return { monster: '#boss' };
+  if (o.counter.startsWith('kill:')) return { monster: o.counter.slice(5) };
+  if (o.counter === 'chest:pickup' || o.counter === 'chest:claim') return { chest: true };
+  if (o.counter === 'returnBase') return { area: 'base' };
+  return null;
 }
 export function currentQuests(g) {
   return g.c.t.quests.filter((q) => g.state.quests.active[q.id]).map((q) => ({ q, state: questState(g, q), obj: objectives(g, q) }));

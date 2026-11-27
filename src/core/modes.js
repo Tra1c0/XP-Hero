@@ -8,6 +8,8 @@ import { modeVariant } from './sim.js';
 // ============================================================ Sessions (Tower / Raid / Tomb)
 export const raidBossOfDay = (g) => g.c.t.raidBosses[utcDay(g.now()) % g.c.t.raidBosses.length];
 
+// Raid-Boss, den eine laufende Quest verlangt, ist unabhängig vom Tagesboss wählbar.
+export const raidQuestTarget = (g, id) => g.c.t.quests.some((q) => g.state.quests.active[q.id] && q.obj[0].counter === `raid:clear:${id}`);
 export function modeSpec(g, se) {
   const cfg = g.c.cfg;
   if (se.mode === 'tower') { const f = g.c.get('towerFloors', se.param); return { kind: 'tower', level: f.level, waves: f.waves, timer: f.timer || cfg.tower.timerSec }; }
@@ -26,7 +28,7 @@ export function startMode(g, mode, param) {
     if (ms.session.mode === mode && ms.session.param === param) return { session: ms.session, resumed: true };
     fail('session_active', 'Es läuft bereits eine Runde');
   }
-  if (mode === 'tower') { g.c.get('towerFloors', param); if (param > ms.tower.best + 1) fail('locked', 'Vorherige Etage zuerst abschließen'); } else if (mode === 'tomb') { g.c.get('tombTiers', param); if (param > ms.tomb.best + 1) fail('locked', 'Vorherige Stufe zuerst abschließen'); } else if (mode === 'raid') { if (param !== raidBossOfDay(g).id) fail('locked', 'Heute ist ein anderer Raid-Boss aktiv'); } else fail('bad_mode');
+  if (mode === 'tower') { g.c.get('towerFloors', param); if (param > ms.tower.best + 1) fail('locked', 'Vorherige Etage zuerst abschließen'); } else if (mode === 'tomb') { g.c.get('tombTiers', param); if (param > ms.tomb.best + 1) fail('locked', 'Vorherige Stufe zuerst abschließen'); } else if (mode === 'raid') { g.c.get('raidBosses', param); if (param !== raidBossOfDay(g).id && !raidQuestTarget(g, param)) fail('locked', 'Heute ist ein anderer Raid-Boss aktiv'); } else fail('bad_mode');
   pay(g, g.c.cfg[mode].entryCost, `mode:${mode}:entry`, String(param));
   ms.session = { id: `s${g.state.txSeq}_${g.now()}`, mode, param, startedAt: g.now() };
   emit(g, `mode:${mode}:start`); emit(g, 'mode:any:start'); emit(g, `ticket:${mode}`);
@@ -68,6 +70,7 @@ export function completeMode(g, result) {
     out.first = out.score > (ms.raid.best[se.param] || 0);
     if (out.first) ms.raid.best[se.param] = out.score;
     emit(g, 'mode:raid:clear');
+    if (out.win) emit(g, `raid:clear:${se.param}`);
   }
   return out;
 }

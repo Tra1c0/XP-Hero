@@ -63,7 +63,7 @@ test('Jede Truhe, jeder Gift-Spawner, jedes Gebäude und jeder NPC ist zu Fuß e
   assert.deepEqual(fail, []);
   assert.ok(s().counters['gift:open'] >= 10, 'Gift Chests beim Vorbeilaufen geöffnet');
   assert.ok(s().counters['chest:pickup'] >= 1, 'Feldtruhe ins Key House gelegt');
-  assert.ok(s().counters['talk:npc_scout'] >= 1);
+  assert.equal(s().counters['talk:npc_kain'], undefined, 'Vorbeilaufen allein spricht nicht');
 });
 
 test('Weltpositionen sind über Content/Backend änderbar und werden validiert', () => {

@@ -160,6 +160,7 @@ export const PROPS = {
 // Gebäude: gebaut / Bauplatz
 const roofed = (w, h, d, wall, roof) => [P('box', [0, 0, 0], [w, h, d], 0, wall), P('pyr4', [0, h, 0], [w * 1.45, h * 0.75, d * 1.45], 0, roof)];
 export const BUILDINGS3D = {
+  raidcamp: [P('pyr4', [-0.8, 0, 0], [2.2, 1.7, 2.2], 0.2, '#6b4a7a'), P('pyr4', [1.1, 0, 0.6], [1.6, 1.2, 1.6], 0.7, '#4f3a5c'), P('box', [1.3, 0, -1.0], [0.14, 2.6, 0.14], 0, C.wood), P('box', [1.65, 1.9, -1.0], [0.6, 0.6, 0.05], 0, '#c24bff', 0.5)],
   plot: [P('box', [0, 0, 0], [3.2, 0.12, 3.2], 0, '#b9a77f'), P('box', [-1.5, 0, -1.5], [0.15, 0.6, 0.15], 0, C.wood), P('box', [1.5, 0, -1.5], [0.15, 0.6, 0.15], 0, C.wood),
     P('box', [-1.5, 0, 1.5], [0.15, 0.6, 0.15], 0, C.wood), P('box', [1.5, 0, 1.5], [0.15, 0.6, 0.15], 0, C.wood)],
   bonfire: PROPS.campfire,

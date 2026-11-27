@@ -114,7 +114,7 @@ export class World {
     if (d <= stopAt) { p.mx = p.my = 0; p.path = null; return d; }
     p.pathT = (p.pathT || 0) - dt;
     if (!p.path || p.pathT <= 0 || !p.path.length || Math.hypot(p.pathTo.x - x, p.pathTo.y - y) > 80) {
-      p.path = los(this.G, p.x, p.y, x, y) ? [{ x, y }] : findPath(this.G, p.x, p.y, x, y);
+      p.path = los(this.G, p.x, p.y, x, y, 20) ? [{ x, y }] : findPath(this.G, p.x, p.y, x, y, 20000);
       p.pathTo = { x, y }; p.pathT = 0.75;
       if (!p.path) { p.mx = p.my = 0; return Infinity; }
     }

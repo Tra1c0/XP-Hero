@@ -81,7 +81,7 @@ export class Game {
       cargoFull: () => home.cargoFree(g) <= 0,
       interact: (o, world) => {
         try {
-          if (o.type === 'gate') { if (o.open()) world.pending = { travel: o.to, back: !!o.back }; else g.events.push({ type: 'toast', msg: 'Tor verschlossen – besiege zuerst den Boss.' }); } else if (o.type === 'chest') { if (home.chestSpawnerReady(g, o.id)) { home.pickupChest(g, o.id); g.events.push({ type: 'toast', msg: 'Feldtruhe ins Key House gelegt.' }); } } else if (o.type === 'gift') { if (home.giftReady(g, o.id)) g.events.push({ type: 'reward', title: 'Gift Chest', got: home.openGift(g, o.id) }); } else if (o.type === 'areachest') { if (!g.state.claims[`areachest:${o.id}`]) g.events.push({ type: 'reward', title: 'Gebietstruhe', got: home.openAreaChest(g, o.id) }); } else if (o.type === 'npc') { econ.emit(g, `talk:${o.id}`); g.events.push({ type: 'dialog', name: o.name, text: o.text }); } else if (o.type === 'gatebar') { const b = g.c.by.areas.get(o.needs); g.events.push({ type: 'toast', msg: `Tor verschlossen – besiege zuerst ${b ? g.c.get('variants', b.boss).name : 'den Boss'}.` }); }
+          if (o.type === 'gate') { if (o.open()) world.pending = { travel: o.to, back: !!o.back }; else g.events.push({ type: 'toast', msg: 'Tor verschlossen – besiege zuerst den Boss.' }); } else if (o.type === 'chest') { if (home.chestSpawnerReady(g, o.id)) { home.pickupChest(g, o.id); g.events.push({ type: 'toast', msg: 'Feldtruhe ins Key House gelegt.' }); } } else if (o.type === 'gift') { if (home.giftReady(g, o.id)) g.events.push({ type: 'reward', title: 'Gift Chest', got: home.openGift(g, o.id) }); } else if (o.type === 'areachest') { if (!g.state.claims[`areachest:${o.id}`]) g.events.push({ type: 'reward', title: 'Gebietstruhe', got: home.openAreaChest(g, o.id) }); } else if (o.type === 'gatebar') { const b = g.c.by.areas.get(o.needs); g.events.push({ type: 'toast', msg: `Tor verschlossen – besiege zuerst ${b ? g.c.get('variants', b.boss).name : 'den Boss'}.` }); }
         } catch (e) { if (e instanceof GameError) g.events.push({ type: 'toast', msg: e.message }); else throw e; }
       },
       onDeath: (world) => {
@@ -101,7 +101,8 @@ export class Game {
     rs[e.slot] = g.now() + sec * 1000;
     if (v.rank !== 'node') {
       const gold = Math.floor(v.gold * (1 + g.stats.goldPct / 100) * cfg.rewardFactor.gold);
-      if (gold > 0) econ.add(g, 'gold', gold, 'kill', v.id);
+      if (gold > 0) { econ.add(g, 'gold', gold, 'kill', v.id); econ.emit(g, 'coins', gold); }
+      if (v.rank === 'boss' || v.rank === 'rare') econ.emit(g, 'kill:bossAny');
       if (cfg.xp.trigger === 'pickup') world.spawnDrop('#xp', v.xp, e.x, e.y); else prog.gainXp(g, v.xp, 'kill');
       econ.emit(g, `kill:${v.monster}`); econ.emit(g, 'kill:any');
       if (v.rank === 'boss') {
@@ -146,6 +147,22 @@ export class Game {
     }
     this.enteredOnce = true;
     if (prev !== areaId && areaId !== 'base' && this.c.has('areas', areaId)) g.events.push({ type: 'zone', area: areaId });
+  }
+  // Weltposition des Questziels in der aktuellen Karte (oder des Tors/Ausgangs dorthin). null = kein Ortsziel.
+  questGoal(q) {
+    const g = this.g, w = this.field, t = meta.questTarget(g, q), p = w.p;
+    if (!t) return null;
+    const near = (list) => list.map((o) => [Math.hypot(o.x - p.x, o.y - p.y), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1])[0] || null;
+    const objs = w.map.objects, pt = (o, label) => (o ? { x: o.x, y: o.y, label } : null);
+    if (t.npc || t.char) { const o = near(objs.filter((x) => x.type === 'npc' && (t.npc ? x.id === t.npc : x.char === t.char))); return pt(o, o && o.name); }
+    if (t.building) return pt(objs.find((x) => x.type === 'building' && x.id === t.building), 'Bauplatz');
+    if (t.area === 'base') return w.map.entryOf ? { ...w.map.entryOf('base'), label: 'Basis' } : null;
+    if (t.chest) return pt(near(objs.filter((x) => x.type === 'chest' && g.now() >= (g.state.world.chests[x.id] || 0))), 'Feldtruhe');
+    const want = t.boss ? (e) => e.v.rank === 'boss' && e.group && e.group.area === t.boss : t.monster === '*' ? (e) => e.v.rank === 'normal' : t.monster === '#boss' ? (e) => e.v.rank === 'boss' || e.v.rank === 'rare' : (e) => e.v.monster === t.monster;
+    const alive = near(w.enemies.filter((e) => e.alive && e.gid && want(e)));
+    if (alive) return { x: alive.x, y: alive.y, label: alive.v.name };
+    const any = near(w.enemies.filter((e) => e.gid && want(e)).map((e) => ({ x: e.hx, y: e.hy, e })));
+    return any ? { x: any.x, y: any.y, label: any.e.v.name } : null;
   }
   canEnter(areaId) {
     if (areaId === 'base') return true;
@@ -208,6 +225,12 @@ export const COMMANDS = {
   build: atBase(home.build), upgradeBuilding: atBase(home.upgradeBuilding), collectProduction: atBase(home.collectProduction), deliver: d(home.deliver),
   unlockKeySlot: atBase(home.unlockKeySlot), claimChest: atBase(home.claimChest), speedUpChest: atBase(home.speedUpChest),
   buy: d(meta.buy), buyMerchant: d(meta.buyMerchant), refreshMerchant: d(meta.refreshMerchant), claimRandomReward: d(meta.claimRandomReward), spin: d(meta.spin),
+  // Gespräch nur in Reichweite des NPC (kein Fern-Abgeben)
+  talkNpc: (game, g, npcId) => {
+    const w = game.world, o = w.map.objects.find((x) => x.type === 'npc' && x.id === npcId) || fail('not_here', 'Diese Figur ist nicht hier');
+    if (Math.hypot(o.x - w.p.x, o.y - w.p.y) > o.r * 1.8) fail('too_far', 'Geh näher heran');
+    return meta.talkNpc(g, npcId);
+  },
   redeemLocal: d(meta.redeemLocal), grantExternal: d(meta.grantExternal), claimQuest: d(meta.claimQuest),
   claimNode: d(econ.claimNode), claimAll: d(econ.claimAll),
   fight: d(modes.fight), collectBank: d(modes.collectBank), setDefense: d(modes.setDefense), completeMode: d(modes.completeMode),
