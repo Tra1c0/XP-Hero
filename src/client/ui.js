@@ -492,9 +492,9 @@ function drawNav() {
   $('nav').replaceChildren(...BAR.map(([id, ic, f]) => {
     const ok = f.some(has), locked = () => toast('Noch nicht freigeschaltet – folge den Quests.');
     if (id === 'craft') return h('button', { cls: 'nb craft' + (ok ? '' : ' locked'), 'aria-label': 'Schmieden', on: () => (!ok ? locked() : !tier ? toast('Baue zuerst die Smithy in der Basis.') : reward('Geschmiedet', act('craft', 1))) },
-      tier ? h('span', { cls: 'tier ot' }, tier) : null, icon(ic, null, 44), h('span', { cls: 'info ot' }, 'x1', h('small', { cls: econ.bal(g, 'gold') >= cost ? '' : 'cost miss' }, tier ? [itemIcon('gold', 13), fmt(cost)] : '—')));
+      tier ? h('span', { cls: 'tier ot' }, tier) : null, icon(ic, null, 38), h('span', { cls: 'info ot' }, 'x1', h('small', { cls: econ.bal(g, 'gold') >= cost ? '' : 'cost miss' }, tier ? [itemIcon('gold', 13), fmt(cost)] : '—')));
     const mark = ok && ((id === 'modes' && n.modes) || (id === 'shop' && n.shop));
-    return h('button', { cls: 'nb' + (cur === id ? ' on' : '') + (ok ? '' : ' locked') + (mark ? ' badge' : ''), 'aria-label': TITLES[id], on: () => (!ok ? locked() : cur === id ? close() : open(id)) }, icon(ic, null, 42),
+    return h('button', { cls: 'nb' + (cur === id ? ' on' : '') + (ok ? '' : ' locked') + (mark ? ' badge' : ''), 'aria-label': TITLES[id], on: () => (!ok ? locked() : cur === id ? close() : open(id)) }, icon(ic, null, 36),
       id === 'weapons' && ok && n.better ? h('span', { cls: 'thumb' }, icon('thumb', null, 14)) : null,
       id === 'weapons' && ok && n.merge ? h('span', { cls: 'bubble ot', on: (e) => { e.stopPropagation(); open('fusion'); } }, 'Verbinden') : null);
   }));
@@ -559,7 +559,7 @@ export function handleEvents(events) {
 }
 export function init(gm, nt) {
   game = gm; net = nt;
-  const put = (id, ic, col, size = 34) => $(id).append(icon(ic, col, size));
+  const put = (id, ic, col, size = 28) => $(id).append(icon(ic, col, size));
   put('b_menu', 'menu'); put('b_pass', 'pass'); put('bonus', 'gift'); put('b_missions', 'missions'); put('b_map', 'map'); put('b_chest', 'chest'); put('homebtn', 'home'); put('auto', 'target');
   document.querySelector('#p_gold .slot').append(icon('coin', null, 26)); document.querySelector('#p_gems .slot').append(icon('gem', null, 26)); document.querySelector('#p_third .slot').append(icon('scroll', null, 26));
   $('pclose').addEventListener('click', close);
