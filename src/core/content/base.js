@@ -23,7 +23,9 @@ export function mobStats(cfg, level, rank = 'normal') {
   };
 }
 
-export function buildBaseContent() {
+// opt.multiplayer: PvP-Arena und Invasion (Ranglisten-Duelle) samt zugehöriger Quests, Tickets, Shop-Angebote und Weltobjekte. Standard: aus (Solo-Spiel).
+export function buildBaseContent(opt = {}) {
+  const MP = !!opt.multiplayer;
   const tables = {}, meta = {}, config = {}, configMeta = {};
   const T = (name, status, note, rows) => { tables[name] = rows; meta[name] = { status, note }; return rows; };
   const C = (key, v, status, note = '') => { config[key] = v; configMeta[key] = { status, note }; };
@@ -663,6 +665,18 @@ export function buildBaseContent() {
   T('codes', 'E', 'Eigene Belohnungscodes (lokaler Kanal); keine Fremdcodes. Format {id, code, reward, expires, max}.', []);
   T('base', 'E', 'Basis-Karte.', [{ id: 'base', w: 1600, h: 1100, entry: { x: 800, y: 900 }, gate: { x: 800, y: 60 }, next: 'a1_1' }]);
 
+  C('multiplayer', MP, 'E', 'Solo-Spiel: PvP-Arena und Invasion sind nicht Teil des Spiels. true im Content schaltet sie samt Zubehör wieder ein (Paket mit buildBaseContent({ multiplayer: true }) erzeugen).');
+  if (!MP) {
+    const gone = quests.filter((q) => q.obj[0].counter === 'invasion:defenseSet');
+    for (const x of gone) for (const q of quests) if (q.prereq.includes(x.id)) q.prereq = q.prereq.flatMap((p) => (p === x.id ? x.prereq : [p]));
+    tables.quests = quests.filter((q) => !gone.includes(q));
+    tables.shop = tables.shop.filter((s) => s.cat !== 'invasion' && !['tk_inv', 'tk_pvp_free'].includes(s.id));
+    tables.tracks = tables.tracks.filter((t) => t.id !== 'invasionpass');
+    tables.worldObjects = tables.worldObjects.filter((o) => o.type !== 'invportal');
+    delete config.dailyTickets.ticket_invasion; delete config.dailyTickets.ticket_pvp;
+    for (const p of tables.perks) if (p.items) p.items = p.items.filter((i) => i !== 'ticket_invasion');
+    for (const s of tables.shop) if (s.id === 'perk_tickets') s.name = 'Perk: +1 Tagesticket Tower/Raid/Tomb';
+  }
   const pack = { schema: SCHEMA, version: 'base-27.2.0-1', ref: '27.2.0', tables, meta, config, configMeta };
   return pack;
 }

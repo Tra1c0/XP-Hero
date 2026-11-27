@@ -327,7 +327,7 @@ test('T14 PvP/Invasion/Raid: deterministisches Duell, Rating, Bank, Verteidigung
   const a = { name: 'A', atk: 100, aps: 1.5, hp: 5000, crit: 10, critDmg: 150, ls: 0 }, b = { ...a, name: 'B', atk: 60 };
   assert.deepEqual(modes.simulateDuel(a, b, 42), modes.simulateDuel(a, b, 42));
   assert.equal(modes.simulateDuel(a, b, 42).win, true); assert.equal(modes.simulateDuel(b, a, 42).win, false);
-  const { game, g, s, unlock, clock, give } = mk();
+  const { game, g, s, unlock, clock, give } = mk({ pack: buildBaseContent({ multiplayer: true }) });
   unlock('pvp', 'invasion', 'raid');
   const opp = modes.opponents(g, 'pvp')[0];
   assert.ok(opp.bot && /^BOT/.test(opp.name), 'Bots sind als Bots gekennzeichnet');

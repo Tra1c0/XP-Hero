@@ -88,3 +88,16 @@ test('Ryan-Kette: Gespräch schaltet Boss Raid frei, Raid Camp, Quest-Boss unabh
   assert.equal(fin.claimed[0].name, 'Besiege den Raid-Boss Crystal Crab');
   assert.deepEqual(fin.accepted, ['Besiege den Raid-Boss Anubis']);
 });
+
+test('Solo-Spiel: keine PvP-/Invasion-Inhalte im Standardpaket, Questkette bleibt lückenlos', async () => {
+  const { game, g } = mk(), T = game.c.t;
+  assert.equal(game.c.cfg.multiplayer, false);
+  assert.ok(!T.quests.some((q) => /Invasion/.test(q.name) || (q.unlock || []).some((f) => f === 'pvp' || f === 'invasion')));
+  assert.ok(!T.shop.some((s) => s.cat === 'invasion' || /pvp|inv/.test(s.id.split('_')[1] || '')) && !T.tracks.some((t) => t.id === 'invasionpass'));
+  assert.ok(!T.worldObjects.some((o) => o.type === 'invportal'));
+  assert.ok(!('ticket_pvp' in g.state.inv) && !('ticket_invasion' in g.state.inv), 'keine PvP-Tickets im Inventar');
+  const ids = new Set(T.quests.map((q) => q.id));
+  assert.ok(T.quests.every((q) => q.prereq.every((p) => ids.has(p))), 'kein Verweis auf entfernte Quest');
+  const { buildBaseContent } = await import('../src/core/content/base.js'), { validateContent } = await import('../src/core/content/validate.js');
+  assert.deepEqual(validateContent(buildBaseContent({ multiplayer: true })), [], 'Mehrspieler-Paket bleibt gültig');
+});

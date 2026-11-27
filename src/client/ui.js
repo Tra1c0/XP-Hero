@@ -176,8 +176,9 @@ P.inv = () => {
     cargo.length ? sec(`Fracht (${home.cargoUsed(game.g)}/${game.stats.cargo})`, h('div', { cls: 'grid4' }, cargo.map(([i, n]) => tile(i, n)))) : null];
 };
 P.menu = () => {
-  const items = [['quests', 'Quests', 'talk'], ['base', 'Basis', 'home'], ['inv', 'Inventar', 'backpack'], ['smithy', 'Schmiede', 'anvil', 'craft'], ['heroes', 'Helden', 'helmet', 'heroes'], ['traits', 'Traits', 'dice', 'traits'],
-    ['runes', 'Runen', 'rune', 'runes'], ['events', 'Events', 'star'], ['map', 'Karte', 'map'], ['settings', 'Mehr', 'gear']];
+  // Karte, Basis und Events haben eigene Knöpfe im HUD und stehen deshalb nicht noch einmal im Menü
+  const items = [['quests', 'Quests', 'talk'], ['inv', 'Inventar', 'backpack'], ['smithy', 'Schmiede', 'anvil', 'craft'], ['heroes', 'Helden', 'helmet', 'heroes'], ['traits', 'Traits', 'dice', 'traits'],
+    ['runes', 'Runen', 'rune', 'runes'], ['settings', 'Mehr', 'gear']];
   return [h('div', { cls: 'grid4' }, items.filter((x) => !x[3] || has(x[3])).map(([id, label, ic]) => h('button', { cls: 'tile menu', on: () => open(id) }, icon(ic, null, 40), h('span', { cls: 'ot' }, label))))];
 };
 P.base = () => {
@@ -208,7 +209,8 @@ function boxRows() {
 }
 P.shop = () => {
   const g = game.g, c = game.c;
-  const cats = [['chests', 'Truhen'], ['daily_gems', 'Gratis'], ['tickets', 'Tickets'], ['materials', 'Material'], ['stage_packs', 'Stage Packs'], ['chapter_packs', 'Chapter Packs'], ['merchant', 'Händler'], ['invasion', 'Invasion'], ['perks', 'Perks']];
+  const cats = [['chests', 'Truhen'], ['daily_gems', 'Gratis'], ['tickets', 'Tickets'], ['materials', 'Material'], ['stage_packs', 'Stage Packs'], ['chapter_packs', 'Chapter Packs'], ['merchant', 'Händler'], ['invasion', 'Invasion'], ['perks', 'Perks']]
+    .filter(([id]) => id === 'chests' || id === 'merchant' || c.t.shop.some((x) => x.cat === id)); // Reiter ohne Angebote (z. B. Invasion im Solo-Spiel) entfallen
   const out = [h('p', { cls: 'sub' }, `Gold ${fmt(econ.bal(g, 'gold'))} · Gems ${fmt(econ.bal(g, 'gems'))} · Keys W/S/H ${econ.bal(g, 'key_warrior')}/${econ.bal(g, 'key_stier')}/${econ.bal(g, 'key_special_hero')}`), tabs('shop', cats)];
   if (tab.shop === 'chests') out.push(...boxRows());
   else if (tab.shop === 'merchant') for (const m of c.t.merchant) {
@@ -272,7 +274,7 @@ P.runes = () => {
 };
 P.modes = () => {
   const g = game.g, s = game.state, c = game.c, ms = s.modes, out = [];
-  const list = [['tower', 'Tower'], ['raid', 'Boss Raid'], ['tomb', 'Tomb'], ['pvp', 'PvP'], ['invasion', 'Invasion']].filter((m) => has(m[0]));
+  const mp = c.cfg.multiplayer, list = [['tower', 'Tower'], ['raid', 'Boss Raid'], ['tomb', 'Tomb'], ['pvp', 'PvP'], ['invasion', 'Invasion']].filter((m) => has(m[0]) && (mp || (m[0] !== 'pvp' && m[0] !== 'invasion')));
   if (!list.length) return [h('p', {}, t('Modi werden über die Questreihe freigeschaltet.'))];
   if (!tab.modeOpen || !list.find((m) => m[0] === tab.mode)) {
     const info = { tower: ['linear-gradient(#8f6be0,#5b3bb0)', 'tower', `Etage ${Math.min(250, ms.tower.best + 1)}`, 'ticket_tower'], invasion: ['linear-gradient(#5db8ff,#2f7fc0)', 'home', `${c.get('invasionTiers', ms.invasion.tier).name} · ${ms.invasion.rating}`, 'ticket_invasion'],
@@ -327,7 +329,7 @@ function trackView(id) {
       const [a, b] = econ.progress(g, n.cond, { track: ts }), pts = n.reward.find((e) => e.points), it = first(n.reward);
       return h('div', { cls: 'mrow' + (st === 'claimed' ? ' done' : '') }, h('div', { cls: 'mi' }, pts ? icon('star', null, 34) : it ? itemIcon(it, 34) : icon('gift', null, 34), pts ? h('span', { cls: 'cnt ot' }, pts.n) : null),
         h('div', { cls: 'mm' }, h('div', { cls: 'mn' }, n.name), h('div', { cls: 'bar' }, h('i', { style: `width:${Math.min(100, (100 * a) / b)}%` }), h('span', { cls: 'ot' }, `${fmt(Math.min(a, b))}/${fmt(b)}`)),
-          h('div', { cls: 'mr' }, fmtReward(n.reward) + (n.bonusMult ? ` x${n.bonusMult}` : ''))),
+          h('div', { cls: 'mr' }, fmtReward(n.reward.filter((e) => !e.points)) + (n.bonusMult ? ` x${n.bonusMult}` : ''))),
         h('div', { cls: 'mb' }, st === 'claimed' ? '✓' : st === 'expired' ? 'vorbei' : btn('Annehmen', () => claim(n), st !== 'ready', 'go')));
     }), 12));
 }
@@ -371,12 +373,7 @@ function wheel() {
 P.events = () => {
   const groups = eventGroups(), out = [tabs('ev', groups.map((x) => [x[0], x[1], x[2]]))], gsel = groups.find((x) => x[0] === tab.ev);
   if (tab.ev === 'spin') {
-    out.push(has('spin') ? wheel() : h('p', { cls: 'center' }, t('Das Glücksrad wird mit Level 8 freigeschaltet.')),
-      sec('Code einlösen', h('input', { id: 'code', placeholder: 'Code' }), btn('Einlösen', async () => {
-        const code = $('code').value, r = game.try('redeemLocal', code);
-        if (r.ok) return reward('Code', r), render();
-        if (net && net.online()) { const x = await net.redeem(code); toast(x.ok ? `Code: ${fmtReward(x.got)}` : x.error); render(); } else toast(r.error);
-      })));
+    out.push(has('spin') ? wheel() : h('p', { cls: 'center' }, t('Das Glücksrad wird mit Level 8 freigeschaltet.')));
   } else out.push(gsel[3].map(trackView).filter(Boolean));
   return out;
 };
@@ -403,9 +400,8 @@ P.map = () => {
     x.fillStyle = '#4fc3f7'; x.beginPath(); x.arc((w.p.x / G.w) * G.cols * k, (w.p.y / G.h) * G.rows * k, 6, 0, 7); x.fill(); x.stroke();
   }
   return [h('div', { cls: 'hq ot' }, h('span', { style: 'color:#ffd24a' }, `Kapitel ${ch}`), h('br'), names[ch] || ''), h('div', { cls: 'stages' }, stages), big,
-    row(`Aktuell: ${s.world.area === 'base' ? 'Basis' : cur.name}`, `Heimkehr heute: ${s.flags.perk_home ? '∞' : econ.capLeft(g, 'homeReturn')}`, btn('Heimkehren', () => { if (act('returnHome').ok) close(); }, s.world.area === 'base', 'blue')),
-    sec(has('portal') ? 'Portal' : 'Gebiete (Portal noch nicht gebaut – Reise zu Fuß durch die Tore)', c.t.areas.map((a) => row(`${a.chapter}.${a.id.split('_')[1]} ${a.name}${s.world.cleared[a.id] ? ' ✓' : ''}`, `Boss: ${c.get('variants', a.boss).name} Lv.${c.get('variants', a.boss).level}`,
-      has('portal') ? btn('Reisen', () => { if (act('portal', a.id).ok) close(); }, !game.canEnter(a.id) || s.world.area === a.id, 'go') : game.canEnter(a.id) ? '' : '🔒'))), trackView('minimap')];
+    has('portal') ? sec('Portal', c.t.areas.filter((a) => game.canEnter(a.id) || a.chapter === ch).map((a) => row(`${a.chapter}.${a.id.split('_')[1]} ${a.name}${s.world.cleared[a.id] ? ' ✓' : ''}`, `Boss: ${c.get('variants', a.boss).name} Lv.${c.get('variants', a.boss).level}`,
+      btn('Reisen', () => { if (act('portal', a.id).ok) close(); }, !game.canEnter(a.id) || s.world.area === a.id, 'go')))) : h('p', { cls: 'sub center' }, 'Baue das Portal in der Basis, um zwischen Gebieten zu reisen.'), trackView('minimap')];
 };
 P.settings = () => {
   const s = game.state, g = game.g;

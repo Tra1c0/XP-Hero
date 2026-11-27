@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1nou01k9ss).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 18ugm9fu5p7).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -46,12 +46,12 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | gachaBoxes | 12 | R | R:10 ?:1 D:1 | 26 Boxdefinitionen im Original; hier 12 belegbare (inkl. 8 Runentruhen, Special Hero Chest). Gem-Preise eigen, kein universeller 10er-Preis. |
 | buildings | 8 | D | D:7 B:1 | 26 Gebäudedefinitionen im Original; hier die 7 dokumentierten Einstiegskosten (Gold D, Materialmengen E). |
 | npcs | 29 | R | E:2 D:26 R:1 | 8 Figuren, 27 Standorte, Szenen-Freischaltung nach Referenz (D-Struktur); alle Dialogtexte und Älteste/Schmied sind eigen. |
-| worldObjects | 15 | D | D:15 | Invasionsportale (Positionen der Referenz, dekorativ: Invasion läuft über das Menü) und Lagerfeuer. |
+| worldObjects | 2 | D | D:2 | Invasionsportale (Positionen der Referenz, dekorativ: Invasion läuft über das Menü) und Lagerfeuer. |
 | worlds | 1 | R | R:1 | Zusammenhängende Kapitel-1-Welt: Zonen, Tore, Hindernisse, Landmarken (Level-Design E um Referenzpunkte D). Meter, X=Ost, Z=Nord. |
 | unlocks | 7 | D | D:4 E:2 R:1 | Levelgebundene Freischaltungen (D); blessing/spin/special/extra/pvp eigen platziert. |
-| quests | 353 | R | R:66 D:270 ?:1 E:16 | Hauptquestkette (Original ca. 850 Einträge nicht erfasst): dokumentierte Unlock-Kopplungen (s=D) + eigene Gebietsquests. Dazu 268 NPC-Kettenquests (id nq_*, Ziel/Menge/Belohnung D, Abgabe beim Questgeber). |
-| tracks | 13 | R | R:4 D:4 E:5 | Generische Claim-Tracks (Meilensteine, Missionen, Pässe, Events). Status je Track im Feld s. |
-| shop | 42 | R | D:5 E:11 R:25 ?:1 | Rein spielinterner Katalog. Royal-Perks (D) als erspielbare Einmal-Angebote; Preise eigen. EXP-Perk (Wert 1000, Einheit ungeklärt) nicht angewendet. |
+| quests | 352 | R | R:66 D:269 ?:1 E:16 | Hauptquestkette (Original ca. 850 Einträge nicht erfasst): dokumentierte Unlock-Kopplungen (s=D) + eigene Gebietsquests. Dazu 268 NPC-Kettenquests (id nq_*, Ziel/Menge/Belohnung D, Abgabe beim Questgeber). |
+| tracks | 12 | R | R:3 D:4 E:5 | Generische Claim-Tracks (Meilensteine, Missionen, Pässe, Events). Status je Track im Feld s. |
+| shop | 37 | R | D:4 E:7 R:25 ?:1 | Rein spielinterner Katalog. Royal-Perks (D) als erspielbare Einmal-Angebote; Preise eigen. EXP-Perk (Wert 1000, Einheit ungeklärt) nicht angewendet. |
 | perks | 5 | D | D:4 ?:1 | Royal-Lifetime-Perkwerte; Einheit von cargo/exp ungeklärt (cargo als flacher Wert angewendet = R, exp nicht angewendet). |
 | merchant | 2 | E | E:2 | Rollierender Händler: täglich (UTC) per Seed 4 Angebote; Refresh gegen Gems. Boss-Rank-Shop: 1 Gratis-Refresh/Tag (D-Cap). |
 | randomReward | 1 | R | R:1 | IngameRV: 393 Levelzeilen (als Band L8-400, R); Gem-Gewicht 0,10 Menge 10 (D); Orb-Mengenbereiche D, Orb-Gewichte E. Crimson/Azure/Soul unzugeordnet = deaktiviert. |
@@ -74,7 +74,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | bonusClaims | ? | `{"mode":"replace","levelUp":true,"giftChest":true}` | Früherer Rewarded-Ad-Bonus (x5) als direkter Gratis-Claim. replace/add ungeklärt. |
 | caps | D | `{"towerBonus":5,"pvpReward":5,"pvpTicket":10,"revive":3,"dailyGemShop":2,"bossRankRefresh":1,"homeReturn":5…` | Erste 6 Keys = dokumentierte Tagescaps (Summe 26). homeReturn/randomReward/freeSpin = E. |
 | applyDailyGemShopCapToFreeGems | ? | `false` | Semantik von Daily-Gem-Shop-RV-Cap 2 ungeklärt; standardmäßig nicht auf 9002-9004 angewendet. |
-| dailyTickets | E | `{"ticket_tower":5,"ticket_invasion":5,"ticket_raid":2,"ticket_tomb":3,"ticket_pvp":5}` | Tägliche Grundtickets (Auffüllen bis zu diesem Wert). |
+| dailyTickets | E | `{"ticket_tower":5,"ticket_raid":2,"ticket_tomb":3}` | Tägliche Grundtickets (Auffüllen bis zu diesem Wert). |
 | player | E | `{"baseCargo":20,"moveSpeed":230,"critChance":5,"critDmg":150,"pickupRadius":90,"regenPct":1,"radius":16}` | Grundwerte Spieler. |
 | statCaps | E | `{"critChance":100,"cooldownPct":70,"atkSpeedPct":400,"moveSpeedPct":150,"lifesteal":50,"multiHit":100}` | Obergrenzen; Kritchance <= 100. |
 | combat | R | `{"subIntervalMult":2.2,"subDmgMult":0.6,"dropDespawnSec":90,"respawnOfflineContinues":true,"defaultRespawnS…` | Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt. |
@@ -98,6 +98,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | world | E | `{"normalPerNode":1,"rareRespawnMinSec":900,"spawnSpreadM":2.5,"activeRadiusM":40}` | Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius. |
 | ledgerKeep | E | `400` |  |
 | saveSlots | E | `2` |  |
+| multiplayer | E | `false` | Solo-Spiel: PvP-Arena und Invasion sind nicht Teil des Spiels. true im Content schaltet sie samt Zubehör wieder ein (Paket mit buildBaseContent({ multiplayer: true }) erzeugen). |
 
 ## Offene Originaldaten (nicht erfunden, nicht behauptet)
 
