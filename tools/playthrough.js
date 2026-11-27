@@ -41,7 +41,7 @@ const quests = () => {
     else if (o.cond && o.cond.upgrade) game.try('buyUpgrade', o.cond.upgrade, 1);
     else if (o.counter === 'heroLevel') game.try('heroLevelUp', s().heroes.active);
     else if (o.counter === 'heroStar') game.try('heroStarUp', s().heroes.active);
-    else if (o.counter && o.counter.startsWith('upgrade:')) game.try('buyUpgrade', o.counter.slice(8), 1);
+    else if (o.counter && o.counter.startsWith('upgrade:')) { const id = o.counter.slice(8); if (c.has('upgradeTracks', id)) game.try('buyUpgrade', id, 1); else for (const u of c.t.upgradeTracks) if (u.family === id && game.try('buyUpgrade', u.id, 1).ok) break; }
     else if (o.counter && o.counter.startsWith('gacha:')) game.try('openBox', o.counter.slice(6), 1);
     else if (o.counter === 'returnBase') game.try('returnHome');
     else if (t && (t.npc || t.char)) { const goal = game.questGoal(q); if (goal) { const p = game.world.p; if (Math.hypot(goal.x - p.x, goal.y - p.y) < 70) { const n = game.world.map.objects.find((x) => x.type === 'npc' && Math.hypot(x.x - goal.x, x.y - goal.y) < 5); if (n) game.try('talkNpc', n.id); } else { p.auto = false; game.world.goTo(goal.x, goal.y); return true; } } }
@@ -58,12 +58,11 @@ for (let sec = 0; sec < HOURS * 3600; sec++) {
   if (!walking && !p.goal) p.auto = true;
   sec0 = sec;
   if (sec % 10 === 0) spend();
-  for (const a of c.t.areas) if (a.chapter === 1 && s().world.cleared[a.id] && !cleared[a.id]) { cleared[a.id] = sec; log.push(`${hhmm(sec)}  ${c.get('variants', a.boss).name} besiegt (${a.name}) · Level ${s().player.level} · Tode bisher ${deaths} · Kraft ${s().upgrades.ab_power || 0} · HP ${s().upgrades.ab_hp || 0} · Angriff ${g.stats.atk} · Leben ${g.stats.hp}`); }
+  for (const a of c.t.areas) if (a.chapter === 1 && s().world.cleared[a.id] && !cleared[a.id]) { cleared[a.id] = sec; console.log(log[log.length] = `${hhmm(sec)}  ${c.get('variants', a.boss).name} besiegt (${a.name}) · Level ${s().player.level} · Tode bisher ${deaths} · Kraft ${s().upgrades.ab_power || 0} · HP ${s().upgrades.ab_hp || 0} · Angriff ${g.stats.atk} · Leben ${g.stats.hp}`); }
   const done = Object.keys(s().quests.done).length;
-  if (done !== lastDone) { lastDone = done; lastDoneT = sec; } else if (sec - lastDoneT === 1500) stuckNote = `${hhmm(sec)} seit 25 min keine Quest abgeschlossen; offen: ${currentQuests(g).map(({ q, obj }) => `${q.name} ${obj.map((o) => o.cur + '/' + o.need).join()}`).join(' | ')}`, log.push('  ! ' + stuckNote);
+  if (done !== lastDone) { lastDone = done; lastDoneT = sec; } else if (sec - lastDoneT === 1500) stuckNote = `${hhmm(sec)} seit 25 min keine Quest abgeschlossen; offen: ${currentQuests(g).map(({ q, obj }) => `${q.name} ${obj.map((o) => o.cur + '/' + o.need).join()}`).join(' | ')}`, console.log('  ! ' + stuckNote);
   if (cleared.a1_6) break;
 }
 const st = s();
-console.log(log.join('\n'));
 console.log(`Ende nach ${hhmm((clock.t - t0) / 1000)} Spielzeit: Level ${st.player.level}, Tode ${deaths}, Quests ${Object.keys(st.quests.done).length}, Kills ${st.counters['kill:any'] || 0}, Gold verdient ${Object.values(st.totals.gold || {}).filter((v) => v > 0).reduce((a, b) => a + b, 0)}, Waffen ${st.weapons.list.length}, beste Seltenheit ${Math.max(0, ...st.weapons.list.map((x) => c.get('weapons', x.def).rarity))}`);
 console.log('Offen: ' + currentQuests(g).map(({ q, obj }) => `${q.name} ${obj.map((o) => o.cur + '/' + o.need).join()}`).join(' | '));
