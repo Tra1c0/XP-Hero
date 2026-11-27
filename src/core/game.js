@@ -253,7 +253,7 @@ export const COMMANDS = {
   revive: (game, g, how) => {
     const w = game.world;
     if (w.p.alive) fail('alive', 'Nicht nötig');
-    if (how === 'inplace') { econ.useCap(g, 'revive'); w.p.alive = true; w.p.hp = g.stats.hp; } else if (w.mode) { w.end(false); } else game.enter('base', false);
+    if (how === 'inplace') { econ.useCap(g, 'revive'); w.p.alive = true; w.p.hp = g.stats.hp; } else if (w.mode) { w.end(false); } else { game.enter('base', false); game.world.p.alive = true; game.world.p.hp = g.stats.hp; }
   },
   startMode: (game, g, mode, param) => {
     const r = modes.startMode(g, mode, param), spec = modes.modeSpec(g, r.session);
