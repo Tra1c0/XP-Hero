@@ -5,13 +5,20 @@ import { mk } from '../tests/helpers.js';
 import { currentQuests, questTarget } from '../src/core/meta.js';
 import * as prog from '../src/core/progress.js';
 const HOURS = Number(process.argv[2] || 4), { game, clock, s } = mk({ seed: 7 }), g = game.g, c = game.c;
+const killers = {};
 let sec0 = 0, deaths = 0, lastDone = 0, lastDoneT = 0, stuckNote = '';
 const log = [], cleared = {}, t0 = clock.t, hhmm = (sec) => `${Math.floor(sec / 3600)}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`;
 const spend = () => {
   // Gold: abwechselnd das günstigste aus Kraft/HP/Regeneration; Orbs und anderes: alles, was sich kaufen lässt
-  for (let k = 0; k < 40; k++) {
-    const cand = ['ab_power', 'ab_hp', 'ab_regen', 'ab_cargo'].map((id) => [id, prog.upgradePreview(g, id, 1)]).filter(([, pv]) => pv.to > pv.from).sort((a, b) => (a[1].next.gold || 0) - (b[1].next.gold || 0));
-    if (!cand.length || (s().inv.gold || 0) - (cand[0][1].next.gold || 0) < reserve || !game.try('buyUpgrade', cand[0][0], 1).ok) break;
+  // Gold: Kraft und HP im Gleichschritt (das niedrigere zuerst), dazwischen Regeneration und Fracht, wenn sie höchstens ein Fünftel davon kosten.
+  // Für ein teures Quest-Ziel wird nur gespart, wenn es in Reichweite ist (höchstens das Dreifache des aktuellen Golds).
+  for (let k = 0; k < 60; k++) {
+    const gold = s().inv.gold || 0, hold = reserve <= gold * 3 ? reserve : 0, pv = (id) => prog.upgradePreview(g, id, 1);
+    const main = ['ab_power', 'ab_hp'].map((id) => [id, pv(id)]).filter(([, q]) => q.next).sort((x, y) => x[1].from - y[1].from)[0];
+    if (!main) break;
+    const side = ['ab_regen', 'ab_cargo'].map((id) => [id, pv(id)]).filter(([, q]) => q.next && (q.next.gold || 0) * 5 <= (main[1].next.gold || 1) && q.to > q.from)[0];
+    const pick = side || main;
+    if (gold - (pick[1].next.gold || 0) < hold || !game.try('buyUpgrade', pick[0], 1).ok) break;
   }
   for (const u of c.t.upgradeTracks) if (u.family !== 'ability' && u.family !== 'synergy') game.try('buyUpgrade', u.id, 'max');
   while (game.try('craft', 1).ok);
@@ -53,7 +60,7 @@ for (let sec = 0; sec < HOURS * 3600; sec++) {
   for (let k = 0; k < 30; k++) { game.tick(1 / 30); clock.t += 1000 / 30; }
   game.drainEvents();
   const w = game.world, p = w.p;
-  if (!p.alive) { deaths++; game.cmd('revive', 'base'); continue; }
+  if (!p.alive) { deaths++; const k = (p.cur && p.cur.alive ? p.cur.v.name : p.tgt ? p.tgt.v.name : '?') + ' in ' + s().world.area; killers[k] = (killers[k] || 0) + 1; game.cmd('revive', 'base'); continue; }
   const walking = sec % 2 === 0 ? quests() : !!p.goal;
   if (!walking && !p.goal) p.auto = true;
   sec0 = sec;
@@ -65,4 +72,5 @@ for (let sec = 0; sec < HOURS * 3600; sec++) {
 }
 const st = s();
 console.log(`Ende nach ${hhmm((clock.t - t0) / 1000)} Spielzeit: Level ${st.player.level}, Tode ${deaths}, Quests ${Object.keys(st.quests.done).length}, Kills ${st.counters['kill:any'] || 0}, Gold verdient ${Object.values(st.totals.gold || {}).filter((v) => v > 0).reduce((a, b) => a + b, 0)}, Waffen ${st.weapons.list.length}, beste Seltenheit ${Math.max(0, ...st.weapons.list.map((x) => c.get('weapons', x.def).rarity))}`);
+console.log('Tode nach Gegner: ' + Object.entries(killers).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, n]) => `${k} ${n}`).join(' · '));
 console.log('Offen: ' + currentQuests(g).map(({ q, obj }) => `${q.name} ${obj.map((o) => o.cur + '/' + o.need).join()}`).join(' | '));
