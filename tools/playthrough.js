@@ -6,6 +6,7 @@ import { currentQuests, questTarget } from '../src/core/meta.js';
 import * as prog from '../src/core/progress.js';
 const HOURS = Number(process.argv[2] || 4), { game, clock, s } = mk({ seed: 7 }), g = game.g, c = game.c;
 const killers = {};
+let chestWait = 0, chestPause = 0;
 let sec0 = 0, deaths = 0, lastDone = 0, lastDoneT = 0, stuckNote = '';
 const log = [], cleared = {}, t0 = clock.t, hhmm = (sec) => `${Math.floor(sec / 3600)}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`;
 const spend = () => {
@@ -52,7 +53,7 @@ const quests = () => {
     else if (o.counter && o.counter.startsWith('gacha:')) game.try('openBox', o.counter.slice(6), 1);
     else if (o.counter === 'returnBase') game.try('returnHome');
     else if (t && (t.npc || t.char)) { const goal = game.questGoal(q); if (goal) { const p = game.world.p; if (Math.hypot(goal.x - p.x, goal.y - p.y) < 70) { const n = game.world.map.objects.find((x) => x.type === 'npc' && Math.hypot(x.x - goal.x, x.y - goal.y) < 5); if (n) game.try('talkNpc', n.id); } else { p.auto = false; game.world.goTo(goal.x, goal.y); return true; } } }
-    else if (t && t.chest) { const goal = game.questGoal(q); if (goal) { game.world.p.auto = false; game.world.goTo(goal.x, goal.y); return true; } }
+    else if (t && t.chest && sec0 >= chestPause) { const goal = game.questGoal(q); if (goal) { const p = game.world.p; if (Math.hypot(goal.x - p.x, goal.y - p.y) < 60 && ++chestWait > 15) { chestWait = 0; chestPause = sec0 + 900; continue; } p.auto = false; game.world.goTo(goal.x, goal.y); return true; } } // steht die Figur an der Truhe und bekommt sie nicht (Plätze voll), jagt sie erst 15 min weiter
   }
   return false;
 };
