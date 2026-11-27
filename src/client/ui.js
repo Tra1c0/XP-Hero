@@ -47,7 +47,7 @@ export function modal(title, body, buttons = [['OK', null]]) {
 // Führt einen Befehl aus, zeigt Fehler verständlich und zeichnet das Menü neu.
 function act(name, ...args) {
   const r = game.try(name, ...args);
-  if (!r.ok) toast(r.error);
+  if (!r.ok) { toast(r.error); if (typeof window !== 'undefined' && window.__haptic) window.__haptic.play('warning'); }
   render();
   return r;
 }
@@ -614,7 +614,7 @@ P.settings = () => {
   const s = game.state, g = game.g;
   const tog = (k, label) => row(label, '', btn(s.settings[k] ? 'An' : 'Aus', () => act('setSetting', k, !s.settings[k])));
   const gemTot = Object.entries(s.totals.gems || {}).sort((a, b) => b[1] - a[1]);
-  return [sec('Einstellungen', row('Auto-Jagd: Ziel', s.settings.autoMode === 'near' ? 'Greift den nächsten Gegner im Gebiet an' : 'Jagt die Gegner der aktuellen Quest, sonst den nächsten', btn(s.settings.autoMode === 'near' ? 'Nächster Gegner' : 'Quest', () => act('setSetting', 'autoMode', s.settings.autoMode === 'near' ? 'quest' : 'near'))), tog('autoBoss', 'Auto-Jagd greift Bosse an'), tog('autoReturn', 'Auto-Jagd: bei voller Fracht heimkehren'), tog('dmgNumbers', 'Schadenszahlen'), tog('reducedFx', 'Reduzierte Effekte'), tog('colorblind', 'Farbblind-Modus (Labels statt Farbe)'),
+  return [sec('Einstellungen', row('Auto-Jagd: Ziel', s.settings.autoMode === 'near' ? 'Greift den nächsten Gegner im Gebiet an' : 'Jagt die Gegner der aktuellen Quest, sonst den nächsten', btn(s.settings.autoMode === 'near' ? 'Nächster Gegner' : 'Quest', () => act('setSetting', 'autoMode', s.settings.autoMode === 'near' ? 'quest' : 'near'))), tog('autoBoss', 'Auto-Jagd greift Bosse an'), tog('autoReturn', 'Auto-Jagd: bei voller Fracht heimkehren'), tog('haptics', 'Vibration'), tog('dmgNumbers', 'Schadenszahlen'), tog('reducedFx', 'Reduzierte Effekte'), tog('colorblind', 'Farbblind-Modus (Labels statt Farbe)'),
     row('Schriftgröße', `${Math.round(s.settings.textScale * 100)}%`, btn('−', () => act('setSetting', 'textScale', Math.max(0.8, s.settings.textScale - 0.1))), btn('+', () => act('setSetting', 'textScale', Math.min(1.5, s.settings.textScale + 0.1))))),
   sec('App', row('Nach Updates suchen', 'Lädt die neueste signierte APK, Spielstand bleibt erhalten', btn('Prüfen', async () => { const r = await window.__checkUpdate(true); if (r.status === 'current') toast(`Aktuell (${r.current})`); else if (r.status === 'offline') toast('Keine Verbindung'); else if (r.status === 'none') toast('Es ist noch keine Version veröffentlicht.'); else if (r.status === 'dev') toast('Entwicklungsversion – Updates gibt es nur in der installierten App.'); else if (r.status === 'error') toast(r.error); }))),
   sec('Spielstand', row(`Profil ${s.profileId}`, `Content ${game.c.version} · Revision ${s.sync.rev}`, btn('Exportieren', () => net.exportSave()), btn('Importieren', () => net.importSave())),

@@ -93,6 +93,7 @@ export class Renderer3D {
     return v;
   }
   // Teil-Liste [shape, x, y, z, rot, sx, sy, sz, hexColor, em] -> pro Form Float32Array
+  shake(a) { this.sh = Math.max(this.sh || 0, Math.min(1, a)); }
   pack(parts, buckets = {}) {
     for (const t of parts) {
       const b = (buckets[t[0]] ||= []);
@@ -448,7 +449,10 @@ export class Renderer3D {
     const nowC = performance.now(), kc = 1 - Math.exp(-Math.min(0.25, (nowC - (this.camT || nowC)) / 1000) * 14); this.camT = nowC;
     this.cam.x += (tx - this.cam.x) * kc; this.cam.z += (tz - this.cam.z) * kc;
     const aspect = this.h / this.w, hw = VIEW_W / 2, hh = hw * aspect, D = 60;
-    const eye = [this.cam.x, Math.sin(TILT) * D, this.cam.z + Math.cos(TILT) * D], tgt = [this.cam.x, 0, this.cam.z];
+    // Kamerawackeln (an Haptik gekoppelt): klingt in ca. 0,3 s ab; bei "weniger Effekte" aus
+    this.sh = Math.max(0, (this.sh || 0) - Math.min(0.25, (nowC - (this.shT || nowC)) / 1000) * 3.4); this.shT = nowC;
+    const shk = game.state.settings.reducedFx ? 0 : this.sh * this.sh * 0.22, sx = Math.sin(nowC * 0.071) * shk, sz = Math.cos(nowC * 0.093) * shk;
+    const eye = [this.cam.x + sx, Math.sin(TILT) * D, this.cam.z + sz + Math.cos(TILT) * D], tgt = [this.cam.x + sx, 0, this.cam.z + sz];
     const vp = mul(ortho(-hw, hw, -hh, hh, 1, 140), lookAt(eye, tgt));
     this.vp = vp;
     const depthZ = hh / Math.sin(TILT);

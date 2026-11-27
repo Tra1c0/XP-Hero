@@ -5,6 +5,7 @@ import { Game } from '../core/game.js';
 import { Renderer } from './render.js';
 import { Renderer3D } from './render3d.js';
 import * as ui from './ui.js';
+import * as haptic from './haptic.js';
 import { makeNet } from './net.js';
 import { checkForUpdate } from './update.js';
 
@@ -70,10 +71,27 @@ function guard(name, fn) {
     if (name === 'Anzeige') { try { ui.close(); } catch { /* ignorieren */ } } // defektes Fenster schließen, statt bei jedem Takt erneut zu scheitern
   }
 }
+// Haptik-Auslöser (eigene Zuordnung, s. haptic.js): Zustandswechsel je Bild vergleichen – günstig und unabhängig vom Anzeige-Takt.
+haptic.setEnabled(() => !!game.state.settings.haptics);
+const hs = { hurt: undefined, alive: true, kills: -1, boss: -1, wsk: {} };
+function feel() {
+  const w = game.world, p = w.p, c = game.state.counters || {};
+  if (p.hurtT !== hs.hurt) { if (hs.hurt !== undefined && p.hurtT !== undefined) haptic.play('medium'); hs.hurt = p.hurtT; }
+  if (hs.alive && !p.alive) { haptic.play('failure'); R.shake(1); } hs.alive = p.alive;
+  const k = c['kill:any'] || 0, b = c.bossKill || 0;
+  if (hs.boss >= 0 && b > hs.boss) { haptic.play('heavy'); R.shake(1); } else if (hs.kills >= 0 && k > hs.kills) haptic.play('light');
+  hs.kills = k; hs.boss = b;
+  for (const [slot, sk] of Object.entries(p.wsk || {})) if (sk && hs.wsk[slot] !== sk.t) { if (hs.wsk[slot] !== undefined || w.t - sk.t < 0.2) { haptic.play('rigid'); R.shake(0.45); } hs.wsk[slot] = sk.t; }
+}
+const FEEL_EV = { levelup: 'success', unlock: 'success', reward: 'success', areaCleared: 'heavy', specialStar: 'success', levelReward: 'soft' };
+// Bedienung: jeder Knopfdruck ein kurzer Tick; abgelehnte Aktionen (Fehlermeldung) ein Warnimpuls
+addEventListener('pointerdown', (e) => { if (e.target && e.target.closest && e.target.closest('button, .tile, .mcard, .slot6')) haptic.play('selection'); }, true);
+window.__haptic = haptic;
 function frame(ts) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.25, (ts - last) / 1000); last = ts;
   guard('Simulation', () => game.tick(dt));
+  guard('Haptik', feel);
   guard('Bild', () => R.draw(game));
   hudT += dt; saveT += dt;
   if (hudT >= 0.2) {
@@ -81,6 +99,7 @@ function frame(ts) {
     guard('Anzeige', () => {
       const ev = game.drainEvents();
       for (const e of ev) { if (e.type === 'modeStart' && !e.resumed) net.modeStart(e.mode, e.param); if (e.type === 'modeResult') net.modeComplete(e.result); }
+      for (const e of ev) if (FEEL_EV[e.type]) haptic.play(FEEL_EV[e.type]);
       ui.handleEvents(ev); ui.hud();
       if (perf) { const s = [...ft].sort((a, b) => a - b), q = (p) => (s[Math.floor(s.length * p)] || 0).toFixed(1); const el = document.getElementById('perf'); el.hidden = false; el.textContent = `Frame ms p50 ${q(0.5)} p95 ${q(0.95)} p99 ${q(0.99)}\nGegner ${game.world.enemies.length} Proj ${game.world.proj.length} Drops ${game.world.drops.length}`; }
     });

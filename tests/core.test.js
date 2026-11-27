@@ -486,3 +486,19 @@ test('Alte Spielstände: verwaiste Truhen, Gegenstände, Quests und Gebäude wer
   for (let k = 0; k < 60; k++) { b.game.tick(1 / 30); b.clock.t += 33; }
   assert.ok(b.game.cmd('claimChest', 0).length >= 1, 'alte Truhe lässt sich öffnen');
 });
+
+test('Haptik: Presets, Aus-Schalter, Mindestabstand (stärker löst schwächer ab), Muster für Browser und App-Brücke', async () => {
+  const haptic = await import('../src/client/haptic.js');
+  const calls = []; let on = true; const realNow = Date.now; let now = 1e6; Date.now = () => now;
+  try {
+    Object.defineProperty(globalThis, 'navigator', { value: { vibrate: (p) => { calls.push(p); return true; } }, configurable: true });
+    haptic.setEnabled(() => on);
+    assert.equal(haptic.play('light'), true); assert.deepEqual(calls.at(-1), 12);
+    assert.equal(haptic.play('selection'), false, 'schwächerer Impuls innerhalb der Sperre entfällt');
+    assert.equal(haptic.play('heavy'), true, 'stärkerer Impuls löst ab'); now += 200;
+    assert.equal(haptic.play('success'), true); assert.deepEqual(calls.at(-1), [14, 70, 24]);
+    on = false; now += 200; assert.equal(haptic.play('heavy'), false); assert.equal(haptic.play('gibt_es_nicht'), false);
+    on = true; now += 200; globalThis.window = { XPHaptic: { play: (s) => calls.push(s) } };
+    assert.equal(haptic.play('failure'), true); assert.equal(calls.at(-1), '22,220;60,0;22,160;60,0;34,255');
+  } finally { Date.now = realNow; delete globalThis.window; }
+});
