@@ -16,7 +16,8 @@ export function modeSpec(g, se) {
   if (se.mode === 'tomb') { const t = g.c.get('tombTiers', se.param); return { kind: 'tomb', level: t.level, waves: t.waves, timer: cfg.tomb.timerSec }; }
   if (se.mode === 'raid') {
     const b = g.c.get('raidBosses', se.param), v = modeVariant(g, b.level, 'boss', b.hpMult);
-    return { kind: 'raid', level: b.level, waves: [[{ v, count: 1 }]], timer: cfg.raid.timerSec, timeoutWin: true, bossHp: v.hp, team: [...g.state.heroes.raidTeam] };
+    v.name = b.name;
+    return { kind: 'raid', mech: b.mech ? g.c.get('raidMechs', b.mech) : null, level: b.level, waves: [[{ v, count: 1 }]], timer: cfg.raid.timerSec, timeoutWin: true, bossHp: v.hp, team: [...g.state.heroes.raidTeam] };
   }
   fail('bad_mode');
 }

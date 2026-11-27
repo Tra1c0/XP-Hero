@@ -132,7 +132,9 @@ export class World {
     let k = 0;
     for (const grp of m.waves[this.wave]) for (let i = 0; i < grp.count; i++, k++) {
       const v = grp.v || modeVariant(this.g, m.level, grp.rank, grp.hpMult || 1);
-      this.enemies.push(this.makeEnemy(v, 150 + ((k * 137) % 600), 180 + ((k * 71) % 320)));
+      const en = this.makeEnemy(v, 150 + ((k * 137) % 600), 180 + ((k * 71) % 320));
+      if (m.kind === 'raid' && m.mech && v.rank === 'boss') { en.v = { ...v }; en.mech = m.mech; en.mcd = m.mech.period || 0; en.baseAtk = v.atk; }
+      this.enemies.push(en);
     }
   }
   end(win) {
@@ -188,6 +190,8 @@ export class World {
   // ---- Schaden
   hit(e, base, kind, skill = false) {
     if (!e.alive || e.st === 'spawn') return;
+    // Raid: Panzer blockt Treffer (Fernangriffe prallen auf die Figur zurück), Schild fängt Schaden ab
+    if (e.shell > 0) { e.shell--; this.text(e.x, e.y - e.r, 0, 1); if (kind === 'ranged') this.hurt(Math.round(e.baseAtk * 0.5)); return; }
     const g = this.g, st = g.stats;
     let dmg = base * (1 + st.dmgPct / 100) * (1 + (kind === 'melee' ? st.meleePct : st.rangedPct) / 100);
     if (skill) dmg *= 1 + st.skillDmgPct / 100;
@@ -195,6 +199,7 @@ export class World {
     const crit = rnd(g.state.rng, 'world') * 100 < st.critChance;
     if (crit) dmg *= st.critDmg / 100;
     dmg = Math.max(1, Math.round(dmg));
+    if (e.shield > 0) { const ab = Math.min(e.shield, dmg); e.shield -= ab; dmg -= ab; if (dmg <= 0) { this.text(e.x, e.y - e.r, 0, 1); return; } }
     const dealt = Math.min(dmg, e.hp); // Overkill zählt nicht als Schaden
     e.hp -= dealt; e.hitT = this.t; this.dmgDealt += dealt;
     if (st.lifesteal > 0 && this.p.alive) this.p.hp = Math.min(st.hp, this.p.hp + (dealt * st.lifesteal) / 100);
@@ -207,6 +212,26 @@ export class World {
     if (s.bossImmune && e.v.rank === 'boss') return;
     if (id === 'slow') e.slowT = s.refresh === 'renew' ? dur : Math.max(e.slowT, dur);
     else if (id === 'stun') { if (e.stunT <= 0) e.stunT = dur; } else if (id === 'burn') { e.burnN = Math.min(s.maxStacks, e.burnN + 1); e.burnT = dur; }
+  }
+  // Raid-Mechanik des Bosses (eine je Boss, Stufe Normal)
+  raidMech(e, dt, load) {
+    const m = e.mech, p = this.p, atk = e.baseAtk;
+    if (m.id === 'shell') { if (!e.shellUsed && e.hp < (e.maxHp * m.hpPct) / 100) { e.shellUsed = true; e.shell = m.hits; this.fx.push({ x: e.x, y: e.y, r: e.r * 3, t: 0.5, k: 0 }); } return; }
+    if (m.id === 'summon') e.v.atk = Math.round(atk * (1 + (this.enemies.filter((x) => x.alive && x.minion).length * m.atkPerMinionPct) / 100));
+    if (e.mch > 0) { // Aufladen läuft
+      e.mch -= dt;
+      if (e.mch > 0) return;
+      if (m.id === 'festival') { if (p.alive && load[0] && !load[0].cls.melee) { const before = p.hp; this.hurt(Math.round(atk * m.mult)); e.hp = Math.min(e.maxHp, e.hp + ((before - p.hp) * m.healPct) / 100); } }
+      else if (m.id === 'wind') { const d = Math.hypot(p.x - e.x, p.y - e.y) || 1; if (p.alive && d < m.radius) { this.hurt(Math.round(atk * m.mult)); [p.x, p.y] = slide(this.G, p.x, p.y, p.x + ((p.x - e.x) / d) * m.knock, p.y + ((p.y - e.y) / d) * m.knock, p.r); p.slowT = m.slowSec; } }
+      else if (m.id === 'fairy') { if (p.alive) { this.hurt(Math.round(atk * m.mult)); p.dot = { t: m.poisonSec, dps: (atk * m.poisonPct) / 100, acc: 0 }; } e.shield = (e.shield || 0) + (e.maxHp * m.shieldPct) / 100; }
+      else if (m.id === 'hellfire') { if (p.alive) { this.hurt(Math.round(atk * m.mult)); p.dot = { t: m.burnSec, dps: (atk * m.burnPct) / 100, acc: 0 }; } }
+      this.fx.push({ x: m.id === 'wind' ? e.x : p.x, y: m.id === 'wind' ? e.y : p.y, r: m.radius || 120, t: 0.35, k: 2 });
+      return;
+    }
+    if ((e.mcd -= dt) > 0) return;
+    e.mcd = m.period;
+    if (m.id === 'summon') { for (let k = 0; k < m.count && this.enemies.length < 40; k++) { const a = (k / m.count) * 6.283, mn = this.makeEnemy({ ...modeVariant(this.g, this.mode.level, 'normal', 0.6), name: 'Mumie', monster: 'mummy' }, clamp(e.x + Math.cos(a) * 160, 40, this.map.w - 40), clamp(e.y + Math.sin(a) * 160, 40, this.map.h - 40)); mn.minion = true; this.enemies.push(mn); } return; }
+    e.mch = m.charge || 1; e.tele = { t: e.mch, r: m.radius || 120 }; // Ankündigung für die Darstellung
   }
   kill(e) {
     if (!e.alive) return; // genau einmal pro Tod
@@ -330,14 +355,17 @@ export class World {
       if (!p.auto) p.huntArea = null;
       if (p.auto) this.autoHunt(dt, load);
       else if (p.goal) { if (this.follow(p.goal.x, p.goal.y, dt, 20) <= 20) p.goal = null; }
-      const sp = cfg.player.moveSpeed * (1 + st.moveSpeedPct / 100), ml = Math.hypot(p.mx, p.my);
+      // Raid-Effekte auf der Figur: Verlangsamung (Lauf- und Angriffstempo), Gift/Brand als Schaden über Zeit
+      const slowP = p.slowT > 0 ? ((p.slowT -= dt), 0.6) : 1;
+      if (p.dot && p.dot.t > 0) { p.dot.t -= dt; p.dot.acc += p.dot.dps * dt; if (p.dot.acc >= 1) { const n = Math.floor(p.dot.acc); p.dot.acc -= n; this.hurt(n); } }
+      const sp = cfg.player.moveSpeed * (1 + st.moveSpeedPct / 100) * slowP, ml = Math.hypot(p.mx, p.my);
       if (ml > 0.05) { const k = Math.min(1, ml) / ml; [p.x, p.y] = slide(this.G, p.x, p.y, p.x + p.mx * k * sp * dt, p.y + p.my * k * sp * dt, p.r); }
       p.hp = Math.min(st.hp, p.hp + (st.regen + (st.hp * cfg.player.regenPct) / 100) * dt);
       // Hauptwaffe hält ihr Ziel, bis es stirbt oder die Reichweite verlässt; Nebenwaffen/Skills mit eigenen Takten
       // Schutzzone gilt in beide Richtungen: in der Basis wird nicht angegriffen (sonst gefahrloses Farmen mit Fernwaffen vom Rand aus)
       const inSafe = !this.mode && !!this.map.world && this.zone() === 'base';
       if (!inSafe) for (const l of load) {
-        p.wcd[l.slot] -= dt;
+        p.wcd[l.slot] -= dt * slowP;
         if (p.wcd[l.slot] <= 0) {
           let tgt = l.slot === 0 && p.cur && p.cur.alive && dist2(p.x, p.y, p.cur.x, p.cur.y) <= (l.range + p.cur.r) ** 2 ? p.cur : this.nearest(p.x, p.y, l.range);
           if (tgt) {
@@ -433,6 +461,7 @@ export class World {
       // Ruhende Gegner außerhalb des aktiven Radius werden nicht simuliert (Zustand bleibt erhalten)
       if ((e.st === 'idle' || e.st === 'patrol') && dist2(e.x, e.y, p.x, p.y) > far2) continue;
       const b = e.beh;
+      if (e.mech) this.raidMech(e, dt, this.load);
       if (e.burnT > 0) {
         e.burnT -= dt; e.burnAcc += ((g.stats.atk * burn.dotPctAtk) / 100) * e.burnN * dt;
         if (e.burnAcc >= 1) { const n = Math.floor(e.burnAcc); e.burnAcc -= n; const dealt = Math.min(n, e.hp); e.hp -= dealt; this.dmgDealt += dealt; if (e.hp <= 0) { this.kill(e); continue; } }
@@ -461,7 +490,7 @@ export class World {
           // Verfolgung endet bei Leine, Tod des Spielers oder wenn der Spieler hinter Wänden festhängt (keine Endlosschleife)
           if (!p.alive || pSafe || dist2(e.x, e.y, e.hx, e.hy) > leash * leash || e.stuck > 2.5) { e.st = 'return'; e.stuck = 0; break; }
           if (b.flee) { if (d > aggro * 1.6) { e.st = 'return'; break; } away(e, sp); break; }
-          if (b.pattern && (e.pcd -= dt) <= 0) { const pt = g.c.get('bossPatterns', b.pattern); e.st = 'cast'; e.t = pt.windup; e.cx = p.x; e.cy = p.y; e.pcd = pt.period * (e.hp < (e.maxHp * pt.enrageHpPct) / 100 ? pt.enrageIntervalMult : 1); break; }
+          if (b.pattern && !e.mech && (e.pcd -= dt) <= 0) { const pt = g.c.get('bossPatterns', b.pattern); e.st = 'cast'; e.t = pt.windup; e.cx = p.x; e.cy = p.y; e.pcd = pt.period * (e.hp < (e.maxHp * pt.enrageHpPct) / 100 ? pt.enrageIntervalMult : 1); break; }
           near.push(e);
           if (d <= b.range + p.r && (!b.proj || sees(e))) { e.st = 'attack'; e.t = b.windup; }
           else if (b.ring && d < b.range * 3 && !(e.stuck > 0.4)) move(e, p.x + Math.cos(e.ang) * b.range * 0.75, p.y + Math.sin(e.ang) * b.range * 0.75, sp); // eigener Platz im Ring um das Ziel

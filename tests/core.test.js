@@ -447,3 +447,14 @@ test('Waffen-Fertigkeit: Namen und Faktoren aus den Referenzdaten, erst ab Epic,
   for (let k = 0; k < 30 * 12; k++) { game.tick(1 / 30); clock.t += 1000 / 30; const sk = (w.p.wsk || {})[0]; if (sk && sk.t !== last) { last = sk.t; n++; } e.x = w.p.x + 30; e.y = w.p.y; e.hp = 1e9; }
   assert.ok(n >= 2, `Fertigkeit löst wiederholt aus (${n})`);
 });
+
+test('Raid: jeder Boss trägt seine Mechanik; Panzer blockt Treffer und wirft Fernangriffe zurück, Schild fängt Schaden ab', async () => {
+  const { game, clock, s, unlock, give } = mk();
+  const { modeSpec } = await import('../src/core/modes.js');
+  assert.deepEqual(game.c.t.raidBosses.map((b) => modeSpec(game.g, { mode: 'raid', param: b.id }).mech.id), ['shell', 'summon', 'festival', 'wind', 'fairy', 'hellfire']);
+  const w = game.world, e = w.enemies.find((x) => x.alive && x.v.rank === 'normal');
+  Object.assign(e, { hp: 1000, maxHp: 1000, shell: 2, baseAtk: 10, st: 'idle' });
+  const hp0 = w.p.hp; w.hit(e, 50, 'ranged'); assert.equal(e.hp, 1000, 'Treffer prallt ab'); assert.ok(w.p.hp < hp0, 'Fernangriff zurückgeworfen');
+  w.hit(e, 50, 'melee'); assert.equal(e.hp, 1000); assert.equal(e.shell, 0);
+  e.shield = 30; w.hit(e, 50, 'melee'); assert.ok(e.hp < 1000 && e.hp >= 970, 'Schild fängt einen Teil ab');
+});

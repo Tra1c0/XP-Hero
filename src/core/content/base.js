@@ -727,7 +727,16 @@ export function buildBaseContent(opt = {}) {
       waves: boss ? [[{ rank: 'normal', count: 6 }], [{ rank: 'boss', count: 1 }]] : [[{ rank: 'normal', count: 5 }], [{ rank: 'normal', count: 5 }, { rank: 'elite', count: 1 }]],
       first: [{ item: 'gems', n: 5 + Math.floor(f / 5) }, { item: 'gold', n: 100 * f * f }, ...(boss ? [{ item: 'synergy_point', n: 5 }, { item: 'exp', n: 2 }] : [])],
       repeat: [{ item: 'gold', n: 20 * f * f }], s: f === 151 ? 'D' : 'E' }; }));
-  T('raidBosses', 'R', '6 Raid-Bosse mit Namen aus Ryans Questkette (D); Werte und Wertung eigen.', [1, 2, 3, 4, 5, 6].map((k) => ({ id: `raid_${k}`, name: ['Crystal Crab', 'Anubis', 'Blood Lord', 'Frozen Bloom', 'Rosalia', 'Cerberus'][k - 1], level: 100 + k * 45, hpMult: 60,
+  // Raid-Mechaniken der Stufe "Normal" nach den Guides des Fan-Wikis (D: Art der Mechanik und genannte Zahlen). Takt, Schwellen und Radien nennt die Quelle nicht (E).
+  T('raidMechs', 'R', 'Je Raid-Boss eine Kernmechanik (Normal). D = im Guide genannte Zahlen; period/hpPct/radius/Prozent je Sekunde eigen.', [
+    { id: 'shell', name: 'Panzerrückzug', hpPct: 50, hits: 50, desc: 'Unter halbem Leben zieht sich der Krebs in den Panzer zurück: 50 Treffer prallen ab, Fernangriffe werden zurückgeworfen.' },
+    { id: 'summon', name: 'König der Wüste', period: 15, count: 5, atkPerMinionPct: 10, desc: 'Beschwört 5 Mumien; jede lebende Mumie stärkt seinen Angriff.' },
+    { id: 'festival', name: 'Fest der Nacht', period: 18, charge: 5, mult: 7, healPct: 30, desc: 'Lädt 5 Sekunden auf und trifft dann Fernkämpfer mit 700 % Angriff; heilt sich um 30 % des Schadens.' },
+    { id: 'wind', name: 'Arktischer Wind', period: 14, charge: 1.5, radius: 240, mult: 5, knock: 260, slowSec: 5, desc: 'Stößt nahe Gegner weg, 500 % Angriff, danach 5 Sekunden langsamer.' },
+    { id: 'fairy', name: 'Feenwind', period: 16, charge: 1.5, mult: 1, poisonSec: 10, poisonPct: 20, shieldPct: 5, desc: '100 % Angriff, 10 Sekunden Gift, Rosalia erhält einen Schild.' },
+    { id: 'hellfire', name: 'Höllenfeuer', period: 10, charge: 1.2, mult: 2, burnSec: 5, burnPct: 30, desc: '200 % Angriff und Brand.' },
+  ]);
+  T('raidBosses', 'R', '6 Raid-Bosse mit Namen aus Ryans Questkette (D); Werte und Wertung eigen.', [1, 2, 3, 4, 5, 6].map((k) => ({ id: `raid_${k}`, name: ['Crystal Crab', 'Anubis', 'Blood Lord', 'Frozen Bloom', 'Rosalia', 'Cerberus'][k - 1], level: 100 + k * 45, hpMult: 60, mech: ['shell', 'summon', 'festival', 'wind', 'fairy', 'hellfire'][k - 1],
     tiers: [5, 20, 50, 100].map((pct, t) => ({ pct, reward: [{ item: 'weapon_scroll', n: 10 * (t + 1) * k }, { item: 'raid_coin', n: 30 * (t + 1) }, { item: ['orb_red', 'orb_pink', 'orb_ice', 'orb_jungle', 'orb_hell', 'orb_hell'][k - 1], n: 3 * (t + 1) }] })) })));
   T('tombTiers', 'R', '20 Schwierigkeits-/Dropstufen (D); Gegner, Typ-/Raritätsgewichte eigen.', Array.from({ length: 20 }, (_, k) => ({ tier: k + 1, level: 150 + k * 13,
     waves: [[{ rank: 'normal', count: 8 }], [{ rank: 'elite', count: 2 }, { rank: 'normal', count: 4 }], [{ rank: 'boss', count: 1 }]],

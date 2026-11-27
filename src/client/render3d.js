@@ -382,7 +382,10 @@ export class Renderer3D {
       const fight = e.st === 'chase' || e.st === 'attack' || e.st === 'cool' || e.st === 'aggro' || e.st === 'cast', mv = Math.abs(e.x - e.px) + Math.abs(e.y - e.py) > 0.05;
       if (fight && !e.beh.flee) e.face = Math.atan2(p.x - e.x, p.y - e.y); else if (mv) e.face = Math.atan2(e.x - e.px, e.y - e.py); else if (e.face === undefined) e.face = (e.ang || 0) % 6.283;
       const hitNow = e.hitT !== undefined && w.t - e.hitT < 0.1;
-      const parts = enemyParts(v, ex, ez, e.face, s, e.stunT > 0 || hitNow ? '#ffffff' : e.st === 'attack' ? '#ffd9d0' : null);
+      const parts = enemyParts(v, ex, ez, e.face, s, e.shell > 0 ? '#9fb4c8' : e.stunT > 0 || hitNow ? '#ffffff' : e.st === 'attack' ? '#ffd9d0' : null);
+      // Raid: Ankündigung der Mechanik (wachsender roter Kreis), Panzer und Schild als Ring
+      if (e.mch > 0 && e.tele) { const u = 1 - e.mch / e.tele.t, R = (e.tele.r * 2) / ppm, tx = e.mech.id === 'wind' ? ex : px, tz = e.mech.id === 'wind' ? ez : pz; fx.push(['disc', tx, 0.05, tz, 0, R, 1, R, '#ff2030', 1], ['disc', tx, 0.06, tz, 0, R * u, 1, R * u, '#ff8080', 1]); }
+      if (e.shell > 0 || e.shield > 0) fx.push(['disc', ex, 0.07, ez, 0, 3.4 * s0, 1, 3.4 * s0, e.shell > 0 ? '#bfe0ff' : '#7dff9a', 1]);
       // Bewegung: Hüpfen beim Laufen, Ausholen und Zustoßen beim Angriff, Zurückzucken bei Treffern, Schwanken bei Betäubung, ruhiges Atmen im Stand
       {
         const tA = performance.now() / 1000 + (e.ang || 0), b0 = e.beh || {};

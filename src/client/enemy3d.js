@@ -40,7 +40,7 @@ const BUILD = {
 };
 const KIND = [[/slime/, 'slime'], [/mushroom/, 'shroom'], [/cactus/, 'cactus'], [/mandragora|flower|rose|treant|bloom|root|dryad|vine|grove|straw|blightdru/, 'plant'], [/spider|kraken|crab|scorp|octopus|tentacle|ant king|ironweaver|deepclaw/, 'spider'],
   [/\bbat\b|bat_|raven|drone|gargoyle|voidgoyle/, 'bat'], [/dragon|wyrm|hydra|basilisk/, 'dragon'], [/wolf|hound|elephant|foot|cerber|bear|boar|beast|rat|unicorn|rider|fang/, 'beast'], [/chicken/, 'bird'],
-  [/witch|elf|chief|lord|anubis|priest|shaman|queen|banshee|master|druid/, 'caster'], [/ghost|phantom|wraith|specter|shade|reaper|elemental|revenant/, 'ghost'], [/skeleton|skull|bone|scamp|ghoul|walker/, 'bones'], [/murloc|mermaid/, 'fish'],
+  [/witch|elf|chief|lord|anubis|priest|shaman|queen|banshee|master|druid/, 'caster'], [/ghost|phantom|wraith|specter|shade|reaper|elemental|revenant/, 'ghost'], [/skeleton|skull|bone|scamp|ghoul|walker|mummy|mumie/, 'bones'], [/murloc|mermaid/, 'fish'],
   [/golem|baal|king|titan|colossus|volcanus|troll|tauren|champion/, 'golem'], [/mimic/, 'chest'], [/goblin|knight|devil|imp|guard|peasant|captain|capt|warrior|thief|rogue|fighter/, 'human']];
 const TONE = [[/frost|ice|frozen|snow/, ['#8fd3f5', '#4f8fc0', '#e8f6ff', '#bfe9ff']], [/hell|devil|red|blood|fire|baal/, ['#d84a3a', '#7a1f1f', '#ffb06a', '#ffd24a']], [/desert|sand|anubis/, ['#d9a85a', '#8a5a2b', '#f1d9a0', '#3fb7a8']],
   [/gold|treasure|greedy/, ['#f2c230', '#a8741a', '#fff0a8', '#ff5a7a']], [/dark|cursed|ghost|phantom|witch|bat/, ['#7d5bd0', '#3d2a6e', '#cdb8ff', '#7dffb0']], [/swamp|murloc|kraken/, ['#3fae9a', '#1f6a62', '#a8f0d8', '#ff8a4a']],

@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 2olksn8ybt).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint f8dgq73qju).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -58,6 +58,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | randomReward | 1 | R | R:1 | IngameRV: 393 Levelzeilen (als Band L8-400, R); Gem-Gewicht 0,10 Menge 10 (D); Orb-Mengenbereiche D, Orb-Gewichte E. Crimson/Azure/Soul unzugeordnet = deaktiviert. |
 | spinSegments | 7 | E | E:7 | 7 Segmentdefinitionen (D-Zählung, 192 Originalzeilen nicht erfasst); Bedingungen und Rewardzeilen eigen. |
 | towerFloors | 250 | R | E:249 D:1 | 250 Etagen (D); Etage 151 = 35 Gems (D). Gegner, Wellen, übrige Rewards eigen (Gems = 5 + floor(Etage/5)). |
+| raidMechs | 6 | R | R:6 | Je Raid-Boss eine Kernmechanik (Normal). D = im Guide genannte Zahlen; period/hpPct/radius/Prozent je Sekunde eigen. |
 | raidBosses | 6 | R | R:6 | 6 Raid-Bosse mit Namen aus Ryans Questkette (D); Werte und Wertung eigen. |
 | tombTiers | 20 | R | R:20 | 20 Schwierigkeits-/Dropstufen (D); Gegner, Typ-/Raritätsgewichte eigen. |
 | invasionTiers | 6 | R | R:6 | 6 Tiers (D); Auf-/Abstieg nach Top-Perzentil, Rewards eigen. |
