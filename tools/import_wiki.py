@@ -30,9 +30,23 @@ for t, v in P.items():
 c = clean(P['Weapon Types']); TB = {}
 for m in re.finditer(r'\| (Dagger|Sword|Mace|Crossbow|Gun|Wand) \| ([^|]*%[^|]*) \| ([^|]+) \|', c):
     TB[CLS[m.group(1)]] = {'bonus': [[STAT[a.strip()], float(p)] for a, p in re.findall(r'([A-Za-z ]+?) \+([\d.]+)%', m.group(2))], 'heroes': [h.strip() for h in m.group(3).split(',')]}
+# Upgrade-Tabellen: jede Stufe mit Wert (Prozent) und Kosten für den nächsten Schritt. Spezial zusätzlich mit Sternstufe.
+ORB = {'Red Orb': 'orb_red', 'Pink Orb': 'orb_pink', 'Crimson Orb': 'orb_ice', 'Azure Orb': 'orb_jungle', 'Soul Orb': 'orb_hell', 'Gold': 'gold'}
+def upg(title):
+    out = []
+    for name, body in re.findall(r'\{\{XP Collapsible\s*\|title=([^\n|]+)\n.*?\|content=(.*?)\n\}\}', P[title], flags=re.S):
+        rows = []
+        for a, b, c, d in re.findall(r'\|-\n\| (?:(\d)★ · )?Lv\. (\d+)\n\| ([\d.]+)%?\n\| ([^\n]+)', body):
+            cost = {ORB[k]: int(n.replace(',', '')) for n, k in re.findall(r'([\d,]+) ([A-Z][a-z]+ Orb|Gold)', d)}
+            rows.append([int(a) if a else 0, int(b), float(c), cost])
+        out.append([name.strip(), rows])
+    return out
+UP = {'special': upg('Upgrades/Special Data'), 'extra': upg('Upgrades/Extra Data'), 'soul': upg('Upgrades/Soul Data')}
 open(__file__.replace('tools/import_wiki.py', 'src/core/content/wiki_ref.js'), 'w').write(
     '// GENERIERT von tools/import_wiki.py – nicht von Hand ändern.\n// Quelle: Fan-Wiki xp-hero.fandom.com (inoffiziell), abgerufen 2026-11-27. Nur Zahlen und Namen.\n'
     '// WEAPON_WIKI[<klasse>_<reihe>_<seltenheit>]: max = Maximalstufe, d = Schaden [Stufe 1 von, bis, Maximalstufe von, bis], bonus = [ab Stufe, nur Hauptslot, Stat, Prozent], sk = [Fertigkeit, Gesamtfaktor].\n'
     '// TYPE_BONUS[<klasse>]: Bonus der Waffenart (gilt nur mit passender Helden-Meisterschaft im Hauptslot) und die passenden Helden.\n'
-    'export const WEAPON_WIKI = ' + json.dumps(W, separators=(',', ':')) + ';\nexport const TYPE_BONUS = ' + json.dumps(TB, separators=(',', ':')) + ';\n')
+    'export const WEAPON_WIKI = ' + json.dumps(W, separators=(',', ':')) + ';\nexport const TYPE_BONUS = ' + json.dumps(TB, separators=(',', ':')) + ';\n'
+    '// UPGRADE_WIKI[familie] = [[Name, [[Stern (0 = ohne), Stufe im Stern bzw. Stufe, Wert in Prozent, Kosten zum nächsten Schritt], ...]], ...]. Stand laut Wiki: Client v25.1.0, vorläufig.\n'
+    'export const UPGRADE_WIKI = ' + json.dumps(UP, separators=(',', ':')) + ';\n')
 print(len(W), 'Waffenstufen;', {k: len(v['heroes']) for k, v in TB.items()}); print(sorted(k for k in W if '_n_' in k and W[k]['max'] is None))

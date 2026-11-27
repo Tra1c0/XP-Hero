@@ -6,9 +6,9 @@
 import { WORLD, BUILDINGS as W1_BUILDINGS, BASE as W1_BASE, REF as W1, zoneOf as zoneOfMap, nearestFloor, onFloor } from './world1.js';
 import { inPoly } from '../worldgrid.js';
 import { BESTIARY } from './bestiary_ref.js';
-import { ABILITY_REF } from './progression_ref.js';
+import { ABILITY_REF, BLESS_REF } from './progression_ref.js';
 import { WEAPON_REF } from './weapon_ref.js';
-import { WEAPON_WIKI, TYPE_BONUS } from './wiki_ref.js';
+import { WEAPON_WIKI, TYPE_BONUS, UPGRADE_WIKI } from './wiki_ref.js';
 import { NPC_REF } from './npc_ref.js';
 
 export const SCHEMA = 1;
@@ -84,7 +84,7 @@ export function buildBaseContent(opt = {}) {
   const I = (id, name, kind = 'currency', x = {}) => ({ id, name, kind, cargo: 0, sell: 0, ...x });
   T('items', 'D', 'Währungen/Items laut Abschnitt 11; nicht alle 116 Originalitems bekannt.', [
     I('gold', 'Gold'), I('gems', 'Gems'), I('exp', 'EXP (Blessing)', 'currency', { s: '?' }),
-    I('orb_red', 'Red Orb'), I('orb_pink', 'Pink Orb'), I('orb_ice', 'Ice Orb'), I('orb_jungle', 'Jungle Orb'), I('orb_hell', 'Hell Orb'),
+    I('orb_red', 'Red Orb'), I('orb_pink', 'Pink Orb'), I('orb_ice', 'Crimson Orb'), I('orb_jungle', 'Azure Orb'), I('orb_hell', 'Soul Orb'),
     I('bluestone', 'BlueStone'), I('rune_dust', 'Rune Dust'), I('weapon_scroll', 'Weapon Scroll'),
     I('wood', 'Holz', 'material', { cargo: 1 }), I('stone', 'Stein', 'material', { cargo: 1, s: 'E' }),
     I('evo_coin', 'Evolution Coin'), I('attr_point', 'Attribute Point'), I('synergy_point', 'Synergy Point'),
@@ -297,7 +297,7 @@ export function buildBaseContent(opt = {}) {
   T('playerLevels', 'E', 'XP-Schwellen unbekannt: EIGENE, austauschbare Kurve (2,25-fach gestreckt: Leveln war zu schnell). ATK/HP an Tracker-L99 (4.055 / 627.721, interpoliert) verankert.', lvRows);
 
   // ------------------------------------------------------------------ Upgrade-Pfade
-  const up = [];
+  const up = [], sname = (st) => ({ atk: 'Kraft erhöhen', cargo: 'Fracht erhöhen', hp: 'Lebenspunkte erhöhen', regen: 'HP-Regeneration erhöhen', critChance: 'Kritische Trefferchance erhöhen', critDmg: 'Kritischen Schaden erhöhen', skillDmgPct: 'Fertigkeitsschaden erhöhen', lifesteal: 'Lebensraub erhöhen', cooldownPct: 'Abklingzeit verringern', dmgPct: 'Grundangriff verstärken', meleePct: 'Nahkampfschaden erhöhen', rangedPct: 'Fernkampfschaden erhöhen' }[st]);
   const U = (id, family, name, stat, max, rows, x = {}) => up.push({ id, family, name, stat, max, scale: 1, rows: rows.map(([lv, eff, cost]) => ({ lv, eff, cost })), s: 'E', ...x });
   const own = (max, effMax, c1, cMax, cur = 'gold') => [[1, Math.max(1, Math.round(effMax / max)), { [cur]: c1 }],
     [Math.max(2, Math.round(max / 2)), Math.round(effMax / 2), { [cur]: Math.round(Math.sqrt(c1 * cMax)) }], [max, effMax, { [cur]: cMax }]];
@@ -315,28 +315,27 @@ export function buildBaseContent(opt = {}) {
   AB('ab_atkspeed', 'ATTACK SPEED', 'Angriffsgeschwindigkeit', 'atkSpeedPct', 'Angriffsgeschwindigkeit erhöhen', { base: 1000, scale: 0.1, unit: '%', show: { base: 100, mul: 1 } });
   AB('ab_multi', 'DOUBLE ATTACK', 'Doppelangriff', 'multiHit', 'Chance auf Doppelangriff erhöhen', { scale: 0.1, unit: '%' });
   AB('ab_triple', 'TRIPLE ATTACK', 'Dreifacher Angriff', 'tripleHit', 'Chance für Dreifachangriff erhöhen', { scale: 0.1, unit: '%' });
-  // Spezial: 11 Pfade (D). Je Sternstufe 15 Stufen pro offenem Pfad; sind alle voll, steigt die Sternstufe (Vorlage: 3 Sterne, 3/135 = 9 Pfade x 15).
-  // Werte bei Sternstufe 3 und Schrittweiten aus der Vorlage (B); Verlauf davor/danach und Freischaltsterne der ersten sieben eigen (E).
-  const SPC = [['muscle', 'Massive Muskeln', 'atk', 1, 9, 0.6, 'Erhöhe zusätzliche Kraft', true], ['load', 'Lastmeister', 'cargo', 1, 15, 1, 'Zusätzlichen Frachtplatz erhöhen', true],
-    ['hp', 'HP-Boost', 'hp', 1, 6, 0.4, 'Zusätzliche Lebenspunkte erhöhen', true], ['leech', 'Lebensraub', 'lifesteal', 1, 3, 0.2, 'Wandle Schaden in HP um'],
-    ['step', 'Schnellschritt', 'moveSpeedPct', 1, 9.9, 0.7, 'Zusätzliche Bewegungsgeschwindigkeit erhöhen'], ['heal', 'Schnelle Heilung', 'regen', 1, 4.4, 0.5, 'HP-Regeneration verbessern', true],
-    ['luck', 'Glücksschlag', 'critChance', 1, 2.2, 0.2, 'Erhöhe die kritische Trefferchance'], ['double', 'Doppelter Abzug', 'multiHit', 3, 0, 0.9, 'Chance auf Doppelangriff erhöhen'],
-    ['skill', 'Schadensfähigkeit', 'skillDmgPct', 3, 0, 0.6, 'Fähigkeitsschaden erhöhen'], ['triple', 'Dreifache Klinge', 'tripleHit', 4, 0, 0.9, 'Chance für Dreifachangriff erhöhen'],
-    ['cool', 'Abklingzeit', 'cooldownPct', 4, 0, 0.5, 'Abklingzeit der Fertigkeiten verringern']];
-  const SPL = 15, SPMAX = 5;
-  C('special', { levelsPerStar: SPL, maxStar: SPMAX, pinkFirst: 5, starBonus: [{ stat: 'atk', pct: 5 }, { stat: 'cooldownPct', v: 5 }] }, 'R',
-    '15 Stufen je Sternstufe, Bonus +5 % Kraft / +5 % Abklingzeit je Stern, Kosten rote Orbs = Stern + Stufe, 5 Pink-Orbs auf der ersten Stufe fortgeführter Pfade (B bei Stern 3); 5 Sterne und übrige Sternstufen eigen.');
-  for (const [id, nm, st, minStar, v30, step, desc, asPct] of SPC) {
-    const max = SPL * (SPMAX - minStar + 1), pre = SPL * (3 - minStar), r10 = (v) => Math.round(v * 10);
-    const rows = pre > 0 ? [[1, Math.max(1, r10(v30 / pre))], [pre, r10(v30)], [max, r10(v30 + (max - pre) * step)]] : [[1, r10(step)], [max, r10(max * step)]];
-    U(`sp_${id}`, 'special', nm, st, max, rows.map(([lv, e]) => [lv, e, {}]), { scale: 0.1, minStar, unit: '%', desc, ...(asPct ? { asPct: true } : {}), s: 'R' });
-  }
-  ['dmgPct', 'critDmg', 'skillDmgPct', 'bossDmgPct', 'goldPct', 'xpPct', 'meleePct', 'rangedPct'].forEach((st, k) =>
-    U(`ex_${k}`, 'extra', `Extra ${k + 1}`, st, 50, own(50, 100, 2, 80, k % 2 ? 'orb_jungle' : 'orb_ice')));
-  ['dmgPct', 'critDmg', 'skillDmgPct', 'bossDmgPct', 'lifesteal', 'cooldownPct', 'critChance', 'multiHit', 'dropPct'].forEach((st, k) =>
-    U(`so_${k}`, 'soul', `Soul ${k + 1}`, st, 50, own(50, ['lifesteal', 'cooldownPct', 'critChance', 'multiHit'].includes(st) ? 15 : 150, 3, 120, 'orb_hell')));
-  [['bl_0', 'Blessing I', 'dmgPct', 150], ['bl_1', 'Blessing II', 'critDmg', 350], ['bl_2', 'Blessing III', 'goldPct', 300]].forEach(([id, nm, st, v]) =>
-    U(id, 'blessing', nm, st, 50, own(50, v, 1, 40, 'exp'), { s: 'R', note: 'Endwerte 150/350/300 D; Stat-Zuordnung und Kosten E.' }));
+  // Spezial / Extra / Soul: jede Stufe mit Wert und Kosten aus dem Fan-Wiki (D, dort als vorläufig markiert; Spezial deckt sich mit einem Bild der Vorlage).
+  // ref-Zeilen [Stufe, Wert in Zehntelprozent, Kosten des nächsten Schritts]; Spezial zusätzlich bands = [[Stern, erste, letzte Stufe]]: je Stern 5/10/15/20 Stufen.
+  const WK = (id, family, name, rows, stat, desc, x = {}) => {
+    let L = -1; const ref = [], bands = [];
+    for (const [star, lv, pct, cost] of rows) { L++; ref.push([L, Math.round(pct * 10), cost]); if (star) { const bd = bands.find((q) => q[0] === star); if (bd) bd[2] = L; else bands.push([star, Math.max(0, L - (lv ? 1 : 0)), L]); } }
+    U(id, family, name, stat, L, [[1, 0, {}], [L, 0, {}]], { ref, scale: 0.1, unit: '%', desc, s: 'D', ...(bands.length ? { bands, minStar: bands[0][0] } : {}), ...(['atk', 'hp', 'cargo', 'regen'].includes(stat) ? { asPct: true } : {}), ...x });
+  };
+  const SPC = [['muscle', 'Massive Muskeln', 'atk', 'Erhöhe zusätzliche Kraft'], ['load', 'Lastmeister', 'cargo', 'Zusätzlichen Frachtplatz erhöhen'], ['hp', 'HP-Boost', 'hp', 'Zusätzliche Lebenspunkte erhöhen'],
+    ['leech', 'Lebensraub', 'lifesteal', 'Wandle Schaden in HP um'], ['step', 'Schnellschritt', 'moveSpeedPct', 'Zusätzliche Bewegungsgeschwindigkeit erhöhen'], ['heal', 'Schnelle Heilung', 'regen', 'HP-Regeneration verbessern'],
+    ['luck', 'Glücksschlag', 'critChance', 'Erhöhe die kritische Trefferchance'], ['double', 'Doppelter Abzug', 'multiHit', 'Chance auf Doppelangriff erhöhen'], ['skill', 'Schadensfähigkeit', 'skillDmgPct', 'Fähigkeitsschaden erhöhen'],
+    ['triple', 'Dreifache Klinge', 'tripleHit', 'Chance für Dreifachangriff erhöhen'], ['cool', 'Abklingzeit', 'cooldownPct', 'Abklingzeit der Fertigkeiten verringern']];
+  C('special', { maxStar: 4, starBonus: [{ stat: 'atk', pct: 5 }, { stat: 'cooldownPct', v: 5 }] }, 'R', 'Vier Sternstufen (D). Bonus je Sternaufstieg +5 % Kraft / +5 % Abklingzeit nach einem Bild der Vorlage (B, dort für 3 -> 4 Sterne); für die übrigen Aufstiege übernommen.');
+  UPGRADE_WIKI.special.forEach(([, rows], k) => WK(`sp_${SPC[k][0]}`, 'special', SPC[k][1], rows, SPC[k][2], SPC[k][3]));
+  const EXS = ['atk', 'cargo', 'hp', 'regen', 'critChance', 'skillDmgPct', 'lifesteal', 'cooldownPct'], SOS = ['atk', 'critDmg', 'hp', 'regen', 'cargo', 'dmgPct', 'skillDmgPct', 'meleePct', 'rangedPct'];
+  UPGRADE_WIKI.extra.forEach(([nm, rows], k) => WK(`ex_${k}`, 'extra', nm, rows, EXS[k], sname(EXS[k])));
+  UPGRADE_WIKI.soul.forEach(([nm, rows], k) => WK(`so_${k}`, 'soul', nm, rows, SOS[k], sname(SOS[k])));
+  // Segen: Werte je Stufe und EXP-Kosten (2 je Stufe) aus den Referenzdaten (D): Start 50/200/100 auf Stufe 1, Ende 150/350/300 auf Stufe 50. Pfadnamen und Stat-Zuordnung eigen (E).
+  [['bl_0', 'Segen I', 'dmgPct'], ['bl_1', 'Segen II', 'critDmg'], ['bl_2', 'Segen III', 'goldPct']].forEach(([id, nm, st], k) => {
+    const r = BLESS_REF[k], end = [150, 350, 300][k];
+    U(id, 'blessing', nm, st, 50, [[1, 0, {}], [50, 0, {}]], { ref: [[0, 0, { exp: r[0][2] }], ...r.map(([lv, v, exp]) => [lv, v, { exp }]), [50, end, {}]], s: 'R', note: 'Werte und Kosten D; Stat-Zuordnung E.', desc: sname(st) || 'Goldgewinn erhöhen' });
+  });
   ['dmg', 'crit', 'gold'].forEach((gkey, k) => U(`syn_${gkey}`, 'synergy', `Synergie ${k + 1}`, 'synergyPct', 20, own(20, 100, 5, 200, 'synergy_point')));
   T('upgradeTracks', 'R', 'Ability 9 nutzbar (+ Critical Damage mit 0 Stufen) / Special 11 (Sternstufen) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen.', up);
 

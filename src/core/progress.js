@@ -32,7 +32,7 @@ export function computeStats(g, opt = {}) {
   const B = (b, mult = 1) => { if (b.pct !== undefined && b.pct !== true && b.pct !== false) P(b.stat, b.pct * mult); else A(b.stat, b.v * mult); };
   const synLv = {};
   for (const u of c.t.upgradeTracks) {
-    const L = s.upgrades[u.id] || 0;
+    const L = Math.min(u.max, s.upgrades[u.id] || 0); // alte Spielstände können über der neuen Maximalstufe liegen
     if (!L) continue;
     const v = effAt(u, L) * u.scale;
     if (u.family === 'synergy') synLv[u.id] = v; else if (u.asPct) P(u.stat, v); else A(u.stat, v);
@@ -147,7 +147,7 @@ export const effAt = (def, L) => (def.ref && !def.refCostOnly ? (L < def.ref[0][
 // Kosten für den Schritt (L-1) -> L. Währungen, die in beiden Stützzeilen stehen, linear; sonst Stufe der unteren Zeile.
 export function costAt(def, L) {
   if (def.ref) { // Schritt (L-1) -> L kostet, was auf Stufe L-1 hinterlegt ist; Orbs nur genau auf einer Stützstufe
-    const from = L - 1, hit = def.ref.find((r) => r[0] === from) || (from < def.ref[0][0] ? def.ref[0] : null), out = { gold: Math.round(refAt(def.ref, from, (r) => r[2].gold || 0)) };
+    const from = L - 1, hit = def.ref.find((r) => r[0] === from) || (from < def.ref[0][0] ? def.ref[0] : null), gold = Math.round(refAt(def.ref, from, (r) => r[2].gold || 0)), out = gold > 0 ? { gold } : {};
     if (hit) for (const [cur, v] of Object.entries(hit[2])) if (cur !== 'gold') out[cur] = v;
     return out;
   }
@@ -159,25 +159,19 @@ export function costAt(def, L) {
   }
   return out;
 }
-// Spezial-Pfade: Sternstufe (1..maxStar). Je Stern levelsPerStar Stufen pro offenem Pfad; sind alle offenen voll, steigt der Stern.
-export const spStar = (g) => g.state.player.spStar || 1;
+// Spezial-Pfade: Sternstufe (1..maxStar). Jeder Pfad hat je Stern ein Stufenband (bands); sind alle offenen Bänder voll, steigt der Stern.
+export const spStar = (g) => Math.min(g.c.cfg.special.maxStar, g.state.player.spStar || 1);
 export function spInfo(g, def) {
-  const cf = g.c.cfg.special, star = spStar(g), open = star >= def.minStar, base = open ? cf.levelsPerStar * (star - def.minStar) : 0;
-  return { star, open, base, cap: open ? base + cf.levelsPerStar : 0, per: cf.levelsPerStar };
+  const star = spStar(g), bd = (def.bands || []).find((q) => q[0] === star);
+  return bd ? { star, open: true, base: bd[1], cap: bd[2], per: bd[2] - bd[1] } : { star, open: false, base: 0, cap: 0, per: 0 };
 }
 export function spProgress(g) {
   const cf = g.c.cfg.special, star = spStar(g);
   let cur = 0, total = 0;
-  for (const u of g.c.t.upgradeTracks) if (u.family === 'special' && star >= u.minStar) { cur += Math.max(0, (g.state.upgrades[u.id] || 0) - spInfo(g, u).base); total += cf.levelsPerStar; }
+  for (const u of g.c.t.upgradeTracks) if (u.family === 'special') { const i = spInfo(g, u); if (!i.open) continue; cur += Math.max(0, Math.min(i.per, (g.state.upgrades[u.id] || 0) - i.base)); total += i.per; }
   return { star, cur, total, maxStar: cf.maxStar, bonus: cf.starBonus };
 }
-// Kosten für den Schritt (L-1) -> L; Spezial-Pfade rechnen aus Sternstufe und Stufe innerhalb des Sterns.
-export function stepCost(g, def, L) {
-  if (def.family !== 'special') return costAt(def, L);
-  const i = spInfo(g, def), k = L - i.base, out = { orb_red: i.star + k };
-  if (k === 1 && i.star > def.minStar) out.orb_pink = g.c.cfg.special.pinkFirst;
-  return out;
-}
+export const stepCost = (g, def, L) => costAt(def, L);
 // Vorschau für n Stufen ('max' = so viele wie bezahlbar). Kauft nie teilweise mehr als bezahlbar.
 export function upgradePreview(g, id, n = 1) {
   const def = upDef(g, id), from = g.state.upgrades[id] || 0, sp = def.family === 'special' ? spInfo(g, def) : null, lim = sp ? Math.min(def.max, sp.cap) : def.max;

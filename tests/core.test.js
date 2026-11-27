@@ -291,18 +291,20 @@ test('T12 Upgrade-Pfade: Power-Stützzeilen, Mehrwährung, Max-Affordable, Cap, 
   assert.equal(pv.to, 2); assert.equal(s().inv.gold, 5, 'Max-Affordable kauft nie über Budget');
   assert.equal(game.stats.atk, Math.round((3 + 3) * (1 + 0.05)));
   for (const it of pack.tables.items) give(it.id, 1e15);
-  // Spezial: Kosten aus Stern + Stufe, 15 Stufen je Stern, gesperrte Pfade, Sternaufstieg erst wenn alle offenen voll sind
+  // Spezial nach Wiki-Tabelle: Bänder 5/10/15/20 Stufen je Stern, gesperrte Pfade, Sternaufstieg erst wenn alle offenen voll sind
   const spT = pack.tables.upgradeTracks.filter((u) => u.family === 'special'), spc = pack.config.special;
-  assert.deepEqual(prog.stepCost(game.g, spT[0], 1), { orb_red: 2 });
+  assert.deepEqual(prog.stepCost(game.g, spT[0], 1), { orb_red: 1 });
   assert.equal(code(() => game.cmd('buyUpgrade', 'sp_triple', 1)), 'locked');
-  assert.equal(game.cmd('buyUpgrade', spT[0].id, 'max').to, 15);
+  assert.equal(game.cmd('buyUpgrade', spT[0].id, 'max').to, 5);
   assert.equal(code(() => game.cmd('buyUpgrade', spT[0].id, 1)), 'star_cap');
   for (let st = 1; st < spc.maxStar; st++) {
-    for (const u of spT) if (u.minStar <= st) game.try('buyUpgrade', u.id, 'max');
+    for (const u of spT) game.try('buyUpgrade', u.id, 'max');
     assert.equal(prog.spStar(game.g), st + 1, 'Sternaufstieg');
+    if (st + 1 === 3) { // Bild der Vorlage: 3 Sterne, Massive Muskeln 9 % -> 9,6 % für 4 rote + 5 pinke Orbs, Fortschritt x/135
+      assert.equal(prog.effAt(spT[0], 15) * spT[0].scale, 9); assert.equal(Math.round(prog.effAt(spT[0], 16) * spT[0].scale * 10) / 10, 9.6);
+      assert.deepEqual(prog.stepCost(game.g, spT[0], 16), { orb_red: 4, orb_pink: 5 }); assert.equal(prog.spProgress(game.g).total, 135);
+    }
   }
-  assert.deepEqual(prog.stepCost(game.g, spT[0], 61), { orb_red: 6, orb_pink: 5 });
-  assert.equal(prog.spProgress(game.g).total, 11 * 15);
   for (const u of pack.tables.upgradeTracks) {
     game.try('buyUpgrade', u.id, 'max');
     assert.equal(s().upgrades[u.id], u.max, u.id);

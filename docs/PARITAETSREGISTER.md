@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1ln12kc6vdf).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 19j75hmy9f6).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -27,7 +27,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | giftChestLevels | 400 | R | R:400 | Gold L1=12 und L400=1.983.356 (D); Zwischenwerte geometrisch interpoliert (E). Bonus: Gold x5 + 10 Gems (D). |
 | keyHouseSlots | 15 | D | D:15 | 15 Freischaltzeilen; Gem-Summe 5.570. |
 | playerLevels | 400 | E | E:400 | XP-Schwellen unbekannt: EIGENE, austauschbare Kurve (2,25-fach gestreckt: Leveln war zu schnell). ATK/HP an Tracker-L99 (4.055 / 627.721, interpoliert) verankert. |
-| upgradeTracks | 43 | R | D:8 R:15 E:20 | Ability 9 nutzbar (+ Critical Damage mit 0 Stufen) / Special 11 (Sternstufen) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen. |
+| upgradeTracks | 43 | R | D:36 R:4 E:3 | Ability 9 nutzbar (+ Critical Damage mit 0 Stufen) / Special 11 (Sternstufen) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen. |
 | rarities | 9 | E | E:9 | Seltenheitsnamen D; Multiplikatoren/Maxlevel eigen. |
 | weaponClasses | 6 | R | R:6 | 6 Klassen und S-Skill-Namen D; Reichweite/Takt/Passiva eigen. |
 | skills | 10 | E | E:10 | Skillnamen der S-Reihen D; Parameter eigen. |
@@ -100,7 +100,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | world | E | `{"normalPerNode":1,"rareRespawnMinSec":900,"spawnSpreadM":2.5,"activeRadiusM":40}` | Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius. |
 | ledgerKeep | E | `400` |  |
 | saveSlots | E | `2` |  |
-| special | R | `{"levelsPerStar":15,"maxStar":5,"pinkFirst":5,"starBonus":[{"stat":"atk","pct":5},{"stat":"cooldownPct","v"…` | 15 Stufen je Sternstufe, Bonus +5 % Kraft / +5 % Abklingzeit je Stern, Kosten rote Orbs = Stern + Stufe, 5 Pink-Orbs auf der ersten Stufe fortgeführter Pfade (B bei Stern 3); 5 Sterne und übrige Sternstufen eigen. |
+| special | R | `{"maxStar":4,"starBonus":[{"stat":"atk","pct":5},{"stat":"cooldownPct","v":5}]}` | Vier Sternstufen (D). Bonus je Sternaufstieg +5 % Kraft / +5 % Abklingzeit nach einem Bild der Vorlage (B, dort für 3 -> 4 Sterne); für die übrigen Aufstiege übernommen. |
 | multiplayer | E | `false` | Solo-Spiel: PvP-Arena und Invasion sind nicht Teil des Spiels. true im Content schaltet sie samt Zubehör wieder ein (Paket mit buildBaseContent({ multiplayer: true }) erzeugen). |
 
 ## Offene Originaldaten (nicht erfunden, nicht behauptet)

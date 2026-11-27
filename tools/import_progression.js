@@ -12,9 +12,14 @@ for (const d of sec.match(/<details class="ability".*?<\/details>/gs)) {
   });
   out[name] = { max, rows };
 }
+// Segen: drei Pfade, je Stufe Wert und EXP-Kosten
+const bl = /<section id="blessings".*?<\/section>/s.exec(html)[0].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '), bless = [[], [], []];
+for (const m of bl.matchAll(/(\d+) · (\d+) · (\d+|—) (\d+) · (\d+) · (\d+|—) (\d+) · (\d+) · (\d+|—)/g)) for (let k = 0; k < 3; k++) bless[k].push([Number(m[1 + k * 3]), Number(m[2 + k * 3]), Number(m[3 + k * 3]) || 0]);
 fs.writeFileSync(new URL('../src/core/content/progression_ref.js', import.meta.url), `// GENERIERT von tools/import_progression.js – nicht von Hand ändern.
 // Quelle: xphero.fans/progression (inoffiziell, aus den Spieldaten der Referenzversion), abgerufen 2026-11-27.
 // rows: [Stufe, Wert auf dieser Stufe, Kosten für den Schritt von dieser Stufe zur nächsten]. Werte ab ca. 1 Mio. sind in der Quelle auf 6 Stellen gerundet.
 export const ABILITY_REF = ${JSON.stringify(out)};
+// Segen: je Pfad [Stufe, Wert, EXP-Kosten dieser Stufe]
+export const BLESS_REF = ${JSON.stringify(bless)};
 `);
 console.log(Object.entries(out).map(([k, v]) => `${k}: max ${v.max}, ${v.rows.length} Stützstufen`).join('\n'));
