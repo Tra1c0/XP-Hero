@@ -3,7 +3,7 @@
 //  B = beobachtete Mechanik, Details eigen   R = Rekonstruktion/Interpretation
 //  E = EIGENER Wert (Original unbekannt, bewusst konfigurierbar)   ? = offen/zu verifizieren
 // Zeilen können mit Feld `s` einen abweichenden Zeilenstatus tragen. Nichts hiervon ist Gameplay-Code.
-import { WORLD, BUILDINGS as W1_BUILDINGS, REF as W1, zoneOf as zoneOfMap, nearestFloor, onFloor } from './world1.js';
+import { WORLD, BUILDINGS as W1_BUILDINGS, BASE as W1_BASE, REF as W1, zoneOf as zoneOfMap, nearestFloor, onFloor } from './world1.js';
 import { inPoly } from '../worldgrid.js';
 import { BESTIARY } from './bestiary_ref.js';
 import { ABILITY_REF } from './progression_ref.js';
@@ -481,8 +481,8 @@ export function buildBaseContent(opt = {}) {
     'Hier haust die Kristallkrabbe. Sie kam übers Meer wie du.', 'Dieses Ödland war ein Schlachtfeld. Etwas Altes ruht darunter.', 'In diese Kathedrale fällt kein Licht. Nach dir.',
     'Die Kälte hier kommt nicht vom Wetter. Ich warte am Feuer.', 'Die Feenkönigin der Ruinen – ist das nicht aufregend?', 'Man sagt, hier liege das Tor zur Hölle. Sei vorsichtig.'];
   const npcRows = [
-    { id: 'npc_elder', char: 'elder', name: 'Älteste', area: 'base', pos: [14, -6], s: 'E', scenes: [SC('e1', null, 'Willkommen. Rings um die Siedlung liegen sechs Gebiete – Greenhaven im Süden ist offen.')] },
-    { id: 'npc_smith', char: 'smith', name: 'Schmied', area: 'base', pos: [6, -7], s: 'E', scenes: [SC('s1', null, 'Bring mir Gold, dann schmiede ich dir Waffen.')] },
+    { id: 'npc_elder', char: 'elder', name: 'Älteste', area: 'base', pos: W1_BASE.elder, s: 'E', scenes: [SC('e1', null, 'Willkommen. Rings um die Siedlung liegen sechs Gebiete – Greenhaven im Süden ist offen.')] },
+    { id: 'npc_smith', char: 'smith', name: 'Schmied', area: 'base', pos: W1_BASE.smith, s: 'E', scenes: [SC('s1', null, 'Bring mir Gold, dann schmiede ich dir Waffen.')] },
     { id: 'npc_kain', char: 'kain', name: 'Kain', area: 'a1_1', pos: W1.cain, s: 'D', scenes: KAIN },
     ...W1.guides.map(([st, X, Z]) => ({ id: `npc_taid_${st}`, char: 'taid', name: 'Taid', area: zoneOf(X, Z), home: `a1_${st}`, pos: [X, Z], s: 'D', scenes: [SC(`t${st}`, null, TAID[st])] })),
     { id: 'npc_ryan_0', char: 'ryan', name: 'Ryan', area: 'base', pos: [25, 1], s: 'R', scenes: [SC('r0', null, RYAN[0], 'Bau mir ein Raid-Lager, dann zeige ich dir, wie man sie herausfordert.')] },

@@ -40,10 +40,17 @@ export function nearestFloor(X, Z, zoneId) {
 }
 export const onFloor = (X, Z) => { const row = MAP1.z[Math.floor((MAP1.maxZ - Z) / MAP1.cell)], ch = row && row[Math.floor((X - MAP1.minX) / MAP1.cell)]; return ch >= '0' && ch <= '6'; };
 
-// Basisgebäude: Lagerfeuer in der Mitte des Sandflecks, Portal an der Referenzposition, übrige auf freien Plätzen im Basiskreis (weitester Abstand zum Portal zuerst).
-const slots = MAP1.slots.filter(([x, z]) => Math.hypot(x - REF.townPortal[0], z - REF.townPortal[1]) > 4).sort((a, b) => Math.atan2(a[1] - MAP1.base.c[1], a[0] - MAP1.base.c[0]) - Math.atan2(b[1] - MAP1.base.c[1], b[0] - MAP1.base.c[0]));
-const pick = (k) => slots[Math.floor((k * slots.length) / 6) % slots.length];
-export const BUILDINGS = { bonfire: MAP1.base.c, portal: REF.townPortal, smithy: pick(0), chesthouse: pick(1), lumbermill: pick(2), quarry: pick(3), costumeshop: pick(4), raidcamp: pick(5) };
+// Basis nach dem Layout der Vorlage (B): Lagerfeuer mitten im Sandfleck, Schmiede rechts oberhalb, Schlüsselhaus und Portal links oben,
+// Raid-Turm rechts, Zelt links, Sandweg nach Süden. Angaben als Versatz zum Lagerfeuer [Ost, Nord] in Metern; die Abstände sind gegenüber
+// der Vorlage auf ca. 3/4 gestaucht, damit alles in der Schutzzone liegt. Sägewerk und Steinbruch kommen in der Vorlage nicht vor (Lage eigen).
+const F = MAP1.base.c, at = (dx, dz) => { const p = [Math.round((F[0] + dx) * 10) / 10, Math.round((F[1] + dz) * 10) / 10]; return onFloor(p[0], p[1]) ? p : nearestFloor(p[0], p[1], 'base'); };
+export const BASE = { fire: F, elder: at(3.2, -0.8), smith: at(3.6, 1.9) };
+export const BUILDINGS = { bonfire: F, smithy: at(3.6, 3.6), chesthouse: at(-5.6, 6.2), portal: at(-2.6, 8.8), raidcamp: at(8.8, 3.4), costumeshop: at(-8.6, 0.4), lumbermill: at(-6.4, -6.6), quarry: at(6.6, -6.8) };
+const lm = (t, dx, dz, x = {}) => ({ t, p: [F[0] + dx, F[1] + dz], ...x });
+LANDMARKS.push(lm('sandpatch', 0.4, 0.2), lm('sandpath', 0, -7.4), lm('storechest', -2.3, 0.7, { r: 12 }), lm('boulder_grey', 5.2, 8.2, { s: 1.1 }), lm('boulder_grey', 6.6, 7.2, { r: 80 }),
+  lm('knight_statue', -0.6, 7.8), lm('wanted', -6.4, -2.6, { r: 25 }), lm('flower_o', -4.8, -1.6), lm('flower_o', 5.2, -3.6), lm('flower_o', 3.4, -0.9, { s: 0.8 }),
+  lm('grass', 2.2, 2.9), lm('grass', 1.6, 6.4), lm('grass', -6.6, -4.6), lm('grass', -6.2, -5.6), lm('grass', 2.4, -6.6), lm('grass', 6.4, -2.2), lm('grass', -1.2, -7.6),
+  lm('trunk_purple', 5.0, 11.2), lm('shroom_purple', 3.2, 12.4), lm('crystal_grass', 1.4, 11.6), lm('crystal_grass', -5.6, 12.2));
 
 export const ENTRIES = MAP1.entries;
 

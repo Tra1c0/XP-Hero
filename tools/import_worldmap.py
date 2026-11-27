@@ -132,7 +132,7 @@ cx = lambda c: minX + (c + 0.5) * CELL; cz = lambda r: maxZ - (r + 0.5) * CELL
 sand = [(r, c) for r in range(rows) for c in range(cols) if kind[r][c] == F and tint[r][c] in (1, 2) and math.hypot(cx(c) - tp['x'], cz(r) - tp['z']) < 16]
 bx = sum(cx(c) for r, c in sand) / len(sand); bz = sum(cz(r) for r, c in sand) / len(sand)
 d1 = min(math.hypot(X - bx, Z - bz) for X, Z, k in pts if k == 1)
-BR = max(10, min(15, d1 - 2))
+BR = max(10, min(15, d1 - 1))
 for r in range(rows):
     for c in range(cols):
         if kind[r][c] == F and zone[r][c] == 1 and math.hypot(cx(c) - bx, cz(r) - bz) <= BR: zone[r][c] = 0

@@ -24,7 +24,7 @@ function buildWorldMap(g, W) {
   const at = (pos, zone, roam) => { const q = G.toPx(pos[0], pos[1]); return snap(G, q.x, q.y, 40, roam || !zone ? -1 : G.zoneIds.indexOf(zone)) || q; };
   const objects = [];
   const add = (type, row, r, extra = {}) => { const q = at(row.pos, null); objects.push({ ...row, type, x: q.x, y: q.y, r: r * ppm, ...extra }); };
-  for (const b of c.t.buildings) if (b.pos) { const q = G.toPx(b.pos[0], b.pos[1]); objects.push({ type: 'building', id: b.id, name: b.name, x: q.x, y: q.y, r: 3.4 * ppm, pos: b.pos }); }
+  for (const b of c.t.buildings) if (b.pos) { const q = G.toPx(b.pos[0], b.pos[1]); objects.push({ type: 'building', id: b.id, name: b.name, x: q.x, y: q.y, r: 2.4 * ppm, pos: b.pos }); }
   for (const n of c.t.npcs) if (n.pos && inW(n.area)) add('npc', n, 2.2);
   for (const s of c.t.chestSpawners) if (s.pos && inW(s.area)) add('chest', s, 1.6);
   for (const s of c.t.giftSpawners) if (s.pos && inW(s.area)) add('gift', s, 1.6);

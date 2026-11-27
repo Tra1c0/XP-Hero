@@ -35,7 +35,8 @@ function bot(game, clock, done, maxSec) {
     game.try('buyUpgrade', 'ab_power', 'max');
     const best = [...game.state.weapons.list].sort((a, b) => c.get('weapons', b.def).rarity - c.get('weapons', a.def).rarity)[0];
     if (best && game.state.weapons.slots[0] !== best.uid) game.cmd('equipWeapon', best.uid, 0);
-    if (game.state.world.area === 'base') { const q = w.map.entryOf('a1_1'); goto(q.x, q.y); continue; }
+    // Basis liegt mitten in Greenhaven: nur dann zum Einstieg laufen, wenn die Karte keine Gegner kennt (Einzelkarten)
+    if (game.state.world.area === 'base' && !w.enemies.length) { const q = w.map.entryOf('a1_1'); goto(q.x, q.y); continue; }
     let tgt = null;
     if (t.npc) { const n = w.map.objects.find((o) => o.id === t.npc); if (n) { if (goto(n.x, n.y) < n.r) game.try('talkNpc', n.id); continue; } }
     const pick = (f) => w.enemies.filter((e) => e.alive && f(e)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
