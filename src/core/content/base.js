@@ -7,6 +7,7 @@ import { WORLD, BUILDINGS as W1_BUILDINGS, BASE as W1_BASE, REF as W1, zoneOf as
 import { inPoly } from '../worldgrid.js';
 import { BESTIARY } from './bestiary_ref.js';
 import { ABILITY_REF, BLESS_REF } from './progression_ref.js';
+import { CHOP, STONE } from './scene1_ref.js';
 import { BUILD, SMITHY, SMITHY_RATES, SMITHY_ROLL, CHEST, CHESTSPAWN, KEYHOUSE, KEYSLOT, SUBSLOT, WGOLD, LVREW, MAINQ } from './econ_ref.js';
 import { WEAPON_REF } from './weapon_ref.js';
 import { WEAPON_WIKI, TYPE_BONUS, UPGRADE_WIKI } from './wiki_ref.js';
@@ -217,8 +218,9 @@ export function buildBaseContent(opt = {}) {
     for (let k = 0; k < ng; k++) giftSpawners.push({ id: `gs_${id}_${k}`, area: id, x: 220 + k * 560, y: 900 + k * 420, respawn: 900, s: 'E' });
   });
   // Kapitel-1-Rohstoffe (E) und die 17 Gift-Chest-Spawner der Referenz (Position + Respawn D)
-  [['tree', 'a1_1', [-10, -26]], ['tree', 'a1_1', [27, -24]], ['rock', 'a1_1', [20, -30]], ['tree', 'a1_2', [-40, 24]], ['rock', 'a1_3', [30, 26]], ['rock', 'a1_4', [70, -24]], ['rock', 'a1_5', [80, 70]], ['rock', 'a1_6', [-50, 82]]]
-    .forEach(([t, area, pos], k) => resGroups.push({ id: `rg_${area}_${t}_${k}`, area, v: `node_${t}`, count: 4, respawn: t === 'tree' ? 60 : 90, pos, r: 2.5 }));
+  // Fällbare Bäume und abbaubare Steine stehen an den Plätzen der Szenendaten (D): je Platz ein Rohstoff; Nachwachszeit eigen (E)
+  CHOP.forEach(([X, Z, st], k) => resGroups.push({ id: `rg_tree_${k}`, area: `a1_${st}`, v: 'node_tree', count: 1, respawn: 60, pos: [X, Z], r: 0, s: 'D' }));
+  STONE.forEach(([X, Z, st], k) => resGroups.push({ id: `rg_rock_${k}`, area: `a1_${st}`, v: 'node_rock', count: 1, respawn: 90, pos: [X, Z], r: 0, s: 'D' }));
   W1.gifts.forEach(([nm, X, Z, resp], k) => giftSpawners.push({ id: `gs_ch1_${k}`, ref: nm, area: zoneOf(X, Z) || 'a1_1', pos: [X, Z], respawn: resp, s: 'D' }));
   V('node_tree', 'Baum', 1, 'node', { hp: 20, drops: [{ item: 'wood', n: 1, count: 2, chance: 1 }] });
   V('node_rock', 'Fels', 1, 'node', { hp: 60, drops: [{ item: 'stone', n: 1, count: 2, chance: 1 }] });

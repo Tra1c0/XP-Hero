@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1m79eerft1l).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint e1l53kg7pt).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -16,7 +16,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | monsters | 154 | E | E:154 | 206 Monster/246 Varianten im Original; hier dokumentierte Beispiele (D) + eigene Platzhalter. |
 | variants | 175 | E | D:173 E:2 | Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops). |
 | spawnGroups | 253 | R | D:128 R:115 E:10 | Kapitel 1: 124 platzierte Spawnknoten mit Monster, Position, Respawn und Patrol aus den Szenendaten (D). Kapitel 2/3: 71/58 Gruppen (D), Position eigen. |
-| resourceGroups | 8 | E | E:8 | Rohstoffstellen als angreifbare Knoten. |
+| resourceGroups | 224 | E | D:224 | Rohstoffstellen als angreifbare Knoten. |
 | behaviors | 6 | E | E:6 | Gegner-KI-Parameter je Typ; Original-KI unbekannt. |
 | bossPatterns | 1 | E | E:1 | Generische, eigene Bossfähigkeiten (keine Originalmuster). nova: Geschosse im Kreis nach dem Einschlag, sobald der Boss wütend ist. |
 | statuses | 3 | E | E:3 | Statuseffekte: Stack-Limit, Erneuerung, Immunität. |

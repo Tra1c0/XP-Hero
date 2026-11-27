@@ -4,6 +4,7 @@
 // Die Basis ist der Sandfleck am Stadtportal im grünen Gebiet samt Umkreis; Gebäudeplätze darin sind eigen verteilt (E).
 import * as REF from './ch1_ref.js';
 import { MAP1 } from './world1_map.js';
+import { DECO, BUILD_POS, POINTS } from './scene1_ref.js';
 
 // Biome: nur IDs. Farben/Modelle liefert der Client (austauschbare Art-Assets).
 export const ZONES = [{ id: 'base', biome: 'town' }, { id: 'a1_1', biome: 'green' }, { id: 'a1_2', biome: 'desert' }, { id: 'a1_3', biome: 'ebon' },
@@ -43,20 +44,23 @@ export const onFloor = (X, Z) => { const row = MAP1.z[Math.floor((MAP1.maxZ - Z)
 // Basis nach dem Layout der Vorlage (B): Lagerfeuer mitten im Sandfleck, Schmiede rechts oberhalb, Schlüsselhaus und Portal links oben,
 // Raid-Turm rechts, Zelt links, Sandweg nach Süden. Angaben als Versatz zum Lagerfeuer [Ost, Nord] in Metern; die Abstände sind gegenüber
 // der Vorlage auf ca. 3/4 gestaucht, damit alles in der Schutzzone liegt. Sägewerk und Steinbruch kommen in der Vorlage nicht vor (Lage eigen).
-const F = MAP1.base.c, at = (dx, dz) => { const p = [Math.round((F[0] + dx) * 10) / 10, Math.round((F[1] + dz) * 10) / 10]; return onFloor(p[0], p[1]) ? p : nearestFloor(p[0], p[1], 'base'); };
-export const BASE = { fire: F, elder: at(3.2, -0.8), smith: at(4.6, 1.5) };
-export const BUILDINGS = { bonfire: F, smithy: at(3.6, 3.6), chesthouse: at(-5.6, 6.2), portal: at(-2.6, 8.8), raidcamp: at(8.8, 3.4), costumeshop: at(-8.6, 0.4), lumbermill: at(-6.4, -6.6), quarry: at(6.6, -6.8) };
+// Lagerfeuer, Schmiede, Schlüsselhaus, Portal und Raid-Lager stehen auf den Bauplätzen der Szenendaten (D); Kostümladen, Sägewerk und Steinbruch
+// haben dort keinen Bauplatz (Lage eigen). Der Turm (Bauplatz D) steht als Wahrzeichen östlich der Siedlung.
+const F = BUILD_POS.bonfire, fl = (p) => (onFloor(p[0], p[1]) ? p : nearestFloor(p[0], p[1])), at = (dx, dz) => fl([Math.round((F[0] + dx) * 10) / 10, Math.round((F[1] + dz) * 10) / 10]);
+export const BASE = { fire: F, elder: fl(POINTS.npc), smith: fl([BUILD_POS.smithy[0] - 2.2, BUILD_POS.smithy[1] - 1.6]) };
+export const BUILDINGS = { bonfire: F, smithy: fl(BUILD_POS.smithy), chesthouse: fl(BUILD_POS.chesthouse), portal: fl(BUILD_POS.portal), raidcamp: fl(BUILD_POS.raidcamp), costumeshop: at(-3.4, -10.2), lumbermill: at(5.0, -9.4), quarry: at(11.0, -4.8) };
 const lm = (t, dx, dz, x = {}) => ({ t, p: [F[0] + dx, F[1] + dz], ...x });
 LANDMARKS.push(lm('sandpatch', 0.4, 0.2), lm('sandpath', 0, -7.4), lm('storechest', -2.3, 0.7, { r: 12 }), lm('boulder_grey', 5.2, 8.2, { s: 1.1 }), lm('boulder_grey', 6.6, 7.2, { r: 80 }),
-  lm('knight_statue', -0.6, 7.8), lm('wanted', -6.4, -2.6, { r: 25 }), lm('flower_o', -4.8, -1.6), lm('flower_o', 5.2, -3.6), lm('flower_o', 3.4, -0.9, { s: 0.8 }),
+  lm('wanted', -6.4, -2.6, { r: 25 }), lm('flower_o', -4.8, -1.6), lm('flower_o', 5.2, -3.6), lm('flower_o', 3.4, -0.9, { s: 0.8 }),
   lm('grass', 2.2, 2.9), lm('grass', 1.6, 6.4), lm('grass', -6.6, -4.6), lm('grass', -6.2, -5.6), lm('grass', 2.4, -6.6), lm('grass', 6.4, -2.2), lm('grass', -1.2, -7.6),
   lm('trunk_purple', 5.0, 11.2), lm('shroom_purple', 3.2, 12.4), lm('crystal_grass', 1.4, 11.6), lm('crystal_grass', -5.6, 12.2));
 
+LANDMARKS.push({ t: 'knight_statue', p: BUILD_POS.special }, { t: 'tower', p: BUILD_POS.tower });
 export const ENTRIES = MAP1.entries;
 
 export const WORLD = {
   id: 'ch1', name: 'Lost Sanctuary', cell: MAP1.cell, ppm: 40, bounds: { minX: MAP1.minX, minZ: MAP1.minZ, maxX: MAP1.maxX, maxZ: MAP1.maxZ }, map: MAP1,
-  areas: ['base', 'a1_1', 'a1_2', 'a1_3', 'a1_4', 'a1_5', 'a1_6'], zones: ZONES, gates: GATES, blockers: BLOCKERS, landmarks: LANDMARKS,
+  areas: ['base', 'a1_1', 'a1_2', 'a1_3', 'a1_4', 'a1_5', 'a1_6'], zones: ZONES, gates: GATES, blockers: BLOCKERS, landmarks: LANDMARKS, deco: DECO,
   entries: ENTRIES, exits: [{ to: 'a2_1', p: MAP1.exit, needs: 'a1_6' }],
 };
 

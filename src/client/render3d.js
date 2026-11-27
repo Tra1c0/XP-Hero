@@ -2,6 +2,7 @@
 // Gelände aus dem Begehbarkeitsraster der Simulation (was man sieht, ist was begehbar ist); Labels, Lebensbalken, Minimap als 2D-Overlay.
 // Liest den Spielzustand nur. Koordinaten: GL x = Ost, y = oben, z = Süden (= Simulations-y).
 import { SHAPES, BIOMES, WATER, SCATTER, expand, hex } from './assets3d.js';
+const TREE = { a1_1: 'tree_round', a1_2: 'palm', a1_4: 'pine_snow' }; // fällbare Bäume je Gebiet
 import { FLOOR, WALL, WATER as K_WATER, LAVA, walkIdx, findPath } from '../core/worldgrid.js';
 import { npcStatus, currentQuests } from '../core/meta.js';
 import { enemyParts, enemyTop, npcParts } from './enemy3d.js';
@@ -214,6 +215,16 @@ export class Renderer3D {
       const c0 = Math.floor((lm.p[0] - B.minX) / cs), r0 = Math.floor((B.maxZ - lm.p[1]) / cs);
       for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) objNear.add((r0 + dr) * G.cols + c0 + dc);
     }
+    // Deko an den Plätzen der Szenendaten: [x*10, z*10, Drehung/10 Grad, Größe*10] je Requisite; ersetzt in dieser Welt die Zufallsstreuung
+    const deco = W.deco || null;
+    if (deco) for (const name in deco) {
+      const tall = /tree|palm|pine/.test(name);
+      for (const [x10, z10, r, s10] of deco[name]) {
+        const x = x10 / 10, zw = z10 / 10, li = Math.floor((B.maxZ - zw) / cs) * G.cols + Math.floor((x - B.minX) / cs), s = Math.min(1.6, Math.max(0.7, s10 / 10));
+        expand(name, x, H[li] > 0 ? H[li] : 0, -zw, r * 0.1745, s, parts);
+        if (tall) shadows.push(['disc', x, (H[li] > 0 ? H[li] : 0) + 0.03, -zw, 0, 2.2 * s, 1, 2.2 * s, '#000000', 0]);
+      }
+    }
     for (let r = 0; r < G.rows; r++) for (let c = 0; c < G.cols; c++) {
       const i = r * G.cols + c, k = G.kind[i], rule = SCATTER[zoneBiome(i)] || SCATTER.arena, h1 = hash(c + 11, r + 5);
       if (G.tint && k === WALL && !G.flat[i]) {
@@ -224,7 +235,7 @@ export class Renderer3D {
           const j = hash(c * 3 + q2, r * 5 + q2), s2 = (1.7 + hash(c + q2 * 7, r * 3) * 1.2) * big, sh = 0.86 + hash(c * 11 + q2, r) * 0.24;
           parts.push([q2 ? 'rock2' : 'rock', x + (j - 0.5) * cs * 0.9, -0.3, z + (hash(c, r * 7 + q2) - 0.5) * cs * 0.9, j * 6.28, s2, s2 * (0.6 + 0.25 * big * hash(r, c + q2)), s2 * 0.9, [rc[0] * sh, rc[1] * sh, rc[2] * sh], 0]);
         }
-        if (dist[i] <= 2 && h1 < rule.edgeD * 0.3 && rule.edge.length) expand(pick(rule.edge, hash(c * 5, r * 3)), x + (hash(c * 7, r) - 0.5) * cs, 0.7, z + (hash(c, r * 13) - 0.5) * cs, hash(c * 2, r * 2) * 6.28, 0.9, parts);
+        if (!deco && dist[i] <= 2 && h1 < rule.edgeD * 0.3 && rule.edge.length) expand(pick(rule.edge, hash(c * 5, r * 3)), x + (hash(c * 7, r) - 0.5) * cs, 0.7, z + (hash(c, r * 13) - 0.5) * cs, hash(c * 2, r * 2) * 6.28, 0.9, parts);
       } else if (k === WALL && !G.flat[i] && dist[i] === 1) {
         // Felsrand: klobige, runde Brocken entlang jeder Grenze (verdeckt die Rasterkante, bildet die natürliche Begrenzung)
         const rc = col(pal(i).side), x = B.minX + (c + 0.5) * cs, z = r * cs - B.maxZ + cs * 0.5;
@@ -239,7 +250,7 @@ export class Renderer3D {
         const name = pick(list, hash(c * 5, r * 3)), s = 0.8 + hash(c, r * 9) * 0.55, x = B.minX + (c + 0.5) * cs + (hash(c * 7, r) - 0.5) * cs * 0.6, z = r * cs - B.maxZ + cs * 0.5 + (hash(c, r * 13) - 0.5) * cs * 0.6;
         expand(name, x, H[i], z, hash(c * 2, r * 2) * 6.28, s, parts);
         if (/tree|pine/.test(name)) shadows.push(['disc', x, H[i] + 0.03, z, 0, 2.2 * s, 1, 2.2 * s, '#000000', 0]);
-      } else if (k === FLOOR && G.gate[i] < 0 && !path[i] && !objNear.has(i) && rule.floor.length && h1 < rule.floorD) {
+      } else if (!deco && k === FLOOR && G.gate[i] < 0 && !path[i] && !objNear.has(i) && rule.floor.length && h1 < rule.floorD) {
         const name = pick(rule.floor, hash(c * 5, r * 3)), x = B.minX + (c + 0.5) * cs + (hash(c * 7, r) - 0.5) * cs * 0.7, z = r * cs - B.maxZ + cs * 0.5 + (hash(c, r * 13) - 0.5) * cs * 0.7;
         expand(name, x, 0, z, hash(c * 2, r * 2) * 6.28, 0.8 + hash(c, r) * 0.4, parts);
       }
@@ -376,7 +387,7 @@ export class Renderer3D {
       const [ex, ez] = lerp(e);
       if (!vis(ex, ez)) continue;
       const v = e.v, rk = v.rank;
-      if (rk === 'node') { expand(v.id === 'node_tree' ? 'tree_round2' : 'rock_grey', ex, 0, ez, 0, 0.75, out); continue; }
+      if (rk === 'node') { expand(v.id === 'node_tree' ? (e.group && TREE[e.group.area]) || 'tree_round2' : e.group && e.group.area === 'a1_4' ? 'ore' : 'rock_grey', ex, 0, ez, (e.gid ? e.gid.length * 1.7 + e.hx : 0) % 6.28, v.id === 'node_tree' ? 0.95 : 0.7, out); continue; }
       const s0 = rk === 'boss' ? 2.1 : rk === 'rare' ? 1.6 : rk === 'elite' ? 1.3 : 1, s = s0 * (e.st === 'attack' ? 1.12 : e.st === 'spawn' ? 0.6 : 1);
       // Blickrichtung: im Kampf zum Spieler, sonst in Laufrichtung (bleibt stehen, wenn der Gegner steht)
       const fight = e.st === 'chase' || e.st === 'attack' || e.st === 'cool' || e.st === 'aggro' || e.st === 'cast', mv = Math.abs(e.x - e.px) + Math.abs(e.y - e.py) > 0.05;
