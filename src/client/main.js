@@ -82,3 +82,10 @@ document.addEventListener('resume', onOpen);
 window.__checkUpdate = (force) => checkForUpdate(ui, { force });
 addEventListener('visibilitychange', () => { if (document.hidden) game.save(); else { last = performance.now(); onOpen(); } });
 addEventListener('pagehide', () => game.save());
+
+// Android-Zurück-Taste / Browser-Zurück: schließt zuerst Aufdeck-Bild, Dialog oder offenes Fenster. Erst ohne offenes Fenster verlässt Zurück die App.
+addEventListener('popstate', () => { const top = document.querySelector('.reveal, .modal'); if (top) { top.remove(); try { history.pushState({ panel: 1 }, ''); } catch { /* egal */ } } else ui.close(); });
+// Bildschirm bleibt beim Spielen an (wo der Browser das erlaubt); nach Rückkehr in die App erneut anfordern.
+let wake = null;
+const keepAwake = async () => { try { if (navigator.wakeLock && document.visibilityState === 'visible') wake = await navigator.wakeLock.request('screen'); } catch { wake = null; } };
+keepAwake(); document.addEventListener('visibilitychange', keepAwake);

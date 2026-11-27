@@ -461,14 +461,14 @@ export function buildBaseContent(opt = {}) {
 
   // ------------------------------------------------------------------ Basis
   T('buildings', 'D', '26 Gebäudedefinitionen im Original; hier die 7 dokumentierten Einstiegskosten (Gold D, Materialmengen E).', [
-    { id: 'bonfire', name: 'Bonfire', x: 800, y: 760, cost: { gold: 3 }, unlock: ['abilities'], max: 1 },
-    { id: 'smithy', name: 'Smithy', x: 500, y: 700, cost: { gold: 70 }, unlock: [], max: 8, tiers: 'smithy' },
-    { id: 'chesthouse', name: 'ChestHouse', x: 1100, y: 700, cost: { gold: 330 }, unlock: ['keyhouse'], max: 1 },
-    { id: 'lumbermill', name: 'Lumbermill', x: 380, y: 420, cost: { gold: 600, wood: 6 }, unlock: [], max: 1, produce: { item: 'wood', perHour: 30, cap: 60 } },
-    { id: 'quarry', name: 'Quarry', x: 1220, y: 420, cost: { gold: 1613, wood: 15 }, unlock: [], max: 1, produce: { item: 'stone', perHour: 20, cap: 40 } },
-    { id: 'costumeshop', name: 'CostumeShop', x: 620, y: 300, cost: { gold: 3954, wood: 20, stone: 10, orb_red: 5 }, unlock: [], max: 1 },
+    { id: 'bonfire', name: 'Lagerfeuer', x: 800, y: 760, cost: { gold: 3 }, unlock: ['abilities'], max: 1 },
+    { id: 'smithy', name: 'Schmiede', x: 500, y: 700, cost: { gold: 70 }, unlock: [], max: 8, tiers: 'smithy' },
+    { id: 'chesthouse', name: 'Schlüsselhaus', x: 1100, y: 700, cost: { gold: 330 }, unlock: ['keyhouse'], max: 1 },
+    { id: 'lumbermill', name: 'Sägewerk', x: 380, y: 420, cost: { gold: 600, wood: 6 }, unlock: [], max: 1, produce: { item: 'wood', perHour: 30, cap: 60 } },
+    { id: 'quarry', name: 'Steinbruch', x: 1220, y: 420, cost: { gold: 1613, wood: 15 }, unlock: [], max: 1, produce: { item: 'stone', perHour: 20, cap: 40 } },
+    { id: 'costumeshop', name: 'Kostümladen', x: 620, y: 300, cost: { gold: 3954, wood: 20, stone: 10, orb_red: 5 }, unlock: [], max: 1 },
     { id: 'portal', name: 'Portal', x: 980, y: 300, cost: { gold: 5170 }, unlock: ['portal'], max: 1 },
-    { id: 'raidcamp', name: 'Raid Camp', x: 700, y: 500, cost: { gold: 2590 }, unlock: [], max: 1, s: 'D', note: 'Gebäude aus Ryans Questkette, Kosten 2.590 Gold (D, BossRaidCamp).' },
+    { id: 'raidcamp', name: 'Raid-Lager', x: 700, y: 500, cost: { gold: 2590 }, unlock: [], max: 1, s: 'D', note: 'Gebäude aus Ryans Questkette, Kosten 2.590 Gold (D, BossRaidCamp).' },
   ].map((b) => ({ ...b, pos: W1_BUILDINGS[b.id] })));
   // Figuren und Standorte nach NpcData der Referenz (D). Dialogtexte sind EIGENE Texte; nur die Szenenstruktur (Anzahl, Freischaltquest) folgt der Referenz.
   const SC = (id, after, ...lines) => ({ id, after, lines });
@@ -518,25 +518,25 @@ export function buildBaseContent(opt = {}) {
   const kill = (m, n) => ({ counter: `kill:${m}`, n, from: 'accept' });
   const G = (n) => [{ item: 'gold', n }];
   Q('q_001', 'Besiege 5 Mandragora', kill('mandragora', 5), G(10));
-  Q('q_002', 'Baue das Bonfire', { cond: { building: 'bonfire' } }, G(20), { unlock: ['abilities'], unlockOn: 'clear', s: 'D' });
+  Q('q_002', 'Baue das Lagerfeuer', { cond: { building: 'bonfire' } }, G(20), { unlock: ['abilities'], unlockOn: 'clear', s: 'D' });
   Q('q_003', 'Verbessere Kraft 2x', { counter: 'upgrade:ab_power', n: 2, from: 'life' }, [{ item: 'key_warrior', n: 1 }, { item: 'gold', n: 30 }]);
   Q('q_004', 'Öffne eine Waffentruhe', { counter: 'gacha:warrior', n: 1, from: 'life' }, G(30), { unlock: ['shop'], unlockOn: 'receive', s: 'D' });
   Q('q_005', 'Rüste eine Waffe aus', { cond: { mainEquipped: true } }, G(30), { unlock: ['weaponVault'], unlockOn: 'receive', s: 'D' });
   Q('q_006', 'Besiege 8 Slimes', kill('slime', 8), G(40));
-  Q('q_007', 'Baue die Smithy', { cond: { building: 'smithy' } }, G(60), { unlock: ['craft'], unlockOn: 'clear', s: 'D' });
+  Q('q_007', 'Baue die Schmiede', { cond: { building: 'smithy' } }, G(60), { unlock: ['craft'], unlockOn: 'clear', s: 'D' });
   Q('q_008', 'Schmiede 3 Waffen', { counter: 'craft', n: 3, from: 'life' }, G(60));
   Q('q_009', 'Besiege 6 Mushrooms', kill('mushroom', 6), G(60));
   Q('q_010', 'Sprich mit Kain', { counter: 'talk:npc_kain', n: 1, from: 'life' }, G(40));
   Q('q_011', 'Besiege 6 Spinnen', kill('spider', 6), G(80));
   const feat = {
     2: [['Besiege 15 Kakteen', kill('cactus', 15), { unlock: ['codex'], unlockOn: 'clear', s: 'D' }],
-      ['Baue das ChestHouse', { cond: { building: 'chesthouse' } }, {}],
+      ['Baue das Schlüsselhaus', { cond: { building: 'chesthouse' } }, {}],
       ['Öffne eine Feldtruhe und hole die Belohnung ab', { counter: 'chest:claim', n: 1, from: 'life' }, { unlock: ['missions'], unlockOn: 'clear', s: 'D' }],
       ['Rüste eine Nebenwaffe aus', { cond: { equippedSubs: 1 } }, { unlock: ['slot2'], unlockOn: 'receive', s: 'D' }],
       ['Kehre zur Basis zurück', { counter: 'returnBase', n: 1, from: 'accept' }, { unlock: ['tower'], unlockOn: 'clear', s: '?' }]],
-    3: [['Baue die Lumbermill', { cond: { building: 'lumbermill' } }, {}],
-      ['Baue die Quarry', { cond: { building: 'quarry' } }, { reward: [{ item: 'gems', n: 150 }], s: 'E' }],
-      ['Baue den CostumeShop', { cond: { building: 'costumeshop' } }, { unlock: ['special'], unlockOn: 'clear', s: 'E' }],
+    3: [['Baue das Sägewerk', { cond: { building: 'lumbermill' } }, {}],
+      ['Baue den Steinbruch', { cond: { building: 'quarry' } }, { reward: [{ item: 'gems', n: 150 }], s: 'E' }],
+      ['Baue den Kostümladen', { cond: { building: 'costumeshop' } }, { unlock: ['special'], unlockOn: 'clear', s: 'E' }],
       ['Beschwöre einen Helden', { counter: 'gacha:hero', n: 1, from: 'life' }, { unlock: ['heroShop'], unlockOn: 'receive', s: 'D' }],
       ['Verbessere einen Helden', { counter: 'heroLevel', n: 1, from: 'life' }, { unlock: ['heroes'], unlockOn: 'receive', grant: [{ item: 'evo_coin', n: 30 }], s: 'D' }]],
     5: [['Besiege das Giant Chicken', kill('giant_chicken', 1), { unlock: ['sTierChest'], unlockOn: 'clear', s: 'D' }]],
@@ -565,10 +565,10 @@ export function buildBaseContent(opt = {}) {
     if (/^Hunt Any Boss/.test(text)) return ['Besiege einen Boss oder seltenen Gegner', { counter: 'kill:bossAny', n: 1, from: 'accept' }];
     if (/^Upgrade any Ability/.test(text)) return ['Verbessere eine Ability', { counter: 'upgrade:ability', n: n || 1, from: 'accept' }];
     if ((m = /^Upgrade (.+) to Lv\.(\d+)/.exec(text))) return [`Verbessere ${{ 'Hp Recovery': 'HP-Regeneration', 'Critical Chance': 'Kritische Chance', 'Move Speed': 'Bewegungstempo', 'Attack Speed': 'Angriffstempo' }[m[1]]} auf Stufe ${m[2]}`, { cond: { upgrade: ABIL[m[1]], gte: Number(m[2]) } }];
-    if (/^Find and Bring the Chest/.test(text)) return ['Finde eine Feldtruhe und bring sie ins Key House', { counter: 'chest:pickup', n: 1, from: 'accept' }];
+    if (/^Find and Bring the Chest/.test(text)) return ['Finde eine Feldtruhe und bring sie ins Schlüsselhaus', { counter: 'chest:pickup', n: 1, from: 'accept' }];
     if ((m = /^Defeat the Raid Boss, (.+) \(Normal\)/.exec(text))) return [`Besiege den Raid-Boss ${m[1]}`, { counter: `raid:clear:raid_${RAIDN.indexOf(m[1]) + 1}`, n: 1, from: 'life' }];
     if (/Speak with Hunter Ryan/.test(text)) return ['Sprich mit Jäger Ryan', { counter: 'talk:char:ryan', n: 1, from: 'life' }];
-    if (/^Build a Raid Camp/.test(text)) return ['Baue das Raid Camp', { cond: { building: 'raidcamp' } }];
+    if (/^Build a Raid Camp/.test(text)) return ['Baue das Raid-Lager', { cond: { building: 'raidcamp' } }];
     if (/^Meet Hana/.test(text)) return ['Triff Hana vor der Hütte', { counter: 'talk:char:hana', n: 1, from: 'life' }];
     if (/^Clear Heroes' Tomb/.test(text)) return ['Schließe Tomb of Heroes Stufe 1 ab', { counter: 'mode:tomb:clear', n: 1, from: 'life' }];
     if ((m = /^(?:Hunt|Slay) (.+)/.exec(text))) {

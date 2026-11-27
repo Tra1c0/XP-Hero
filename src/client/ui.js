@@ -157,7 +157,7 @@ P.hero = () => {
   const quest = () => [h('div', { cls: 'hq ot' }, 'Hauptquest', h('br'), `Kapitel ${ch}`),
     h('div', { cls: 'bossrow' }, game.c.t.areas.filter((a) => a.chapter === ch).map((a) => h('div', { cls: 'bosst ' + (s.world.cleared[a.id] ? 'ok' : game.canEnter(a.id) ? '' : 'no'), title: game.c.get('variants', a.boss).name }, icon('skull', null, 30)))),
     h('p', { cls: 'sub center' }, 'Besiege alle Gebietsbosse!')];
-  if (!fams.length) return [h('div', { cls: 'uphead' }, quest()), h('p', { cls: 'center' }, t('Baue das Bonfire, um Upgrades freizuschalten.'))];
+  if (!fams.length) return [h('div', { cls: 'uphead' }, quest()), h('p', { cls: 'center' }, t('Baue das Lagerfeuer, um Upgrades freizuschalten.'))];
   const f = fams.find((x) => x[0] === tab.up) || fams[0];
   tab.up = f[0];
   const special = () => {
@@ -234,7 +234,7 @@ P.weapons = () => {
 };
 P.smithy = () => {
   const g = game.g, c = game.c, tier = gear.smithyTier(g), sm = tier && c.get('smithy', tier), up = home.buildingUpgradeCost(g, 'smithy');
-  if (!tier) return [h('p', { cls: 'center' }, t('Baue zuerst die Smithy in der Basis.'))];
+  if (!tier) return [h('p', { cls: 'center' }, t('Baue zuerst die Schmiede in der Basis.'))];
   return [chips('orb_red', 'orb_pink', 'gold'), sec(`Schmiede Stufe ${tier}/8`, h('p', { cls: 'sub' }, 'Raten: ' + sm.rates.map((r) => `${c.get('rarities', r.rarity).name} ${r.w}%`).join(' · ') + (sm.otherW ? ` · Sonstiges ${sm.otherW}% (eigener Wert)` : '')),
     row('Schmieden', costEl({ crystal: c.cfg.craftCost[tier - 1] }), btn('x1', () => reward('Geschmiedet', act('craft', 1)), false, 'pri'), btn('x10', () => reward('Geschmiedet', act('craft', 10)), false, 'pri')),
     up ? row('Schmiede verbessern', costEl(up), btn('Upgrade', () => act('upgradeBuilding', 'smithy'), false, 'go')) : row('Endstufe erreicht', ''))];
@@ -266,9 +266,9 @@ P.base = () => {
     if (!sl.chest) return row(`Slot ${i + 1} (Kap. ${r.chapter})`, 'leer');
     const left = sl.chest.readyAt - g.now(), sp = home.chestSpeedUpCost(g, i);
     return row(`Slot ${i + 1}: ${c.get('chestTypes', sl.chest.type).name}`, left > 0 ? `fällig in ${fmtTime(left)}` : 'bereit', left > 0 ? btn(`Beschleunigen (${fmtCost(sp)})`, () => act('speedUpChest', i)) : btn('Abholen', () => reward('Truhe', act('claimChest', i)), false, 'pri'));
-  }) : [h('p', {}, t('ChestHouse bauen, um Feldtruhen zu lagern.'))];
+  }) : [h('p', {}, t('Schlüsselhaus bauen, um Feldtruhen zu lagern.'))];
   const cargo = Object.entries(s.cargo).map(([i, n]) => `${n} ${itemName(i)}`).join(', ') || 'leer';
-  return [sec('Gebäude', b), sec('Key House', kh), sec('Cargo', row(`${home.cargoUsed(g)} / ${game.stats.cargo}`, cargo, btn('Abgeben', () => reward('Abgegeben', act('deliver')), s.world.area !== 'base')))];
+  return [sec('Gebäude', b), sec('Schlüsselhaus', kh), sec('Fracht', row(`${home.cargoUsed(g)} / ${game.stats.cargo}`, cargo, btn('Abgeben', () => reward('Abgegeben', act('deliver')), s.world.area !== 'base')))];
 };
 // ---------------------------------------------------------------- Shop (vier Reiter wie in der Vorlage; keine Echtgeldkäufe)
 const shd = (title) => h('div', { cls: 'shd ot' }, h('i', {}, '◆'), t(title), h('i', {}, '◆'));
@@ -610,7 +610,7 @@ P.settings = () => {
 const TITLES = { quests: 'Quests', hero: 'Upgrades', weapons: 'Ausrüstung', base: 'Basis', shop: 'Shop', heroes: 'Helden', traits: 'Traits', runes: 'Runen', modes: 'Herausforderungen', events: 'Events', map: 'Karte', settings: 'Mehr',
   inv: 'Inventar', smithy: 'Schmiede', menu: 'Menü', fusion: 'Waffen verbessern' };
 const BAR = [['hero', 'up', ['abilities']], ['weapons', 'sword', ['weaponVault']], ['craft', 'anvil', ['craft']], ['modes', 'tower', ['tower', 'raid', 'tomb', 'pvp', 'invasion']], ['shop', 'shop', ['shop']]];
-export function open(id) { cur = id; render(); }
+export function open(id) { if (!cur) { try { history.pushState({ panel: 1 }, ''); } catch { /* Verlauf nicht verfügbar */ } } cur = id; render(); }
 export function close() { cur = null; $('panel').hidden = true; drawNav(); }
 export function render() {
   if (!cur) return;
@@ -627,7 +627,7 @@ function drawNav() {
   drawNav.key = key;
   $('nav').replaceChildren(...BAR.map(([id, ic, f]) => {
     const ok = f.some(has), locked = () => toast('Noch nicht freigeschaltet – folge den Quests.');
-    if (id === 'craft') return h('button', { cls: 'nb craft' + (ok ? '' : ' locked'), 'aria-label': 'Schmieden', on: () => (!ok ? locked() : !tier ? toast('Baue zuerst die Smithy in der Basis.') : reward('Geschmiedet', act('craft', 1))) },
+    if (id === 'craft') return h('button', { cls: 'nb craft' + (ok ? '' : ' locked'), 'aria-label': 'Schmieden', on: () => (!ok ? locked() : !tier ? toast('Baue zuerst die Schmiede in der Basis.') : reward('Geschmiedet', act('craft', 1))) },
       tier ? h('span', { cls: 'tier ot' }, tier) : null, icon(ic, null, 38), h('span', { cls: 'info ot' }, 'x1', h('small', { cls: econ.bal(g, 'crystal') >= cost ? '' : 'cost miss' }, tier ? [itemIcon('crystal', 13), fmt(cost)] : '—')));
     const mark = ok && ((id === 'modes' && n.modes) || (id === 'shop' && n.shop));
     return h('button', { cls: 'nb' + (cur === id ? ' on' : '') + (ok ? '' : ' locked') + (mark ? ' badge' : ''), 'aria-label': TITLES[id], on: () => (!ok ? locked() : cur === id ? close() : open(id)) }, icon(ic, null, 36),

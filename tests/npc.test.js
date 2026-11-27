@@ -75,7 +75,7 @@ test('Ryan-Kette: Gespräch schaltet Boss Raid frei, Raid Camp, Quest-Boss unabh
   at(game, 'npc_ryan_0');
   const r = game.cmd('talkNpc', 'npc_ryan_0');
   assert.equal(r.claimed[0].name, 'Sprich mit Jäger Ryan'); assert.ok(s().unlocks.raid, 'Raid per Quest 901001 freigeschaltet');
-  assert.deepEqual(r.accepted.slice(-1), ['Baue das Raid Camp']);
+  assert.deepEqual(r.accepted.slice(-1), ['Baue das Raid-Lager']);
   give('gold', 10000); give('wood', 20); give('stone', 20); game.cmd('build', 'raidcamp');
   assert.deepEqual(game.cmd('talkNpc', 'npc_ryan_0').accepted, ['Besiege den Raid-Boss Crystal Crab']);
   const other = modes.raidBossOfDay(g).id === 'raid_1' ? 'raid_2' : 'raid_1';
