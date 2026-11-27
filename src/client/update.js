@@ -20,6 +20,7 @@ export async function checkForUpdate(ui, { force = false, minGapMs = 0 } = {}) {
   let rel;
   try {
     const r = await fetch(API, { signal: ac.signal, headers: { accept: 'application/vnd.github+json' } });
+    if (r.status === 404) return { status: 'none' }; // GitHub meldet 404, solange noch keine Release veröffentlicht ist
     if (!r.ok) return { status: 'error', error: `Update-Server antwortet ${r.status}` };
     rel = await r.json();
   } catch { return { status: 'offline' }; } finally { clearTimeout(tm); }

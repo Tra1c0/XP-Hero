@@ -88,9 +88,8 @@ jobs:
           name: xp-hero-${{ env.XP_VERSION_NAME }}
           path: xp-hero-${{ env.XP_VERSION_NAME }}.apk
 
-      # Nur main veröffentlicht Releases; nur diese sieht die App als Update.
+      # Jeder grüne Build wird als Release veröffentlicht (main und Arbeitsbranch); die App lädt immer die neueste.
       - name: Release veröffentlichen
-        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
