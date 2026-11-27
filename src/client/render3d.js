@@ -236,6 +236,8 @@ export class Renderer3D {
     for (const o of w.map.objects) {
       const x = X(o.x), z = Z(o.y);
       if (!vis(x, z, 6)) continue;
+      // Gestrichelter Kreis um NPCs mit Anliegen: wer ihn betritt, wird angesprochen
+      { const m = this.npcSt && this.npcSt[o.id]; if (o.type === 'npc' && (m === 'offer' || m === 'turnin')) { const R = o.r / ppm; for (let k = 0; k < 20; k++) { const a = (k / 20) * 6.283; out.push(['box', x + Math.cos(a) * R, 0.03, z + Math.sin(a) * R, -a, 0.14, 0.03, R * 0.17, '#5fe07a', 0.9]); } } }
       if (o.type === 'building') expand(st.buildings[o.id] ? o.id : 'plot', x, 0, z, 0, 1, out);
       else if (o.type === 'chest') { if (now >= (st.world.chests[o.id] || 0)) { out.push(['box', x, 0, z, 0.3, 1.1, 0.7, 0.8, '#8a5a32', 0], ['box', x, 0.7, z, 0.3, 1.12, 0.18, 0.82, '#e9b43a', 0.2]); shadows.push(['disc', x, 0.02, z, 0, 1.6, 1, 1.6, '#000000', 0]); } } else if (o.type === 'gift') { if (now >= (st.world.gifts[o.id] || 0)) { out.push(['box', x, 0, z, 0.6, 0.8, 0.8, 0.8, '#ff7fae', 0.15], ['box', x, 0, z, 0.6, 0.84, 0.84, 0.18, '#fff3b0', 0.3], ['box', x, 0, z, 0.6, 0.18, 0.84, 0.84, '#fff3b0', 0.3]); } } else if (o.type === 'areachest') { if (!st.claims[`areachest:${o.id}`]) { out.push(['box', x, 0, z, -0.2, 1.3, 0.9, 0.9, '#e9b43a', 0.25], ['box', x, 0.9, z, -0.2, 1.32, 0.2, 0.92, '#b5482f', 0]); } } else if (o.type === 'npc') {
         if (o.kind === 'raid') out.push(['box', x + 1.4, 0, z - 0.6, 0.4, 1.0, 2.6, 1.0, '#3d3a4a', 0], ['sphere', x + 1.4, 2.5, z - 0.6, 0, 0.6, 0.6, 0.6, '#c24bff', 0.9]);

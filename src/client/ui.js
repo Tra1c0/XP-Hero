@@ -70,21 +70,42 @@ function walkTo(q) {
   if (game.world.mode) return toast('Im Modus nicht möglich.');
   game.world.p.auto = false; game.world.goTo(goal.x, goal.y); close(); toast(`Unterwegs zu: ${goal.label}`);
 }
-// Gespräch: Zeilen nacheinander (überspringbar), danach Abgaben, neue Aufträge und Fortschritt.
+// Gespräch wie in der Vorlage: startet von selbst, sobald man den Kreis eines NPCs mit Anliegen betritt. Sprechblase mit getipptem Text,
+// blockiert das Spiel nicht; Tippen blättert weiter, Weggehen beendet sie. Abgaben und neue Aufträge werden sofort verbucht und danach gemeldet.
+let speech = null, spokeTo = null;
+function endSpeech() { if (!speech) return; clearInterval(speech.iv); clearTimeout(speech.to); speech.el.remove(); const fin = speech.fin; speech = null; if (fin) fin(); }
 function talk(o) {
+  endSpeech();
   const r = act('talkNpc', o.id);
   if (!r.ok) return;
-  const v = r.value, parts = [];
-  for (const c of v.claimed) parts.push(`✅ ${c.name}: ${fmtReward(c.got)}`);
-  for (const a of v.accepted) parts.push(`❗ Neuer Auftrag: ${a}`);
-  for (const a of v.active) if (!v.accepted.includes(a.name)) parts.push(`… ${a.name} ${a.obj.map((x) => `${fmt(x.cur)}/${fmt(x.need)}`).join(' ')}`);
-  const end = () => {
-    const btns = [['Schließen', null]];
-    if (o.raid && has('raid')) btns.push([`Raid: ${game.c.get('raidBosses', o.raid).name}`, () => { if (act('startMode', 'raid', o.raid).ok) close(); }, 'pri']);
-    if (parts.length || btns.length > 1) modal(v.npc, h('div', {}, parts.length ? parts.map((x) => h('p', {}, x)) : 'Ryan zeigt auf den Raid-Stein.'), btns);
+  const v = r.value, fin = () => {
+    for (const c of v.claimed) toast(`✅ ${c.name}: ${fmtReward(c.got)}`, 3200);
+    for (const a of v.accepted) toast(`❗ Neuer Auftrag: ${a}`, 3200);
+    if (o.raid && has('raid')) modal(v.npc, `Raid: ${game.c.get('raidBosses', o.raid).name}`, [['Schließen', null], ['Starten', () => { if (act('startMode', 'raid', o.raid).ok) close(); }, 'pri']]);
   };
-  const step = (i) => { if (i >= v.lines.length) return end(); modal(v.npc, `„${v.lines[i]}“`, [['Überspringen', end], [i + 1 < v.lines.length ? 'Weiter' : 'Ok', () => step(i + 1), 'pri']]); };
-  step(0);
+  if (!v.lines.length) return fin();
+  const txt = h('span', {}), el = h('div', { cls: 'speech', role: 'status' }, h('b', {}, v.npc), txt);
+  speech = { el, fin, npc: o.id, i: 0, iv: null, to: null };
+  const show = (i) => {
+    if (!speech) return;
+    if (i >= v.lines.length) return endSpeech();
+    const line = v.lines[i]; let k = 0;
+    speech.i = i; speech.full = false; txt.textContent = ''; clearInterval(speech.iv); clearTimeout(speech.to);
+    speech.iv = setInterval(() => { if (!speech) return; k += 2; txt.textContent = line.slice(0, k); if (k >= line.length) { clearInterval(speech.iv); speech.full = true; speech.to = setTimeout(() => show(i + 1), 1400 + line.length * 28); } }, 30);
+    speech.skip = () => { if (speech.full) show(i + 1); else { clearInterval(speech.iv); txt.textContent = line; speech.full = true; speech.to = setTimeout(() => show(i + 1), 2200); } };
+  };
+  el.addEventListener('click', () => speech && speech.skip());
+  document.body.append(el); show(0);
+}
+// Je Hud-Takt: Kreis betreten -> ansprechen (einmal je Besuch); Kreis verlassen -> Blase schließen.
+function autoTalk(w) {
+  const o = w.near && w.near.type === 'npc' ? w.near : null;
+  if (speech && (!o || o.id !== speech.npc)) endSpeech();
+  if (!o) { spokeTo = null; return; }
+  if (spokeTo === o.id || cur || document.querySelector('.modal,.reveal')) return;
+  spokeTo = o.id;
+  const st = meta.npcStatus(game.g, o);
+  if (st === 'turnin' || st === 'offer') talk(o);
 }
 // ---------------------------------------------------------------- Panels
 const P = {};
@@ -652,7 +673,8 @@ export function hud() {
   $('auto').classList.toggle('on', w.p.auto);
   $('homebtn').hidden = !!w.mode || s.world.area === 'base'; $('abort').hidden = !w.mode;
   $('bonus').hidden = !meta.randomRewardReady(g) || !!w.mode;
-  $('ctx').hidden = !w.near || !!document.querySelector('.modal'); if (w.near) $('ctx').textContent = w.near.type === 'building' ? `${w.near.name} öffnen` : `Mit ${w.near.name} sprechen`;
+  if (!w.mode) autoTalk(w);
+  $('ctx').hidden = !w.near || !!speech || !!document.querySelector('.modal'); if (w.near) $('ctx').textContent = w.near.type === 'building' ? `${w.near.name} öffnen` : `Mit ${w.near.name} sprechen`;
   $('area').textContent = w.mode ? 'Arena' : s.world.area === 'base' ? 'Basis' : game.c.get('areas', s.world.area).name;
   document.documentElement.style.fontSize = `${16 * s.settings.textScale}px`;
   drawNav();

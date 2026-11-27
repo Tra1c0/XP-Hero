@@ -217,3 +217,7 @@ input { background:var(--cream); color:var(--ink); border:3px solid var(--ink); 
 .rvagain { display:grid; justify-items:center; min-width:190px; min-height:54px; font-size:.82rem; } .rvagain b { font-size:1rem; color:#fff; } .rvhint { color:#7a6248; font-weight:800; margin-top:14px; }
 .uptabs:has(.utab:nth-child(4)) { gap:6px; padding-left:8px; padding-right:8px; } .uptabs:has(.utab:nth-child(4)) .utab { min-width:0; padding:0 2px; font-size:.78rem; }
 #pbody:has(> .uptabs) { display:flex; flex-direction:column; } #pbody:has(> .uptabs) > * { flex-shrink:0; } #pbody > .uptabs { margin-top:auto; }
+
+/* Sprechblase */
+.speech { position:fixed; left:14px; right:14px; top:36%; z-index:6; background:var(--cream); color:var(--woodDD); border:3px solid var(--ink); border-radius:10px; padding:8px 12px 10px; font-weight:800; font-size:.92rem; min-height:54px; box-shadow:0 4px 0 #0005; }
+.speech b { display:block; font-size:.7rem; color:#a4502a; text-transform:uppercase; } .speech::after { content:""; position:absolute; left:50%; bottom:-12px; width:18px; height:12px; transform:translateX(-50%); background:var(--ink); clip-path:polygon(0 0,100% 0,50% 100%); }
