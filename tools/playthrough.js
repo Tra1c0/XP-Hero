@@ -32,12 +32,15 @@ const quests = () => {
   reserve = 0;
   for (const { q, state } of currentQuests(g)) if (state === 'satisfied') game.try('claimQuest', q.id);
   for (const { q, state } of currentQuests(g)) { const o = q.obj[0]; if (state === 'active' && o.cond && o.cond.building) reserve = Math.max(reserve, c.get('buildings', o.cond.building).cost.gold || 0); }
-  for (const { q, state } of currentQuests(g)) { const o = q.obj[0]; if (state === 'active' && o.counter && o.counter.startsWith('upgrade:ab_')) { const pv = prog.upgradePreview(g, o.counter.slice(8), 1); if (pv.next && pv.next.gold) reserve = Math.max(reserve, pv.next.gold); } }
+  for (const { q, state } of currentQuests(g)) { const o = q.obj[0]; const uid = state !== 'active' ? null : o.cond && o.cond.upgrade ? o.cond.upgrade : o.counter && o.counter.startsWith('upgrade:ab_') ? o.counter.slice(8) : null; if (uid) { const pv = prog.upgradePreview(g, uid, 1); if (pv.next && pv.next.gold) reserve = Math.max(reserve, pv.next.gold); } }
   for (const { q, state } of currentQuests(g)) {
     if (state !== 'active') continue;
     const o = q.obj[0], t = questTarget(g, q);
     if (o.cond && o.cond.building) { const cost = c.get('buildings', o.cond.building).cost; if (Object.entries(cost).every(([i, n]) => (s().inv[i] || 0) >= n)) { if (!game.try('build', o.cond.building).ok && s().world.area !== 'base') game.try('returnHome'); } }
     else if (o.cond && o.cond.mainEquipped) spend();
+    else if (o.cond && o.cond.upgrade) game.try('buyUpgrade', o.cond.upgrade, 1);
+    else if (o.counter === 'heroLevel') game.try('heroLevelUp', s().heroes.active);
+    else if (o.counter === 'heroStar') game.try('heroStarUp', s().heroes.active);
     else if (o.counter && o.counter.startsWith('upgrade:')) game.try('buyUpgrade', o.counter.slice(8), 1);
     else if (o.counter && o.counter.startsWith('gacha:')) game.try('openBox', o.counter.slice(6), 1);
     else if (o.counter === 'returnBase') game.try('returnHome');
