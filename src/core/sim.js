@@ -259,12 +259,14 @@ export class World {
   autoHunt(dt, load) {
     const p = this.p, g = this.g, bossOk = this.mode || g.state.settings.autoBoss;
     if (!this.mode && this.hooks.cargoFull && this.hooks.cargoFull() && g.state.settings.autoReturn) { this.pending = { travel: 'base', autoBack: g.state.world.area }; return; }
+    // Jagdgebiet = Gebiet, in dem die Auto-Jagd eingeschaltet wurde (aus der Basis heraus: das erste betretene). Sie wandert nicht in stärkere Nachbargebiete.
+    if (!this.mode && this.map.world && !p.huntArea) { const z = this.zone(); if (z && z !== 'base') p.huntArea = z; }
     if (!p.tgt || !p.tgt.alive || p.skip[p.tgt.gid + ':' + p.tgt.slot] > this.t) {
       const R2 = (g.c.cfg.world.activeRadiusM * (this.map.world ? this.map.world.ppm : M)) ** 2, cand = [];
       for (const e of this.enemies) {
-        if (!e.alive || (e.v.rank === 'boss' && !bossOk) || p.skip[e.gid + ':' + e.slot] > this.t) continue;
+        if (!e.alive || (e.v.rank === 'boss' && !bossOk) || p.skip[e.gid + ':' + e.slot] > this.t || (p.huntArea && e.group && e.group.area !== p.huntArea)) continue;
         const d = dist2(p.x, p.y, e.x, e.y);
-        if (d < R2) cand.push([d, e]);
+        if (d < R2) cand.push([e.v.rank === 'node' ? d + R2 : d, e]); // Rohstoffe erst, wenn kein Gegner in Reichweite ist
       }
       cand.sort((a, b) => a[0] - b[0]);
       p.tgt = null;
@@ -298,13 +300,16 @@ export class World {
     }
     this.rebuildGrid();
     if (p.alive) {
+      if (!p.auto) p.huntArea = null;
       if (p.auto) this.autoHunt(dt, load);
       else if (p.goal) { if (this.follow(p.goal.x, p.goal.y, dt, 20) <= 20) p.goal = null; }
       const sp = cfg.player.moveSpeed * (1 + st.moveSpeedPct / 100), ml = Math.hypot(p.mx, p.my);
       if (ml > 0.05) { const k = Math.min(1, ml) / ml; [p.x, p.y] = slide(this.G, p.x, p.y, p.x + p.mx * k * sp * dt, p.y + p.my * k * sp * dt, p.r); }
       p.hp = Math.min(st.hp, p.hp + (st.regen + (st.hp * cfg.player.regenPct) / 100) * dt);
       // Hauptwaffe hält ihr Ziel, bis es stirbt oder die Reichweite verlässt; Nebenwaffen/Skills mit eigenen Takten
-      for (const l of load) {
+      // Schutzzone gilt in beide Richtungen: in der Basis wird nicht angegriffen (sonst gefahrloses Farmen mit Fernwaffen vom Rand aus)
+      const inSafe = !this.mode && !!this.map.world && this.zone() === 'base';
+      if (!inSafe) for (const l of load) {
         p.wcd[l.slot] -= dt;
         if (p.wcd[l.slot] <= 0) {
           let tgt = l.slot === 0 && p.cur && p.cur.alive && dist2(p.x, p.y, p.cur.x, p.cur.y) <= (l.range + p.cur.r) ** 2 ? p.cur : this.nearest(p.x, p.y, l.range);
@@ -312,7 +317,7 @@ export class World {
         }
         if (l.skill) this.trySkill(l.skill, 'w' + l.slot, l.dmg, dt);
       }
-      if (this.heroSkill) this.trySkill(this.heroSkill, 'hero', st.atk, dt);
+      if (this.heroSkill && !inSafe) this.trySkill(this.heroSkill, 'hero', st.atk, dt);
     }
     this.stepEnemies(dt);
     // Projektile
@@ -415,7 +420,7 @@ export class World {
         case 'chase':
           // Verfolgung endet bei Leine, Tod des Spielers oder wenn der Spieler hinter Wänden festhängt (keine Endlosschleife)
           if (!p.alive || pSafe || dist2(e.x, e.y, e.hx, e.hy) > leash * leash || e.stuck > 2.5) { e.st = 'return'; e.stuck = 0; break; }
-          if (b.flee) { if (d > aggro * 1.6) { e.st = 'return'; break; } const k = (sp * dt) / (d || 1); [e.x, e.y] = slide(G, e.x, e.y, e.x - (p.x - e.x) * k, e.y - (p.y - e.y) * k, 14); break; }
+          if (b.flee) { if (d > aggro * 1.6) { e.st = 'return'; break; } away(e, sp); break; }
           if (b.pattern && (e.pcd -= dt) <= 0) { const pt = g.c.get('bossPatterns', b.pattern); e.st = 'cast'; e.t = pt.windup; e.cx = p.x; e.cy = p.y; e.pcd = pt.period * (e.hp < (e.maxHp * pt.enrageHpPct) / 100 ? pt.enrageIntervalMult : 1); break; }
           near.push(e);
           if (d <= b.range + p.r && (!b.proj || sees(e))) { e.st = 'attack'; e.t = b.windup; }

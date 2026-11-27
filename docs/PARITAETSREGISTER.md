@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 2dffgm2hrao).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1dwuqca3juq).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -72,7 +72,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | xp | ? | `{"trigger":"kill","factor":1,"capBehavior":"discard","maxLevel":400,"healOnLevelUp":true}` | XP-Auszahlungsort, Rundung (floor), Cap-Verhalten und HP-Behandlung sind eigen. factor = Progressionstempo. |
 | rewardFactor | E | `{"gold":1,"drops":1}` | Eigenes Progressionstempo, unabhängig von der Simulation. |
 | bonusClaims | ? | `{"mode":"replace","levelUp":true,"giftChest":true}` | Früherer Rewarded-Ad-Bonus (x5) als direkter Gratis-Claim. replace/add ungeklärt. |
-| caps | D | `{"towerBonus":5,"pvpReward":5,"pvpTicket":10,"revive":3,"dailyGemShop":2,"bossRankRefresh":1,"homeReturn":5…` | Erste 6 Keys = dokumentierte Tagescaps (Summe 26). homeReturn/randomReward/freeSpin = E. |
+| caps | D | `{"towerBonus":5,"pvpReward":5,"pvpTicket":10,"revive":3,"dailyGemShop":2,"bossRankRefresh":1,"randomReward"…` | Erste 6 Keys = dokumentierte Tagescaps (Summe 26). randomReward/freeSpin = E. |
 | applyDailyGemShopCapToFreeGems | ? | `false` | Semantik von Daily-Gem-Shop-RV-Cap 2 ungeklärt; standardmäßig nicht auf 9002-9004 angewendet. |
 | dailyTickets | E | `{"ticket_tower":5,"ticket_raid":2,"ticket_tomb":3}` | Tägliche Grundtickets (Auffüllen bis zu diesem Wert). |
 | player | E | `{"baseCargo":20,"moveSpeed":230,"critChance":5,"critDmg":150,"pickupRadius":90,"regenPct":1,"radius":16}` | Grundwerte Spieler. |
@@ -85,7 +85,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | runes | ? | `{"slots":6,"slotLevels":[1,60,90,120,160,200],"dismantleRefundPct":80,"milestoneEvery":10,"milestonePct":10}` | Slots und Refund eigen. |
 | heroes | E | `{"starter":"h_01","levelPct":2,"selectTicketPieces":50,"raidTeam":3}` | Heldenlevel: +levelPct% ATK/HP je Level über 1. |
 | keyhouse | E | `{"speedUpGemsPerMin":1,"chapterBound":true}` | Beschleunigung nur gegen erspielte Gems; kein Ad-Skip. |
-| homeReturn | E | `{"cost":{}}` | Rückkehr zur Basis: Tagescap caps.homeReturn, mit Perk unbegrenzt. |
+| homeReturn | E | `{"cost":{}}` | Rückkehr zur Basis: unbegrenzt und kostenlos (Tageslimit auf Nutzerwunsch entfernt). |
 | remoteBaseAccess | E | `true` | Komfort: Basis-Menüs von überall (weniger Laufwege). |
 | randomReward | E | `{"everySec":300}` | Intervall der Bonusbelohnung im Feld (früher Rewarded Ad). |
 | tower | R | `{"entryCost":{"ticket_tower":1},"timerSec":30}` | 30 s ist Modellannahme des DPS-Rechners. |

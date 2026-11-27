@@ -47,8 +47,8 @@ export function buildBaseContent(opt = {}) {
   C('rewardFactor', { gold: 1, drops: 1 }, 'E', 'Eigenes Progressionstempo, unabhängig von der Simulation.');
   C('bonusClaims', { mode: 'replace', levelUp: true, giftChest: true }, '?',
     'Früherer Rewarded-Ad-Bonus (x5) als direkter Gratis-Claim. replace|add ungeklärt.');
-  C('caps', { towerBonus: 5, pvpReward: 5, pvpTicket: 10, revive: 3, dailyGemShop: 2, bossRankRefresh: 1, homeReturn: 5, randomReward: 10, freeSpin: 1 }, 'D',
-    'Erste 6 Keys = dokumentierte Tagescaps (Summe 26). homeReturn/randomReward/freeSpin = E.');
+  C('caps', { towerBonus: 5, pvpReward: 5, pvpTicket: 10, revive: 3, dailyGemShop: 2, bossRankRefresh: 1, randomReward: 10, freeSpin: 1 }, 'D',
+    'Erste 6 Keys = dokumentierte Tagescaps (Summe 26). randomReward/freeSpin = E.');
   C('applyDailyGemShopCapToFreeGems', false, '?', 'Semantik von Daily-Gem-Shop-RV-Cap 2 ungeklärt; standardmäßig nicht auf 9002-9004 angewendet.');
   C('dailyTickets', { ticket_tower: 5, ticket_invasion: 5, ticket_raid: 2, ticket_tomb: 3, ticket_pvp: 5 }, 'E', 'Tägliche Grundtickets (Auffüllen bis zu diesem Wert).');
   C('player', { baseCargo: 20, moveSpeed: 230, critChance: 5, critDmg: 150, pickupRadius: 90, regenPct: 1, radius: 16 }, 'E', 'Grundwerte Spieler.');
@@ -63,7 +63,7 @@ export function buildBaseContent(opt = {}) {
   C('runes', { slots: 6, slotLevels: [1, 60, 90, 120, 160, 200], dismantleRefundPct: 80, milestoneEvery: 10, milestonePct: 10 }, '?', 'Slots und Refund eigen.');
   C('heroes', { starter: 'h_01', levelPct: 2, selectTicketPieces: 50, raidTeam: 3 }, 'E', 'Heldenlevel: +levelPct% ATK/HP je Level über 1.');
   C('keyhouse', { speedUpGemsPerMin: 1, chapterBound: true }, 'E', 'Beschleunigung nur gegen erspielte Gems; kein Ad-Skip.');
-  C('homeReturn', { cost: {} }, 'E', 'Rückkehr zur Basis: Tagescap caps.homeReturn, mit Perk unbegrenzt.');
+  C('homeReturn', { cost: {} }, 'E', 'Rückkehr zur Basis: unbegrenzt und kostenlos (Tageslimit auf Nutzerwunsch entfernt).');
   C('remoteBaseAccess', true, 'E', 'Komfort: Basis-Menüs von überall (weniger Laufwege).');
   C('randomReward', { everySec: 300 }, 'E', 'Intervall der Bonusbelohnung im Feld (früher Rewarded Ad).');
   C('tower', { entryCost: { ticket_tower: 1 }, timerSec: 30 }, 'R', '30 s ist Modellannahme des DPS-Rechners.');

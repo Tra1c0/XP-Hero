@@ -179,7 +179,7 @@ export class Game {
     if (n === 8) this.acc = 0;
     this.alpha = this.acc / step;
     const w = this.world;
-    if (w.pending) { const p = w.pending; w.pending = null; this.autoBack = p.autoBack || null; this.travelInternal(p.travel, p.back); }
+    if (w.pending) { const p = w.pending; w.pending = null; this.autoBack = p.autoBack ? { area: p.autoBack, x: w.p.x, y: w.p.y, hunt: w.p.huntArea } : null; this.travelInternal(p.travel, p.back); }
     if (w.ended && w.mode) this.finishMode();
     if (!w.mode && w.map.kind !== 'arena') {
       const fog = (g.state.world.fog[w.map.id] ||= {}); fog[w.cellOf()] = 1;
@@ -189,7 +189,7 @@ export class Game {
     if (this.secAcc >= 1) {
       this.secAcc = 0;
       econ.tickPeriods(g);
-      if (this.autoBack && g.state.world.area === 'base') { const back = this.autoBack; this.autoBack = null; if (this.canEnter(back)) { this.enter(back, false); this.world.p.auto = true; } }
+      if (this.autoBack && g.state.world.area === 'base') { const back = this.autoBack; this.autoBack = null; if (this.canEnter(back.area)) { this.enter(back.area, false); const q = this.world.p; if (this.world.map.kind === 'world') Object.assign(q, { x: back.x, y: back.y, px: back.x, py: back.y }); q.auto = true; q.huntArea = back.hunt || null; this.setArea(this.world.map.kind === 'world' ? this.world.zone() || back.area : back.area); } }
     }
     if (g.dirty) { meta.refreshQuests(g); g.dirty = false; this.changed = true; }
   }
@@ -246,7 +246,6 @@ export const COMMANDS = {
   returnHome: (game, g) => {
     if (g.state.world.area === 'base') fail('already', 'Bereits in der Basis');
     if (game.world.mode) fail('session_active', 'Im Modus nicht möglich');
-    if (!g.state.flags.perk_home) econ.useCap(g, 'homeReturn');
     econ.pay(g, g.c.cfg.homeReturn.cost, 'home_return');
     game.enter('base', false);
   },
