@@ -545,6 +545,7 @@ export function hud() {
   $('c_gold').textContent = fmt(econ.bal(g, 'gold')); $('c_gems').textContent = fmt(econ.bal(g, 'gems')); $('c_third').textContent = fmt(econ.bal(g, 'weapon_scroll'));
   const used = home.cargoUsed(g);
   $('cargo').textContent = w.mode ? `${w.mode.kind.toUpperCase()} · Welle ${w.wave + 1}/${w.mode.waves.length} · ${Math.ceil(w.timer)}s` : `FRACHT (${fmt(used)}/${fmt(st.cargo)})`;
+  $('cargo').style.setProperty('--p', w.mode ? '0%' : `${Math.min(100, (100 * used) / Math.max(1, st.cargo))}%`);
   $('cargo').className = 'ot' + (!w.mode && used >= st.cargo ? ' full' : '');
   // Quest-Karten (bis zu zwei): Hauptquest zuerst, dann ein NPC-Auftrag
   const qs = w.mode ? [] : meta.currentQuests(g), show = [qs.find((q) => !q.q.giver), qs.find((q) => q.q.giver)].filter(Boolean);
