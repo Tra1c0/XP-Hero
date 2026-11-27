@@ -360,6 +360,10 @@ export class Renderer3D {
       if (e.hp < e.maxHp || e.v.rank !== 'normal') { const bw = 26 * s; ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(sx - bw / 2, sy - 6, bw, 4); ctx.fillStyle = '#6fdc6f'; ctx.fillRect(sx - bw / 2, sy - 6, (bw * e.hp) / e.maxHp, 4); }
       if (e.v.rank !== 'normal' && e.v.rank !== 'node') label(`${e.v.name} L${e.v.level}`, ex, 1.45 * s + 0.5, ez, e.v.rank === 'boss' ? '#ffd24a' : '#ffd0a0');
     }
+    { // Lebensleiste über der Figur (HUD oben zeigt wie in der Vorlage nur Level, XP und Währungen)
+      const [hx, hy] = this.project(X(w.p.px + (w.p.x - w.p.px) * a), 2.0, Z(w.p.py + (w.p.y - w.p.py) * a)), bw = 46, f = Math.max(0, w.p.hp / game.stats.hp);
+      ctx.fillStyle = '#33221a'; ctx.fillRect(hx - bw / 2 - 2, hy - 9, bw + 4, 9); ctx.fillStyle = f > 0.35 ? '#5fd04a' : '#e5503f'; ctx.fillRect(hx - bw / 2, hy - 7, bw * f, 5);
+    }
     if (set.dmgNumbers) for (const t of w.texts) {
       const [sx, sy] = this.project(X(t.x), 1.6, Z(t.y));
       ctx.globalAlpha = Math.min(1, t.t * 2); ctx.font = `${t.kind === 2 ? '800 16' : '700 13'}px system-ui`; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.7)';

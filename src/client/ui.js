@@ -6,6 +6,8 @@ import * as gear from '../core/gear.js';
 import * as home from '../core/home.js';
 import * as meta from '../core/meta.js';
 import * as modes from '../core/modes.js';
+import { icon, itemIcon, STAT_ICON } from './skin.js';
+import { BIOMES, WATER as WCOL, hex } from './assets3d.js';
 
 // Lokalisierung: t(Quelltext) -> Übersetzung; ohne Eintrag bleibt der deutsche Quelltext.
 const LOCALE = {};
@@ -97,50 +99,86 @@ P.quests = () => {
   h('p', { cls: 'sub' }, `${done} / ${game.c.t.quests.length} Quests abgeschlossen`)];
 };
 function upgradeRows(family) {
+  const g = game.g;
   return game.c.t.upgradeTracks.filter((u) => u.family === family).map((u) => {
-    const pv = prog.upgradePreview(game.g, u.id, 1), mx = prog.upgradePreview(game.g, u.id, 'max'), full = pv.from >= u.max;
-    return row(`${u.name} ${pv.from}/${u.max}${u.grades ? ` (Grad ${Math.min(u.grades, Math.floor(pv.from / (u.max / u.grades)) + 1)})` : ''}`,
-      h('span', {}, `${sn(u.stat)}: ${fmt(pv.effFrom)}${full ? '' : ' → ' + fmt(pv.effTo)} · `, full ? 'MAX' : costEl(pv.next)),
-      btn('+1', () => act('buyUpgrade', u.id, 1), full || pv.to === pv.from), btn('+10', () => act('buyUpgrade', u.id, 10), full || pv.to === pv.from),
-      btn(`Max (${mx.to - mx.from})`, () => act('buyUpgrade', u.id, 'max'), mx.to === mx.from));
+    const pv = prog.upgradePreview(g, u.id, 1), mx = prog.upgradePreview(g, u.id, 'max'), full = pv.from >= u.max, can = pv.to > pv.from;
+    const mainCur = pv.next ? (pv.next.gold !== undefined ? 'gold' : Object.keys(pv.next)[0]) : null, extras = pv.next ? Object.entries(pv.next).filter(([i]) => i !== mainCur) : [];
+    return h('div', { cls: 'urow' }, h('div', { cls: 'uic' }, icon(STAT_ICON[u.stat] || 'star', null, 38)),
+      h('div', { cls: 'um' }, h('div', { cls: 'un' }, u.name), h('div', { cls: 'sub' }, sn(u.stat) + (u.grades ? ` · Grad ${Math.min(u.grades, Math.floor(pv.from / (u.max / u.grades)) + 1)}` : '')),
+        h('div', { cls: 'uv ot' }, fmt(pv.effFrom), full ? '' : ' > ', full ? null : h('em', {}, fmt(pv.effTo))), h('div', { cls: 'ul' }, `Stufe ${pv.from} / ${u.max}`)),
+      h('div', { cls: 'ur' }, full ? h('b', { cls: 'ot', style: 'font-size:1.3rem;padding:0 14px' }, 'MAX') : [
+        extras.length ? h('div', { cls: 'extra' }, extras.map(([i, n]) => h('span', { cls: econ.bal(g, i) >= n ? 'cost' : 'cost miss' }, itemIcon(i, 16), ' ', fmt(n)))) : null,
+        h('button', { cls: 'b cost' + (can ? '' : ' miss'), on: () => act('buyUpgrade', u.id, 1) }, itemIcon(mainCur, 22), fmt(pv.next[mainCur])),
+        h('div', { cls: 'mini' }, h('button', { cls: 'b sm', disabled: !can, on: () => act('buyUpgrade', u.id, 10) }, '+10'), h('button', { cls: 'b sm', disabled: mx.to === mx.from, on: () => act('buyUpgrade', u.id, 'max') }, `Max ${mx.to - mx.from}`))]));
   });
 }
+const chips = (...ids) => h('div', { cls: 'chips' }, ids.map((i) => h('span', { cls: 'chip ot' }, itemIcon(i, 22), fmt(econ.bal(game.g, i)))));
 P.hero = () => {
-  const fams = [['ability', 'Ability', 'abilities'], ['special', 'Special', 'special'], ['extra', 'Extra', 'extra'], ['soul', 'Soul Imprint', 'soul'], ['blessing', 'Blessings', 'blessing']].filter((f) => has(f[2]));
-  const st = game.stats;
-  return [h('p', { cls: 'sub' }, `ATK ${fmt(st.atk)} · HP ${fmt(st.hp)} · Cargo ${st.cargo} · Krit ${st.critChance.toFixed(1)}% x${st.critDmg}% · Tempo +${st.atkSpeedPct}% · Schaden +${st.dmgPct.toFixed(0)}%`),
-    fams.length ? [tabs('up', fams.map((f) => [f[0], f[1]])), ...upgradeRows(fams.find((f) => f[0] === tab.up) ? tab.up : (tab.up = fams[0][0]))] : h('p', {}, t('Baue das Bonfire, um Ability-Upgrades freizuschalten.'))];
+  const fams = [['ability', 'Fähigkeit', 'abilities'], ['special', 'Spezial', 'special'], ['extra', 'Extra', 'extra'], ['soul', 'Soul', 'soul'], ['blessing', 'Segen', 'blessing']].filter((f) => has(f[2]));
+  const s = game.state, open = game.c.t.areas.filter((a) => game.canEnter(a.id)), ch = open.length ? open[open.length - 1].chapter : 1;
+  const head = [h('div', { cls: 'hq ot' }, 'Hauptquest', h('br'), `Kapitel ${ch}`),
+    h('div', { cls: 'bossrow' }, game.c.t.areas.filter((a) => a.chapter === ch).map((a) => h('div', { cls: 'bosst ' + (s.world.cleared[a.id] ? 'ok' : game.canEnter(a.id) ? '' : 'no'), title: game.c.get('variants', a.boss).name }, icon('skull', null, 30)))),
+    h('p', { cls: 'sub center' }, 'Besiege alle Gebietsbosse!')];
+  if (!fams.length) return [...head, h('p', { cls: 'center' }, t('Baue das Bonfire, um Upgrades freizuschalten.'))];
+  const f = fams.find((x) => x[0] === tab.up) || fams[0];
+  tab.up = f[0];
+  const cur = { ability: ['orb_jungle', 'orb_hell', 'gold'], special: ['orb_pink', 'orb_red'], extra: ['orb_ice', 'orb_jungle'], soul: ['orb_hell'], blessing: ['exp'] }[f[0]];
+  return [...head, chips(...cur), ...upgradeRows(f[0]), fams.length > 1 ? tabs('up', fams.map((x) => [x[0], x[1]])) : null];
 };
+const wIcon = (w, size) => icon(game.c.get('weapons', w.def).cls, null, size);
+const rarCol = (w) => game.c.get('rarities', game.c.get('weapons', w.def).rarity).color;
+function weaponSheet(w) {
+  const g = game.g, c = game.c, ws = game.state.weapons, d = c.get('weapons', w.def), eq = ws.slots.indexOf(w.uid), mp = gear.mergePreview(g, w.uid), mx = c.get('rarities', d.rarity).maxLevel;
+  const free = ws.slots.findIndex((u, i) => i > 0 && i < ws.unlocked && !u), b = [];
+  if (eq !== 0) b.push(['Haupt', () => act('equipWeapon', w.uid, 0), 'pri']);
+  if (ws.unlocked > 1 && eq < 1) b.push(['Neben', () => act('equipWeapon', w.uid, free > 0 ? free : 1), 'blue']);
+  if (eq >= 0) b.push(['Ablegen', () => act('unequipWeapon', eq)]);
+  if (w.level < mx) b.push(['+1', () => { act('weaponLevelUp', w.uid, 1); }, 'go'], ['Max', () => act('weaponLevelUp', w.uid, 'max'), 'go']);
+  if (mp.ok) b.push(['Verbinden', () => act('mergeWeapon', w.uid), 'blue']);
+  b.push([w.lock ? 'Entsperren' : 'Sperren', () => act('toggleWeaponLock', w.uid)], ['Schließen', null]);
+  modal(d.name, h('div', {}, h('p', {}, `Stufe ${w.level}/${mx} · Schaden ${fmt(prog.weaponDmg(g, w))}${d.skill ? ' · Skill: ' + c.get('skills', d.skill).name : ''}`),
+    w.level < mx ? h('p', {}, 'Nächste Stufe: ', costEl(gear.weaponLevelCost(g, w, w.level + 1))) : null,
+    mp.next ? h('p', { cls: 'sub' }, `Verbinden → ${mp.next.name}: ${mp.ok ? 'möglich' : mp.reason}`) : h('p', { cls: 'sub' }, 'Endstufe dieser Reihe')), b);
+}
 P.weapons = () => {
-  const g = game.g, s = game.state, ws = s.weapons, c = game.c;
-  const name = (w) => `${c.get('weapons', w.def).name} L${w.level}`;
-  const slotRows = ws.slots.map((uid, i) => {
-    const w = uid && ws.list.find((x) => x.uid === uid), locked = i >= ws.unlocked;
-    return row(`${i === 0 ? 'Hauptwaffe' : 'Nebenwaffe ' + i}: ${locked ? '🔒' : w ? name(w) : '—'}`, w ? `Schaden ${fmt(prog.weaponDmg(g, w))}` : '', w ? btn('Ablegen', () => act('unequipWeapon', i)) : null);
-  });
-  const ns = gear.nextWeaponSlot(g);
-  const flt = tab.wcls || 'all';
-  const list = ws.list.filter((w) => flt === 'all' || c.get('weapons', w.def).cls === flt).sort((a, b) => c.get('weapons', b.def).rarity - c.get('weapons', a.def).rarity || b.level - a.level);
-  const out = [sec('Slots', slotRows, ns ? row(`Slot ${ns.slot} freischalten`, ns.quest ? 'per Quest' : h('span', {}, `Level ${ns.level} · `, costEl(ns.cost)), ns.quest ? null : btn('Freischalten', () => act('unlockWeaponSlot'))) : null)];
-  if (has('craft')) {
-    const tier = gear.smithyTier(g), sm = tier && c.get('smithy', tier), up = home.buildingUpgradeCost(g, 'smithy');
-    out.push(sec(`Schmiede (Stufe ${tier}/8)`, tier ? [h('p', { cls: 'sub' }, 'Raten: ' + sm.rates.map((r) => `${c.get('rarities', r.rarity).name} ${r.w}%`).join(' · ') + (sm.otherW ? ` · Sonstiges ${sm.otherW}% (eigener Wert)` : '')),
-      row('Schmieden', costEl({ gold: c.cfg.craftCost[tier - 1] }), btn('x1', () => reward('Geschmiedet', act('craft', 1))), btn('x10', () => reward('Geschmiedet', act('craft', 10)))),
-      up ? row('Schmiede verbessern', costEl(up), btn('Upgrade', () => act('upgradeBuilding', 'smithy'))) : null] : h('p', {}, t('Smithy in der Basis bauen.'))));
-  }
-  out.push(sec(`Inventar (${ws.list.length})`, h('div', { cls: 'tabs' }, [['all', 'Alle'], ...c.t.weaponClasses.map((k) => [k.id, k.name])].map(([id, l]) => h('button', { cls: 'tab' + (flt === id ? ' on' : ''), on: () => { tab.wcls = id; render(); } }, l))),
-    btn('Alle freien Duplikate verschmelzen', () => { const r = act('mergeAll'); if (r.ok) toast(`${r.value} Verschmelzungen`); }),
-    cap('w', list.map((w) => {
-      const d = c.get('weapons', w.def), eq = ws.slots.indexOf(w.uid), mp = gear.mergePreview(g, w.uid), mx = c.get('rarities', d.rarity).maxLevel;
-      const free = ws.slots.findIndex((u, i) => i < ws.unlocked && !u);
-      return h('div', { cls: 'card', style: `border-color:${c.get('rarities', d.rarity).color}` }, h('div', { cls: 'ti' }, `${w.lock ? '🔒 ' : ''}${name(w)}/${mx}${eq >= 0 ? ` · Slot ${eq + 1}` : ''}`),
-        h('div', { cls: 'sub' }, `Schaden ${fmt(prog.weaponDmg(g, w))}${d.skill ? ' · Skill: ' + c.get('skills', d.skill).name : ''} · Level-Up: `, w.level < mx ? costEl(gear.weaponLevelCost(g, w, w.level + 1)) : 'MAX',
-          mp.next ? h('span', {}, ` · Verschmelzen → ${mp.next.name}: ${mp.ok ? 'möglich' : mp.reason}`) : null),
-        h('div', { cls: 'btns' }, btn('Haupt', () => act('equipWeapon', w.uid, 0), eq === 0), ws.unlocked > 1 ? btn('Neben', () => act('equipWeapon', w.uid, free > 0 ? free : 1), eq > 0) : null,
-          btn('+1', () => act('weaponLevelUp', w.uid, 1), w.level >= mx), btn('Max', () => act('weaponLevelUp', w.uid, 'max'), w.level >= mx),
-          btn('Verschmelzen', () => act('mergeWeapon', w.uid), !mp.ok), btn(w.lock ? 'Entsperren' : 'Sperren', () => act('toggleWeaponLock', w.uid))));
-    }))));
-  return out;
+  const g = game.g, s = game.state, ws = s.weapons, c = game.c, ns = gear.nextWeaponSlot(g);
+  const main = ws.slots[0] && ws.list.find((x) => x.uid === ws.slots[0]), mainDmg = main ? prog.weaponDmg(g, main) : 0;
+  const slot = (i) => {
+    const w = ws.slots[i] && ws.list.find((x) => x.uid === ws.slots[i]), locked = i >= ws.unlocked, req = c.cfg.weaponSlots.find((r) => r.slot === i + 1) || {};
+    return h('button', { cls: 'slot6' + (i === 0 ? ' main' : ''), style: w ? `background:${rarCol(w)}` : null, on: () => (w ? weaponSheet(w) : locked ? toast(req.quest ? 'Wird per Quest freigeschaltet.' : `Slot ${i + 1}: ab Level ${req.level}`) : toast('Wähle unten eine Waffe.')) },
+      i === 0 ? h('small', {}, 'MAIN') : null, w ? [wIcon(w, 40), h('span', { cls: 'lvt ot' }, `Lv.${w.level}`)] : locked ? [icon('lock', null, 26), req.level ? h('span', { cls: 'cnt ot', style: 'position:absolute;bottom:0;font-size:.6rem' }, `Lv${req.level}`) : null] : h('span', { cls: 'plus' }, '+'));
+  };
+  const list = [...ws.list].sort((a, b) => c.get('weapons', b.def).rarity - c.get('weapons', a.def).rarity || b.level - a.level);
+  const autoEquip = () => { const best = [...ws.list].sort((a, b) => prog.weaponDmg(g, b) - prog.weaponDmg(g, a)).slice(0, ws.unlocked); best.forEach((w, i) => game.try('equipWeapon', w.uid, i)); render(); };
+  return [chips('exp', 'weapon_scroll', 'gold', 'gems'),
+    h('div', { cls: 'equip' }, h('div', { cls: 'col' }, slot(0), slot(1), slot(2)),
+      h('div', { cls: 'mid' }, h('div', { cls: 'power ot' }, icon('burst', '#ff8a2a', 24), fmt(game.stats.atk + mainDmg)), icon('hero', null, 132), h('div', { cls: 'pedestal' }),
+        has('heroes') ? btn('Held', () => open('heroes'), false, 'sm') : null),
+      h('div', { cls: 'col' }, slot(3), slot(4), slot(5))),
+    ns && !ns.quest ? row(`Slot ${ns.slot} freischalten`, h('span', {}, `Level ${ns.level} · `, costEl(ns.cost)), btn('Freischalten', () => act('unlockWeaponSlot'), false, 'go')) : null,
+    h('div', { cls: 'wbar' }, btn('Ausrüsten', autoEquip, !ws.list.length, 'pri'), h('b', { cls: 'ot' }, 'Waffe'), btn('Verbinden', () => { const r = act('mergeAll'); if (r.ok) toast(`${r.value} Verbindungen`); }, !ws.list.length, 'blue')),
+    list.length ? h('div', { cls: 'grid5' }, cap('w', list.map((w) => h('button', { cls: 'tile' + (ws.slots.includes(w.uid) ? ' eq' : ''), style: `background:${rarCol(w)}`, on: () => weaponSheet(w) }, wIcon(w, 40), h('span', { cls: 'lvt ot' }, `Lv.${w.level}`),
+      w.lock ? h('span', { cls: 'lk' }, '🔒') : null, !ws.slots.includes(w.uid) && prog.weaponDmg(g, w) > mainDmg ? h('span', { cls: 'thumb' }, '▲') : null)), 40)) : h('p', { cls: 'center' }, 'Noch keine Waffen. Öffne eine Waffentruhe im Shop oder schmiede am Amboss.')];
+};
+P.smithy = () => {
+  const g = game.g, c = game.c, tier = gear.smithyTier(g), sm = tier && c.get('smithy', tier), up = home.buildingUpgradeCost(g, 'smithy');
+  if (!tier) return [h('p', { cls: 'center' }, t('Baue zuerst die Smithy in der Basis.'))];
+  return [chips('orb_red', 'orb_pink', 'gold'), sec(`Schmiede Stufe ${tier}/8`, h('p', { cls: 'sub' }, 'Raten: ' + sm.rates.map((r) => `${c.get('rarities', r.rarity).name} ${r.w}%`).join(' · ') + (sm.otherW ? ` · Sonstiges ${sm.otherW}% (eigener Wert)` : '')),
+    row('Schmieden', costEl({ gold: c.cfg.craftCost[tier - 1] }), btn('x1', () => reward('Geschmiedet', act('craft', 1)), false, 'pri'), btn('x10', () => reward('Geschmiedet', act('craft', 10)), false, 'pri')),
+    up ? row('Schmiede verbessern', costEl(up), btn('Upgrade', () => act('upgradeBuilding', 'smithy'), false, 'go')) : row('Endstufe erreicht', ''))];
+};
+const KIND_COL = { currency: '#f7b24a', key: '#f58fb0', ticket: '#cfd8e3', material: '#cfd8e3', cargo: '#b7c7d9' };
+P.inv = () => {
+  const s = game.state, c = game.c, ids = Object.keys(s.inv).filter((i) => s.inv[i] > 0);
+  const tile = (i, n) => h('button', { cls: 'tile', style: `background:${i.startsWith('orb_') ? '#b46bff' : i.startsWith('piece:') ? '#6fb3ff' : KIND_COL[(c.by.items.get(i) || {}).kind] || '#cfd8e3'}`, on: () => toast(`${itemName(i)}: ${fmt(n)}`) }, itemIcon(i, 40), h('span', { cls: 'cnt ot' }, 'x' + fmt(n)));
+  const cargo = Object.entries(s.cargo).filter(([, n]) => n > 0);
+  return [ids.length ? h('div', { cls: 'grid4' }, ids.map((i) => tile(i, s.inv[i]))) : h('p', { cls: 'center' }, 'Noch leer.'),
+    cargo.length ? sec(`Fracht (${home.cargoUsed(game.g)}/${game.stats.cargo})`, h('div', { cls: 'grid4' }, cargo.map(([i, n]) => tile(i, n)))) : null];
+};
+P.menu = () => {
+  const items = [['quests', 'Quests', 'talk'], ['base', 'Basis', 'home'], ['inv', 'Inventar', 'backpack'], ['smithy', 'Schmiede', 'anvil', 'craft'], ['heroes', 'Helden', 'helmet', 'heroes'], ['traits', 'Traits', 'dice', 'traits'],
+    ['runes', 'Runen', 'rune', 'runes'], ['events', 'Events', 'star'], ['map', 'Karte', 'map'], ['settings', 'Mehr', 'gear']];
+  return [h('div', { cls: 'grid4' }, items.filter((x) => !x[3] || has(x[3])).map(([id, label, ic]) => h('button', { cls: 'tile menu', on: () => open(id) }, icon(ic, null, 40), h('span', { cls: 'ot' }, label))))];
 };
 P.base = () => {
   const g = game.g, s = game.state, c = game.c, remote = c.cfg.remoteBaseAccess || s.world.area === 'base';
@@ -236,8 +274,14 @@ P.modes = () => {
   const g = game.g, s = game.state, c = game.c, ms = s.modes, out = [];
   const list = [['tower', 'Tower'], ['raid', 'Boss Raid'], ['tomb', 'Tomb'], ['pvp', 'PvP'], ['invasion', 'Invasion']].filter((m) => has(m[0]));
   if (!list.length) return [h('p', {}, t('Modi werden über die Questreihe freigeschaltet.'))];
-  out.push(tabs('mode', list));
-  if (!list.find((m) => m[0] === tab.mode)) tab.mode = list[0][0];
+  if (!tab.modeOpen || !list.find((m) => m[0] === tab.mode)) {
+    const info = { tower: ['linear-gradient(#8f6be0,#5b3bb0)', 'tower', `Etage ${Math.min(250, ms.tower.best + 1)}`, 'ticket_tower'], invasion: ['linear-gradient(#5db8ff,#2f7fc0)', 'home', `${c.get('invasionTiers', ms.invasion.tier).name} · ${ms.invasion.rating}`, 'ticket_invasion'],
+      raid: ['linear-gradient(#e0703a,#8a2f1c)', 'skull', modes.raidBossOfDay(g).name, 'ticket_raid'], tomb: ['linear-gradient(#5a6b9a,#2f3a5c)', 'rune', `Stufe ${Math.min(20, ms.tomb.best + 1)}`, 'ticket_tomb'], pvp: ['linear-gradient(#f0c14b,#b9822a)', 'sword', `Rating ${ms.pvp.rating}`, 'ticket_pvp'] };
+    const names = { tower: 'Turm der Herausforderung', invasion: 'Invasionsportal', raid: 'Boss-Raid', tomb: 'Heldengrab', pvp: 'Arena' };
+    return [...out, ...list.map(([id]) => h('button', { cls: 'mcard', style: `background:${info[id][0]}`, on: () => { tab.mode = id; tab.modeOpen = true; render(); } }, h('b', { cls: 'ot' }, names[id]),
+      h('span', { cls: 'st ot' }, icon(info[id][1], null, 20), info[id][2]), h('br'), h('span', { cls: 'st ot' }, itemIcon(info[id][3], 20), econ.bal(g, info[id][3])), h('span', { cls: 'art' }, icon(info[id][1], null, 76))))];
+  }
+  out.push(btn('‹ Alle Herausforderungen', () => { tab.modeOpen = false; render(); }, false, 'sm'));
   const start = (mode, param) => { const r = act('startMode', mode, param); if (r.ok) close(); };
   if (ms.session) out.push(row(`Laufende Runde: ${ms.session.mode} ${ms.session.param}`, 'Fortsetzen kostet kein weiteres Ticket.', btn('Fortsetzen', () => start(ms.session.mode, ms.session.param), false, 'pri'), btn('Abbrechen', () => act('abortMode'), false, 'warn')));
   if (tab.mode === 'tower') {
@@ -272,10 +316,20 @@ function trackView(id) {
   const g = game.g, def = econ.trackDef(g, id), ts = econ.trackActive(g, def);
   if (!ts) return null;
   const order = { ready: 0, open: 1, expired: 2, claimed: 3 };
-  const nodes = def.nodes.map((n) => ({ n, st: econ.nodeState(g, def, n, ts) })).sort((a, b) => order[a.st] - order[b.st]);
-  const ready = nodes.filter((x) => x.st === 'ready').length;
-  return sec(`${def.name} (${nodes.filter((x) => x.st === 'claimed').length}/${nodes.length})`, ready > 1 ? btn(`Alle abholen (${ready})`, () => reward(def.name, act('claimAll', id)), false, 'pri') : null,
-    cap('t' + id, nodes.map(({ n, st }) => { const [a, b] = econ.progress(g, n.cond, { track: ts }); return row(n.name, `${fmt(Math.min(a, b))}/${fmt(b)} · ${fmtReward(n.reward)}${n.bonusMult ? ` x${n.bonusMult}` : ''}`, st === 'claimed' ? '✓' : st === 'expired' ? 'abgelaufen' : btn('Abholen', () => reward(n.name, act('claimNode', id, n.id)), st !== 'ready', 'pri')); }), 12));
+  const all = def.nodes.map((n) => ({ n, st: econ.nodeState(g, def, n, ts) })), nodes = all.filter((x) => !x.n.milestone).sort((a, b) => order[a.st] - order[b.st]), ms = all.filter((x) => x.n.milestone);
+  const ready = all.filter((x) => x.st === 'ready').length, claim = (n) => reward(n.name, act('claimNode', id, n.id));
+  const first = (rw) => (rw.find((e) => e.item) || {}).item;
+  return h('section', {}, h('h3', {}, `${def.name} (${all.filter((x) => x.st === 'claimed').length}/${all.length})`),
+    def.reset ? h('div', { cls: 'center' }, h('span', { cls: 'timer ot' }, '⏱ ', def.reset === 'weekly' ? 'Woche' : fmtTime((game.state.period.day + 1) * 86400000 - g.now()))) : null,
+    ms.length ? h('div', { cls: 'track' }, ms.map(({ n, st }) => h('button', { cls: 'tp ot' + (st === 'claimed' ? ' got' : ''), style: 'background:none;border:0;padding:0', on: () => (st === 'ready' ? claim(n) : toast(`${n.name}: ${fmtReward(n.reward)}`)) }, icon(st === 'ready' ? 'gift' : 'chest', null, 34), n.cond.gte ?? ''))) : null,
+    ready > 1 ? btn(`Alle annehmen (${ready})`, () => reward(def.name, act('claimAll', id)), false, 'go') : null,
+    cap('t' + id, nodes.map(({ n, st }) => {
+      const [a, b] = econ.progress(g, n.cond, { track: ts }), pts = n.reward.find((e) => e.points), it = first(n.reward);
+      return h('div', { cls: 'mrow' + (st === 'claimed' ? ' done' : '') }, h('div', { cls: 'mi' }, pts ? icon('star', null, 34) : it ? itemIcon(it, 34) : icon('gift', null, 34), pts ? h('span', { cls: 'cnt ot' }, pts.n) : null),
+        h('div', { cls: 'mm' }, h('div', { cls: 'mn' }, n.name), h('div', { cls: 'bar' }, h('i', { style: `width:${Math.min(100, (100 * a) / b)}%` }), h('span', { cls: 'ot' }, `${fmt(Math.min(a, b))}/${fmt(b)}`)),
+          h('div', { cls: 'mr' }, fmtReward(n.reward) + (n.bonusMult ? ` x${n.bonusMult}` : ''))),
+        h('div', { cls: 'mb' }, st === 'claimed' ? '✓' : st === 'expired' ? 'vorbei' : btn('Annehmen', () => claim(n), st !== 'ready', 'go')));
+    }), 12));
 }
 P.events = () => {
   const g = game.g, groups = [['missions', 'Missionen', ['daily', 'weekly']], ['level', 'Level', ['levelup']], ['login', 'Login', ['login']], ['events', 'Events', ['sevenDay', 'carnival', ...(game.c.t.events || []).map((e) => e.track.id)]], ['pass', 'Pässe', ['battlepass', 'chapterpass_1', 'chapterpass_2', 'chapterpass_3']], ['codex', 'Codex', ['codex']], ['spin', 'Spin & Codes', []]];
@@ -293,11 +347,31 @@ P.events = () => {
   return out;
 };
 P.map = () => {
-  const g = game.g, s = game.state;
-  return [h('p', { cls: 'sub' }, `Aktuell: ${s.world.area === 'base' ? 'Basis' : game.c.get('areas', s.world.area).name} · Heimkehr heute: ${s.flags.perk_home ? '∞' : econ.capLeft(g, 'homeReturn')}`),
-    row('Basis', '', btn('Heimkehren', () => { if (act('returnHome').ok) close(); }, s.world.area === 'base')),
-    sec(has('portal') ? 'Portal' : 'Gebiete (Portal noch nicht gebaut – Reise zu Fuß durch die Tore)', game.c.t.areas.map((a) => row(`${a.chapter}.${a.id.split('_')[1]} ${a.name}${s.world.cleared[a.id] ? ' ✓' : ''}`, `Boss: ${game.c.get('variants', a.boss).name} L${game.c.get('variants', a.boss).level}`,
-      has('portal') ? btn('Reisen', () => { if (act('portal', a.id).ok) close(); }, !game.canEnter(a.id) || s.world.area === a.id) : game.canEnter(a.id) ? '' : '🔒'))), trackView('minimap')];
+  const g = game.g, s = game.state, c = game.c, w = game.field, cur = c.by.areas.get(s.world.area), ch = cur ? cur.chapter : 1, list = c.t.areas.filter((a) => a.chapter === ch);
+  const names = { 1: 'Verlorene Zuflucht', 2: 'Gefallene Königreiche', 3: 'Besetzte Stadt' };
+  const stages = [];
+  list.forEach((a, k) => { if (k) stages.push(h('div', { cls: 'stline' + (s.world.cleared[list[k - 1].id] ? ' ok' : '') })); stages.push(h('div', { cls: 'stage ot ' + (s.world.cleared[a.id] ? 'ok' : game.canEnter(a.id) ? 'cur' : ''), title: a.name }, s.world.cleared[a.id] ? '✓' : k + 1)); });
+  let big = null;
+  if (w.map.kind === 'world') {
+    // Übersichtskarte direkt aus dem Begehbarkeitsraster (Gebiete farbig, unentdeckte Teile abgedunkelt statt schwarz)
+    const G = w.G, W = G.world, k = 4, small = h('canvas', { width: G.cols, height: G.rows }), sx = small.getContext('2d'), img = sx.createImageData(G.cols, G.rows), fog = s.world.fog[w.map.id] || {};
+    for (let i = 0; i < G.kind.length; i++) {
+      const kd = G.kind[i], bm = BIOMES[(W.zones[G.zone[i] >= 0 ? G.zone[i] : G.near[i]] || W.zones[0]).biome], col = kd === 1 ? hex(bm.floor[0]) : kd === 0 ? hex(bm.side).map((v) => v * 0.55) : hex(kd === 3 ? WCOL.lava : WCOL.water);
+      const r = (i / G.cols) | 0, cc = i % G.cols; let seen = false;
+      for (let dr = -3; dr <= 3 && !seen; dr++) for (let dc = -3; dc <= 3 && !seen; dc++) if (fog[(r + dr) * G.cols + cc + dc]) seen = true;
+      const f = seen ? 1 : 0.6; img.data.set([col[0] * 255 * f, col[1] * 255 * f, col[2] * 255 * f, 255], i * 4);
+    }
+    sx.putImageData(img, 0, 0);
+    const x = (big = h('canvas', { cls: 'bigmap', width: G.cols * k, height: G.rows * k })).getContext('2d');
+    x.imageSmoothingEnabled = false; x.drawImage(small, 0, 0, G.cols * k, G.rows * k);
+    x.font = '900 13px system-ui'; x.textAlign = 'center'; x.lineWidth = 3; x.strokeStyle = '#33221a';
+    for (const e of w.enemies) if (e.gid && e.v.rank === 'boss') { const px = (e.hx / G.w) * G.cols * k, py = (e.hy / G.h) * G.rows * k; x.fillStyle = e.alive ? '#ff4a4a' : '#888'; x.beginPath(); x.arc(px, py, 6, 0, 7); x.fill(); x.stroke(); x.strokeText(`Lv.${e.v.level}`, px, py - 9); x.fillStyle = '#fff'; x.fillText(`Lv.${e.v.level}`, px, py - 9); }
+    x.fillStyle = '#4fc3f7'; x.beginPath(); x.arc((w.p.x / G.w) * G.cols * k, (w.p.y / G.h) * G.rows * k, 6, 0, 7); x.fill(); x.stroke();
+  }
+  return [h('div', { cls: 'hq ot' }, h('span', { style: 'color:#ffd24a' }, `Kapitel ${ch}`), h('br'), names[ch] || ''), h('div', { cls: 'stages' }, stages), big,
+    row(`Aktuell: ${s.world.area === 'base' ? 'Basis' : cur.name}`, `Heimkehr heute: ${s.flags.perk_home ? '∞' : econ.capLeft(g, 'homeReturn')}`, btn('Heimkehren', () => { if (act('returnHome').ok) close(); }, s.world.area === 'base', 'blue')),
+    sec(has('portal') ? 'Portal' : 'Gebiete (Portal noch nicht gebaut – Reise zu Fuß durch die Tore)', c.t.areas.map((a) => row(`${a.chapter}.${a.id.split('_')[1]} ${a.name}${s.world.cleared[a.id] ? ' ✓' : ''}`, `Boss: ${c.get('variants', a.boss).name} Lv.${c.get('variants', a.boss).level}`,
+      has('portal') ? btn('Reisen', () => { if (act('portal', a.id).ok) close(); }, !game.canEnter(a.id) || s.world.area === a.id, 'go') : game.canEnter(a.id) ? '' : '🔒'))), trackView('minimap')];
 };
 P.settings = () => {
   const s = game.state, g = game.g;
@@ -313,37 +387,66 @@ P.settings = () => {
   h('p', { cls: 'sub' }, `XP-Quellen: ${Object.entries(s.totals['#xp'] || {}).map(([k, v]) => `${k} ${fmt(v)}`).join(' · ') || '—'} · Tagesreset 00:00 UTC, nächster in ${fmtTime((s.period.day + 1) * 86400000 - g.now())}`)];
 };
 
-const NAV = [['quests', 'Quests'], ['hero', 'Upgrades', 'abilities'], ['weapons', 'Waffen', 'weaponVault'], ['base', 'Basis'], ['shop', 'Shop', 'shop'], ['heroes', 'Helden', 'heroes'], ['traits', 'Traits', 'traits'], ['runes', 'Runen', 'runes'],
-  ['modes', 'Modi', ['tower', 'raid', 'tomb', 'pvp', 'invasion']], ['events', 'Events'], ['map', 'Karte'], ['settings', 'Mehr']];
+const TITLES = { quests: 'Quests', hero: 'Upgrades', weapons: 'Ausrüstung', base: 'Basis', shop: 'Shop', heroes: 'Helden', traits: 'Traits', runes: 'Runen', modes: 'Herausforderungen', events: 'Events', map: 'Karte', settings: 'Mehr',
+  inv: 'Inventar', smithy: 'Schmiede', menu: 'Menü' };
+const BAR = [['hero', 'up', ['abilities']], ['weapons', 'sword', ['weaponVault']], ['craft', 'anvil', ['craft']], ['modes', 'tower', ['tower', 'raid', 'tomb', 'pvp', 'invasion']], ['shop', 'shop', ['shop']]];
 export function open(id) { cur = id; render(); }
-export function close() { cur = null; $('panel').hidden = true; }
+export function close() { cur = null; $('panel').hidden = true; drawNav(); }
 export function render() {
   if (!cur) return;
   const body = $('pbody'), y = body.scrollTop;
-  $('ptitle').textContent = t(NAV.find((n) => n[0] === cur)[1]);
+  $('ptitle').textContent = t(TITLES[cur] || cur);
   body.replaceChildren(...P[cur]().flat(3).filter(Boolean));
   $('panel').hidden = false; body.scrollTop = y;
   drawNav();
 }
 function drawNav() {
-  const vis = NAV.filter(([, , f]) => !f || (Array.isArray(f) ? f.some(has) : has(f)));
-  const key = vis.map((v) => v[0]).join() + cur;
+  const g = game.g, tier = gear.smithyTier(g), cost = tier ? game.c.cfg.craftCost[tier - 1] : 0;
+  const key = BAR.map(([, , f]) => (f.some(has) ? 1 : 0)).join('') + cur + tier + (econ.bal(g, 'gold') >= cost);
   if (drawNav.key === key) return;
   drawNav.key = key;
-  $('nav').replaceChildren(...vis.map(([id, label]) => h('button', { cls: 'nb' + (cur === id ? ' on' : ''), on: () => (cur === id ? close() : open(id)) }, t(label))));
+  $('nav').replaceChildren(...BAR.map(([id, ic, f]) => {
+    const ok = f.some(has), locked = () => toast('Noch nicht freigeschaltet – folge den Quests.');
+    if (id === 'craft') return h('button', { cls: 'nb craft' + (ok ? '' : ' locked'), 'aria-label': 'Schmieden', on: () => (!ok ? locked() : !tier ? toast('Baue zuerst die Smithy in der Basis.') : reward('Geschmiedet', act('craft', 1))) },
+      icon(ic, null, 46), h('span', { cls: 'info ot' }, 'x1', h('small', { cls: econ.bal(g, 'gold') >= cost ? '' : 'cost miss' }, tier ? `${fmt(cost)} Gold · St. ${tier}` : '—')));
+    return h('button', { cls: 'nb' + (cur === id ? ' on' : '') + (ok ? '' : ' locked'), 'aria-label': TITLES[id], on: () => (!ok ? locked() : cur === id ? close() : open(id)) }, icon(ic, null, 42));
+  }));
 }
 
 // ---------------------------------------------------------------- HUD (aus dem Zustand abgeleitet, gebündelt 5x/s)
+let notes = { t: 0 };
+function notices() {
+  const now = Date.now();
+  if (now - notes.t < 1000) return notes;
+  const g = game.g, s = game.state, rdy = (ids) => ids.some((id) => { try { const d = econ.trackDef(g, id), ts = econ.trackActive(g, d); return ts && d.nodes.some((n) => econ.nodeState(g, d, n, ts) === 'ready'); } catch { return false; } });
+  notes = { t: now, missions: has('missions') && rdy(['daily', 'weekly']), pass: rdy(['login', 'levelup', 'battlepass', 'sevenDay', 'minimap', 'chapterpass_1']),
+    chest: s.keyhouse.slots.some((x) => x.chest && g.now() >= x.chest.readyAt), menu: meta.currentQuests(g).some((q) => q.state === 'satisfied' && !q.q.giver) };
+  return notes;
+}
 export function hud() {
   const g = game.g, s = game.state, w = game.world, st = game.stats, p = s.player;
   const need = prog.xpNeed(g, Math.min(p.level, game.c.t.playerLevels.length));
-  $('hp').style.width = `${Math.max(0, (100 * w.p.hp) / st.hp)}%`; $('hpt').textContent = `${fmt(Math.ceil(w.p.hp))} / ${fmt(st.hp)}`;
-  $('xp').style.width = `${Math.min(100, (100 * p.xp) / need)}%`; $('xpt').textContent = `Lv ${p.level} · ${fmt(p.xp)}/${fmt(need)} XP${st.xpPct ? ` (+${st.xpPct.toFixed(0)}%)` : ''}`;
-  $('cur').textContent = `🪙 ${fmt(econ.bal(g, 'gold'))}  💎 ${fmt(econ.bal(g, 'gems'))}  📦 ${home.cargoUsed(g)}/${st.cargo}`;
-  const q = meta.currentQuests(g)[0];
-  $('quest').textContent = w.mode ? `${w.mode.kind.toUpperCase()} · Welle ${w.wave + 1}/${w.mode.waves.length} · ${Math.ceil(w.timer)}s · Schaden ${fmt(w.dmgDealt)}` : q ? `${q.state === 'satisfied' ? '✅ ' : '❗ '}${q.q.name} ${q.obj.map((o) => `${fmt(o.cur)}/${fmt(o.need)}`).join(' ')}` : '';
-  $('quest').className = q && q.state === 'satisfied' && !w.mode ? 'ready' : '';
-  $('auto').textContent = w.p.auto ? 'Auto: AN' : 'Auto: AUS'; $('auto').className = 'b' + (w.p.auto ? ' pri' : '');
+  $('lv').textContent = p.level; $('xpf').style.width = `${Math.min(100, (100 * p.xp) / need)}%`; $('xpt').textContent = `${fmt(p.xp)}/${fmt(need)}`;
+  $('c_gold').textContent = fmt(econ.bal(g, 'gold')); $('c_gems').textContent = fmt(econ.bal(g, 'gems')); $('c_third').textContent = fmt(econ.bal(g, 'weapon_scroll'));
+  const used = home.cargoUsed(g);
+  $('cargo').textContent = w.mode ? `${w.mode.kind.toUpperCase()} · Welle ${w.wave + 1}/${w.mode.waves.length} · ${Math.ceil(w.timer)}s` : `FRACHT (${fmt(used)}/${fmt(st.cargo)})`;
+  $('cargo').className = 'ot' + (!w.mode && used >= st.cargo ? ' full' : '');
+  // Quest-Karten (bis zu zwei): Hauptquest zuerst, dann ein NPC-Auftrag
+  const qs = w.mode ? [] : meta.currentQuests(g), show = [qs.find((q) => !q.q.giver), qs.find((q) => q.q.giver)].filter(Boolean);
+  const key = show.map((q) => q.q.id + q.state + q.obj.map((o) => o.cur).join()).join('|');
+  if (hud.qkey !== key) {
+    hud.qkey = key;
+    $('quests').replaceChildren(...show.map(({ q, state, obj }) => {
+      const o = obj[0], kind = q.obj[0].counter || '';
+      return h('button', { cls: 'qcard' + (state === 'satisfied' ? ' ready' : ''), on: () => (state === 'satisfied' && !q.giver ? reward('Quest', act('claimQuest', q.id)) : walkTo(q)) },
+        h('span', { cls: 'tx ot' }, h('b', {}, q.name), h('div', { cls: 'bar' }, h('i', { style: `width:${Math.min(100, (100 * o.cur) / o.need)}%` }), h('span', {}, state === 'satisfied' ? (q.giver ? 'abgeben' : 'Abholen!') : `${fmt(o.cur)}/${fmt(o.need)}`))),
+        h('span', { cls: 'qi' }, icon(kind.startsWith('raid') || kind === 'kill:bossAny' || (q.obj[0].cond && q.obj[0].cond.cleared) ? 'skull' : kind.startsWith('chest') ? 'chest' : kind.startsWith('talk') ? 'talk' : kind.startsWith('kill') ? 'sword' : q.obj[0].cond && q.obj[0].cond.building ? 'home' : 'star', null, 28)));
+    }));
+  }
+  const n = notices();
+  $('b_missions').hidden = !has('missions'); $('b_missions').classList.toggle('badge', !!n.missions);
+  $('b_pass').classList.toggle('badge', !!n.pass); $('b_chest').classList.toggle('badge', !!n.chest); $('b_menu').classList.toggle('badge', !!n.menu);
+  $('auto').classList.toggle('on', w.p.auto);
   $('homebtn').hidden = !!w.mode || s.world.area === 'base'; $('abort').hidden = !w.mode;
   $('bonus').hidden = !meta.randomRewardReady(g) || !!w.mode;
   $('ctx').hidden = !w.near || !!document.querySelector('.modal'); if (w.near) $('ctx').textContent = w.near.type === 'building' ? `${w.near.name} öffnen` : `Mit ${w.near.name} sprechen`;
@@ -367,11 +470,18 @@ export function handleEvents(events) {
 }
 export function init(gm, nt) {
   game = gm; net = nt;
+  const put = (id, ic, col, size = 34) => $(id).append(icon(ic, col, size));
+  put('b_menu', 'menu'); put('b_pass', 'pass'); put('bonus', 'gift'); put('b_missions', 'missions'); put('b_map', 'map'); put('b_chest', 'chest'); put('homebtn', 'home'); put('auto', 'target');
+  document.querySelector('#p_gold .slot').append(icon('coin', null, 30)); document.querySelector('#p_gems .slot').append(icon('gem', null, 30)); document.querySelector('#p_third .slot').append(icon('scroll', null, 30));
   $('pclose').addEventListener('click', close);
-  $('auto').addEventListener('click', () => { game.world.p.auto = !game.world.p.auto; game.world.p.mx = game.world.p.my = 0; });
+  $('b_menu').addEventListener('click', () => (cur === 'menu' ? close() : open('menu')));
+  $('b_pass').addEventListener('click', () => { tab.ev = 'pass'; open('events'); });
+  $('b_missions').addEventListener('click', () => { tab.ev = 'missions'; open('events'); });
+  $('b_map').addEventListener('click', () => open('map'));
+  $('b_chest').addEventListener('click', () => open('base'));
+  $('auto').addEventListener('click', () => { const p = game.world.p; p.auto = !p.auto; p.goal = null; p.mx = p.my = 0; toast(p.auto ? 'Auto-Jagd an' : 'Auto-Jagd aus', 1200); });
   $('homebtn').addEventListener('click', () => act('returnHome'));
   $('abort').addEventListener('click', () => modal('Runde abbrechen?', 'Das Ticket ist verbraucht, es gibt keine Belohnung.', [['Weiter spielen', null], ['Abbrechen', () => act('abortMode'), 'warn']]));
   $('bonus').addEventListener('click', () => reward('Bonus', act('claimRandomReward')));
-  $('quest').addEventListener('click', () => { const q = meta.currentQuests(game.g)[0]; if (q && q.state === 'satisfied') reward('Quest', act('claimQuest', q.q.id)); else open('quests'); });
   $('ctx').addEventListener('click', () => { const o = game.world.near; if (o && o.type === 'npc') talk(o); else open('base'); });
 }

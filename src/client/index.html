@@ -11,20 +11,33 @@
   <canvas id="gl"></canvas>
   <canvas id="cv"></canvas>
   <div id="top">
-    <div class="bar"><i id="hp"></i><span id="hpt"></span></div>
-    <div class="bar xp"><i id="xp"></i><span id="xpt"></span></div>
-    <div id="line"><span id="cur"></span><span id="area"></span></div>
-    <button id="quest"></button>
+    <div class="lvl"><b id="lv" class="ot">1</b></div>
+    <div class="pill xp"><i id="xpf"></i><span id="xpt" class="ot"></span></div>
+    <div class="pill cur" id="p_gold"><span class="slot"></span><b id="c_gold" class="ot">0</b></div>
+    <div class="pill cur" id="p_gems"><span class="slot"></span><b id="c_gems" class="ot">0</b></div>
+    <div class="pill cur" id="p_third"><span class="slot"></span><b id="c_third" class="ot">0</b></div>
+  </div>
+  <div id="lefttop">
+    <button id="b_menu" class="ib" aria-label="Menü"></button>
+    <button id="b_pass" class="ib" aria-label="Pässe und Events"></button>
+    <button id="bonus" class="ib" aria-label="Bonusbelohnung" hidden></button>
+  </div>
+  <div id="area" class="ot"></div>
+  <div id="quests"></div>
+  <div id="leftbot">
+    <button id="b_missions" class="ib" aria-label="Missionen"></button>
+    <button id="b_map" class="ib" aria-label="Karte"></button>
+    <button id="b_chest" class="ib" aria-label="Basis und Key House"></button>
   </div>
   <div id="side">
-    <button id="auto" class="b">Auto: AUS</button>
-    <button id="homebtn" class="b">Heim</button>
-    <button id="bonus" class="b pri" hidden>Bonus!</button>
-    <button id="abort" class="b warn" hidden>Abbruch</button>
     <button id="ctx" class="b pri" hidden></button>
+    <button id="abort" class="b warn" hidden>Abbruch</button>
+    <button id="homebtn" class="ib" aria-label="Heimkehren"></button>
+    <button id="auto" class="ib" aria-label="Auto-Jagd"></button>
   </div>
+  <div id="cargo" class="ot"></div>
   <div id="perf" hidden></div>
-  <div id="panel" hidden><header><b id="ptitle"></b><button id="pclose" class="b">✕</button></header><div id="pbody"></div></div>
+  <div id="panel" hidden><header><b id="ptitle" class="ot"></b><button id="pclose" aria-label="Schließen">✕</button></header><div id="pbody"></div></div>
   <nav id="nav"></nav>
   <div id="toasts"></div>
 </div>

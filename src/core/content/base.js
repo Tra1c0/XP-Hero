@@ -269,18 +269,18 @@ export function buildBaseContent() {
   const U = (id, family, name, stat, max, rows, x = {}) => up.push({ id, family, name, stat, max, scale: 1, rows: rows.map(([lv, eff, cost]) => ({ lv, eff, cost })), s: 'E', ...x });
   const own = (max, effMax, c1, cMax, cur = 'gold') => [[1, Math.max(1, Math.round(effMax / max)), { [cur]: c1 }],
     [Math.max(2, Math.round(max / 2)), Math.round(effMax / 2), { [cur]: Math.round(Math.sqrt(c1 * cMax)) }], [max, effMax, { [cur]: cMax }]];
-  U('ab_power', 'ability', 'Power', 'atk', 2000, [[1, 2, { gold: 10 }], [2, 3, { gold: 34 }], [4, 5, { gold: 120 }], [7, 8, { gold: 271 }], [106, 758, { gold: 3745 }],
+  U('ab_power', 'ability', 'Kraft', 'atk', 2000, [[1, 2, { gold: 10 }], [2, 3, { gold: 34 }], [4, 5, { gold: 120 }], [7, 8, { gold: 271 }], [106, 758, { gold: 3745 }],
     [334, 4149, { gold: 32272 }], [572, 17945, { gold: 503809, orb_jungle: 1 }], [999, 48409, { gold: 1331790 }], [1282, 84228, { gold: 7234109, orb_hell: 30 }],
     [2000, 175100, { gold: 16896389, orb_hell: 30 }]], { s: 'D', note: 'Stützzeilen D; Interpolation R; Effekt/Orbs L2000 E.' });
-  U('ab_cargo', 'ability', 'Cargo', 'cargo', 1600, own(1600, 1600, 15, 5000000), { note: 'Max 1600 D.' });
-  U('ab_atkspeed', 'ability', 'Attack Speed', 'atkSpeedPct', 55, own(55, 55, 100, 2000000), { note: 'Max 55 D.' });
-  U('ab_hp', 'ability', 'Health', 'hp', 2000, [[1, 5, { gold: 10 }], [100, 1500, { gold: 3000 }], [1000, 150000, { gold: 1200000 }], [2000, 600000, { gold: 16000000 }]]);
-  U('ab_regen', 'ability', 'Regeneration', 'regen', 200, [[1, 1, { gold: 50 }], [100, 300, { gold: 40000 }], [200, 2000, { gold: 3000000 }]]);
-  U('ab_crit', 'ability', 'Crit Chance', 'critChance', 40, own(40, 40, 200, 4000000));
-  U('ab_critdmg', 'ability', 'Crit Damage', 'critDmg', 200, own(200, 200, 150, 6000000));
-  U('ab_move', 'ability', 'Movement', 'moveSpeedPct', 40, own(40, 40, 120, 1500000));
-  U('ab_multi', 'ability', 'Double Attack', 'multiHit', 40, own(40, 40, 400, 8000000));
-  U('ab_lifesteal', 'ability', 'Lifesteal', 'lifesteal', 20, own(20, 10, 800, 9000000));
+  U('ab_cargo', 'ability', 'Fracht', 'cargo', 1600, own(1600, 1600, 15, 5000000), { note: 'Max 1600 D.' });
+  U('ab_atkspeed', 'ability', 'Angriffstempo', 'atkSpeedPct', 55, own(55, 55, 100, 2000000), { note: 'Max 55 D.' });
+  U('ab_hp', 'ability', 'HP', 'hp', 2000, [[1, 5, { gold: 10 }], [100, 1500, { gold: 3000 }], [1000, 150000, { gold: 1200000 }], [2000, 600000, { gold: 16000000 }]]);
+  U('ab_regen', 'ability', 'HP-Regeneration', 'regen', 200, [[1, 1, { gold: 50 }], [100, 300, { gold: 40000 }], [200, 2000, { gold: 3000000 }]]);
+  U('ab_crit', 'ability', 'Kritische Chance', 'critChance', 40, own(40, 40, 200, 4000000));
+  U('ab_critdmg', 'ability', 'Kritischer Schaden', 'critDmg', 200, own(200, 200, 150, 6000000));
+  U('ab_move', 'ability', 'Bewegungstempo', 'moveSpeedPct', 40, own(40, 40, 120, 1500000));
+  U('ab_multi', 'ability', 'Doppelangriff', 'multiHit', 40, own(40, 40, 400, 8000000));
+  U('ab_lifesteal', 'ability', 'Lebensraub', 'lifesteal', 20, own(20, 10, 800, 9000000));
   const SP = ['skillDmgPct', 'cooldownPct', 'critDmg', 'dmgPct', 'bossDmgPct', 'goldPct', 'xpPct', 'dropPct', 'meleePct', 'rangedPct', 'atkSpeedPct'];
   SP.forEach((st, k) => U(`sp_${k}`, 'special', `Special ${k + 1}`, st, 40, own(40, st === 'cooldownPct' ? 20 : 80, 2, 60, k % 2 ? 'orb_pink' : 'orb_red'), { grades: 4 }));
   ['dmgPct', 'critDmg', 'skillDmgPct', 'bossDmgPct', 'goldPct', 'xpPct', 'meleePct', 'rangedPct'].forEach((st, k) =>
@@ -458,7 +458,7 @@ export function buildBaseContent() {
   const G = (n) => [{ item: 'gold', n }];
   Q('q_001', 'Besiege 5 Mandragora', kill('mandragora', 5), G(10));
   Q('q_002', 'Baue das Bonfire', { cond: { building: 'bonfire' } }, G(20), { unlock: ['abilities'], unlockOn: 'clear', s: 'D' });
-  Q('q_003', 'Verbessere Power 2x', { counter: 'upgrade:ab_power', n: 2, from: 'life' }, [{ item: 'key_warrior', n: 1 }, { item: 'gold', n: 30 }]);
+  Q('q_003', 'Verbessere Kraft 2x', { counter: 'upgrade:ab_power', n: 2, from: 'life' }, [{ item: 'key_warrior', n: 1 }, { item: 'gold', n: 30 }]);
   Q('q_004', 'Öffne eine Waffentruhe', { counter: 'gacha:warrior', n: 1, from: 'life' }, G(30), { unlock: ['shop'], unlockOn: 'receive', s: 'D' });
   Q('q_005', 'Rüste eine Waffe aus', { cond: { mainEquipped: true } }, G(30), { unlock: ['weaponVault'], unlockOn: 'receive', s: 'D' });
   Q('q_006', 'Besiege 8 Slimes', kill('slime', 8), G(40));
@@ -503,7 +503,7 @@ export function buildBaseContent() {
     if (/^Pick up Coins/.test(text)) return [`Sammle ${n} Gold von Gegnern`, { counter: 'coins', n, from: 'accept' }];
     if (/^Hunt Any Boss/.test(text)) return ['Besiege einen Boss oder seltenen Gegner', { counter: 'kill:bossAny', n: 1, from: 'accept' }];
     if (/^Upgrade any Ability/.test(text)) return ['Verbessere eine Ability', { counter: 'upgrade:ability', n: n || 1, from: 'accept' }];
-    if ((m = /^Upgrade (.+) to Lv\.(\d+)/.exec(text))) return [`Verbessere ${m[1]} auf Stufe ${m[2]}`, { cond: { upgrade: ABIL[m[1]], gte: Number(m[2]) } }];
+    if ((m = /^Upgrade (.+) to Lv\.(\d+)/.exec(text))) return [`Verbessere ${{ 'Hp Recovery': 'HP-Regeneration', 'Critical Chance': 'Kritische Chance', 'Move Speed': 'Bewegungstempo', 'Attack Speed': 'Angriffstempo' }[m[1]]} auf Stufe ${m[2]}`, { cond: { upgrade: ABIL[m[1]], gte: Number(m[2]) } }];
     if (/^Find and Bring the Chest/.test(text)) return ['Finde eine Feldtruhe und bring sie ins Key House', { counter: 'chest:pickup', n: 1, from: 'accept' }];
     if ((m = /^Defeat the Raid Boss, (.+) \(Normal\)/.exec(text))) return [`Besiege den Raid-Boss ${m[1]}`, { counter: `raid:clear:raid_${RAIDN.indexOf(m[1]) + 1}`, n: 1, from: 'life' }];
     if (/Speak with Hunter Ryan/.test(text)) return ['Sprich mit Jäger Ryan', { counter: 'talk:char:ryan', n: 1, from: 'life' }];
