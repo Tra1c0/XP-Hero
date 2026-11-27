@@ -115,7 +115,7 @@ export class Game {
       const gold = Math.floor(v.gold * (1 + g.stats.goldPct / 100) * cfg.rewardFactor.gold);
       if (gold > 0) { econ.add(g, 'gold', gold, 'kill', v.id); econ.emit(g, 'coins', gold); }
       if (v.rank === 'boss' || v.rank === 'rare') econ.emit(g, 'kill:bossAny');
-      if (cfg.xp.trigger === 'pickup') world.spawnDrop('#xp', v.xp, e.x, e.y); else prog.gainXp(g, v.xp, 'kill');
+      { const cap = g.c.get('playerLevels', s.player.level).killXpCap, xp = cap ? Math.min(v.xp, cap) : v.xp; if (cfg.xp.trigger === 'pickup') world.spawnDrop('#xp', xp, e.x, e.y); else prog.gainXp(g, xp, 'kill'); }
       econ.emit(g, `kill:${v.monster}`); econ.emit(g, 'kill:any');
       if (v.rank === 'boss') {
         const area = e.group.area, def = g.c.by.areas.get(area);

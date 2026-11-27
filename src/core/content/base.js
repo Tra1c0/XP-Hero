@@ -9,6 +9,7 @@ import { BESTIARY } from './bestiary_ref.js';
 import { ABILITY_REF, BLESS_REF } from './progression_ref.js';
 import { WEAPON_REF } from './weapon_ref.js';
 import { WEAPON_WIKI, TYPE_BONUS, UPGRADE_WIKI } from './wiki_ref.js';
+import { ENEMY as G_ENEMY, LEVEL_XP, KILL_XP_LIMIT, PLAYER_LV, WEAPON as G_WEAPON, CONFIG as G_CONFIG } from './game_ref.js';
 import { NPC_REF } from './npc_ref.js';
 
 export const SCHEMA = 1;
@@ -55,7 +56,7 @@ export function buildBaseContent(opt = {}) {
   C('dailyTickets', { ticket_tower: 5, ticket_invasion: 5, ticket_raid: 2, ticket_tomb: 3, ticket_pvp: 5 }, 'E', 'Tägliche Grundtickets (Auffüllen bis zu diesem Wert).');
   C('player', { baseCargo: 20, moveSpeed: 230, critChance: 5, critDmg: 150, pickupRadius: 90, regenPct: 1, radius: 16 }, 'E', 'Grundwerte Spieler.');
   C('statCaps', { critChance: 100, cooldownPct: 70, atkSpeedPct: 400, moveSpeedPct: 150, lifesteal: 50, multiHit: 100, tripleHit: 100 }, 'E', 'Obergrenzen; Kritchance <= 100.');
-  C('combat', { weaponSkillEvery: 6, weaponSkillRadius: 110, subIntervalMult: 2.2, subDmgMult: 0.6, dropDespawnSec: 90, respawnOfflineContinues: true, defaultRespawnSec: 30, bossRespawnSec: 3600, tick: 1 / 30 }, 'R',
+  C('combat', { weaponSkillRadius: 110, subRangeM: Number(G_CONFIG.SubWeapon_AttackRange), fistAps: Number(G_CONFIG.Player_Init_AtkSpd), enemyLeashM: 8, enemySpeedCap: 300, subIntervalMult: 2.2, subDmgMult: 0.6, dropDespawnSec: 90, respawnOfflineContinues: true, defaultRespawnSec: 30, bossRespawnSec: 3600, tick: 1 / 30 }, 'R',
     'Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt.');
   C('weaponLevelCost', { scrollPer5: 1, goldBase: 50 }, 'E', 'Scrolls = ceil(L/5)*(1+r); Gold = goldBase*L*(1+r)^2.');
   C('craftCost', [5, 5, 5, 5, 5, 5, 5, 5], 'B', 'Schmieden kostet auf jeder Schmiedestufe 5 Kristalle (Vorlage).');
@@ -242,13 +243,22 @@ export function buildBaseContent(opt = {}) {
       v.level = x[1];
       if (!keep) Object.assign(v, mobStats(config, v.level, v.rank)); // liefert XP (eigene Kurve); Leben und Angriff folgen aus dem Bestiary
       if (x[2] > 0) { v.hp = x[2]; v.atk = x[3]; } // Originalwerte (D); atk 0 z. B. bei Bat: greift nicht an
-      if (x[5]) v.speed = Math.round(x[5] * 130);
       v.ref = { id: x[0], hp: x[2], atk: x[3], type: x[4] };
     }
     if (o.g && (!x || o.v.length === 1 || x[1] === Math.max(...o.v.map((q) => q[1])))) v.gold = o.g; // ein Goldwert je Monster: bei mehreren Varianten gilt er nur für die höchste, darunter eigene Kurve
     if (o.r && v.respawn === undefined) v.respawn = o.r;
     v.drops = [...v.drops.filter((d) => DROP_OWN.has(d.item)), ...o.d.map(([item, n]) => ({ item, n, count: 1, chance: 1, s: 'D' }))];
     v.s = 'D';
+  }
+  // Spieldaten je Gegner (D): XP, Gold, Angriffstakt, Reichweiten, Lauftempo und Haltung. ai.s/a/d = Haltung bei Sicht / in Aktionsweite / bei Treffer:
+  // 0 ignorieren, 1 weiterwandern, 2 bewachen, 3 kämpfen, 4 fliehen (Zuordnung der Zahlen zu den Namen aus den Daten erschlossen, R).
+  for (const v of variants) {
+    const e = v.ref && G_ENEMY[v.ref.id];
+    if (!e) continue;
+    v.xp = e[18]; v.gold = e[19];
+    v.ai = { aps: e[3], range: e[4], move: e[5], retreat: e[6], sight: e[7], action: e[8], angry: e[10], fleeT: e[11], s: e[12], a: e[13], d: e[14], flock: e[15], size: e[23], knock: e[25] };
+    if (v.beh === 'flee' && e[14] !== 4) v.beh = 'melee';
+    if (e[14] === 4) v.beh = 'flee';
   }
   for (const v of variants) if (v.drops.length) v.drops.push(v.rank === 'normal' ? { item: 'crystal', n: 1, count: 1, chance: 0.5 } : { item: 'crystal', n: v.rank === 'boss' ? 10 : 3, count: 1, chance: 1 });
   T('variants', 'E', 'Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops).', variants);
@@ -293,8 +303,11 @@ export function buildBaseContent(opt = {}) {
 
   // ------------------------------------------------------------------ Spielerlevel
   const lvRows = [];
-  for (let L = 1; L <= 400; L++) lvRows.push({ level: L, xp: Math.round(45 * L ** 1.8), atk: 2 + L, hp: 100 + 15 * (L - 1) });
-  T('playerLevels', 'E', 'XP-Schwellen unbekannt: eigene, austauschbare Kurve. Grundwerte je Level bewusst klein (Angriff 2 + Level, Leben 100 + 15 je Level): im Original kommt die Stärke fast ganz aus Fähigkeiten, Waffen und Helden (Vergleich mit Bildern der Vorlage).', lvRows);
+  // Aus den Spieldaten (D): XP-Schwelle je Level, Grundangriff und Grundleben (Stützstufen, dazwischen linear), XP-Obergrenze je Kill.
+  const lvAt = (L, k) => { let a = PLAYER_LV[0], b = null; for (const r of PLAYER_LV) { if (r[0] <= L) a = r; else { b = r; break; } } return !b || a[0] === L ? a[k] : Math.round(a[k] + ((b[k] - a[k]) * (L - a[0])) / (b[0] - a[0])); };
+  const killCap = (L) => { let v = KILL_XP_LIMIT[0][1]; for (const [from, lim] of KILL_XP_LIMIT) if (L >= from) v = lim; return v; };
+  for (let L = 1; L <= 400; L++) lvRows.push({ level: L, xp: LEVEL_XP[L + 1], atk: lvAt(L, 1), hp: lvAt(L, 2), killXpCap: killCap(L) });
+  T('playerLevels', 'D', 'XP-Schwellen, Grundwerte und XP-Obergrenze je Kill aus den Spieldaten (Level 1-400 von 1.500).', lvRows);
 
   // ------------------------------------------------------------------ Upgrade-Pfade
   const up = [], sname = (st) => ({ atk: 'Kraft erhöhen', cargo: 'Fracht erhöhen', hp: 'Lebenspunkte erhöhen', regen: 'HP-Regeneration erhöhen', critChance: 'Kritische Trefferchance erhöhen', critDmg: 'Kritischen Schaden erhöhen', skillDmgPct: 'Fertigkeitsschaden erhöhen', lifesteal: 'Lebensraub erhöhen', cooldownPct: 'Abklingzeit verringern', dmgPct: 'Grundangriff verstärken', meleePct: 'Nahkampfschaden erhöhen', rangedPct: 'Fernkampfschaden erhöhen' }[st]);
@@ -346,7 +359,7 @@ export function buildBaseContent(opt = {}) {
     ['blunt', 'Stumpfe Waffe', true, 70, 1.1, 5, 'soul_wave', 'bossDmgPct', 6], ['crossbow', 'Armbrust', false, 330, 0.9, 1, 'at_rocket', 'critDmg', 10],
     ['gun', 'Schusswaffe', false, 300, 0.5, 1, 'gravity_shot', 'atkSpeedPct', 4], ['staff', 'Zauberstab', false, 280, 1.3, 4, 'carpet_bombing', 'skillDmgPct', 8]];
   T('weaponClasses', 'R', '6 Klassen und S-Skill-Namen D; Reichweite/Takt/Passiva eigen.', CLS.map(([id, name, melee, range, interval, targets, sSkill, pStat, pV]) =>
-    ({ id, name, melee, range, interval, targets, sSkill, passive: { stat: pStat, v: pV }, basicMult: { dagger: 0.7, sword: 1, blunt: 1.5, crossbow: 1.2, gun: 0.75, staff: 1.4 }[id],
+    ({ id, name, melee, range, interval, targets, sSkill, passive: { stat: pStat, v: pV }, basicMult: 1,
       proj: melee ? 0 : 520, aoe: id === 'staff' ? 70 : id === 'blunt' ? 90 : 0 })));
   T('skills', 'E', 'Skillnamen der S-Reihen D; Parameter eigen.', [
     { id: 'flower_dance', name: 'Flower Dance', cd: 7, range: 110, shape: 'aoeSelf', radius: 130, mult: 1.2, hits: 5 },
@@ -367,13 +380,15 @@ export function buildBaseContent(opt = {}) {
     const refOf = (r) => ((WEAPON_REF[cls] || {})[series] || []).find((x) => x[1] === r);
     for (let r = from; r <= to; r++) weapons.push({ id: `w_${cls}_${series}_${r}`, cls, series, rarity: r, name: refOf(r) ? `${refOf(r)[0]}${series === 's' ? ` (${RARITIES[r]})` : ''}` : `${cname}${series === 's' ? ' S' : ''} (${RARITIES[r]})`,
       ...(() => { const k = WEAPON_WIKI[`${cls}_${series}_${r}`]; return k ? { dmg: k.d, bonus: k.bonus, skMult: k.sk ? k.sk[1] : null, skName: k.sk ? k.sk[0] : null } : {}; })(), // Schaden Stufe 1/Max, Stufen-Boni, S-Fertigkeit (D, Fan-Wiki)
-      aps: refOf(r) ? refOf(r)[2] : null, wskill: series === 'n' && refOf(r) && refOf(r)[3] ? { name: refOf(r)[3].replace(/([a-z])([A-Z])/g, '$1 $2'), mult: refOf(r)[4] } : null,
+      // Spieldaten (D): Angriffe je Sekunde, Reichweite in Metern, Fertigkeit mit Abklingzeit und Gesamtfaktor
+      ...(() => { const gw = G_WEAPON[`${cls}_${series}_${r}`]; return gw ? { aps: gw[0], rangeM: gw[1], ranged: !!gw[3], skCd: gw[5] || null,
+        wskill: series === 'n' && gw[4] ? { name: (refOf(r) && refOf(r)[3] ? refOf(r)[3] : gw[4].replace(/^SK_|_\d+$/g, '')).replace(/([a-z])([A-Z])/g, '$1 $2'), mult: gw[6], cd: gw[5], rangeM: gw[7], bullets: gw[8] } : null } : { aps: null, wskill: null }; })(),
       dpsAdd: Math.round(4 * (1 + r) ** 2 * (series === 's' ? 1.5 : 1)), perLevel: Math.round(2 * (1 + r) ** 1.6 * (series === 's' ? 1.5 : 1)),
       next: r < to ? `w_${cls}_${series}_${r + 1}` : null, mergeCount: 3, evoCost: r >= 3 ? { weapon_scroll: 10 * (r - 2), gold: 5000 * 4 ** (r - 3) } : {},
       skill: series === 's' ? CLS.find((c) => c[0] === cls)[6] : null });
   }
   T('typeBonus', 'D', 'Bonus der Waffenart: gilt nur, wenn die Hauptwaffe zur Meisterschaft des aktiven Helden passt (Fan-Wiki).', Object.entries(TYPE_BONUS).map(([id, v]) => ({ id, bonus: v.bonus, heroes: v.heroes })));
-  T('weapons', 'R', '84 Varianten, 12 Reihen, Namen und Waffen-Fertigkeiten ab Epic mit Gesamtfaktor (D). Auslösung der Fertigkeit nach jedem n-ten Angriff (combat.weaponSkillEvery) ist eigen, die Quellen nennen keinen Auslöser. Schaden je Stufe linear zwischen Stufe-1- und Maximalwert, Maximalstufen und Stufen-Boni aus dem Fan-Wiki (D); Merge-Anzahl 3 (D), Evo-Kosten eigen. Transzendenz offen.', weapons);
+  T('weapons', 'R', '84 Varianten, 12 Reihen, Namen und Waffen-Fertigkeiten ab Epic mit Gesamtfaktor (D). Fertigkeit löst nach ihrer Abklingzeit aus (D). Schaden je Stufe linear zwischen Stufe-1- und Maximalwert, Maximalstufen und Stufen-Boni aus dem Fan-Wiki (D); Merge-Anzahl 3 (D), Evo-Kosten eigen. Transzendenz offen.', weapons);
   const SM = [[20, [[0, 100]], 0], [1300, [[0, 49], [1, 10], [2, 1]]], [20100, [[0, 44.75], [1, 12], [2, 3], [3, 0.25]], { orb_red: 10 }],
     [34500, [[0, 41.5], [1, 14], [2, 4], [3, 0.5]], { orb_red: 20 }], [134300, [[0, 39.25], [1, 15], [2, 5], [3, 0.75]], { orb_pink: 10 }],
     [288900, [[0, 37], [1, 16], [2, 6], [3, 1]], { orb_pink: 20, orb_red: 40 }], [765000, [[0, 33.5], [1, 18], [2, 7], [3, 1.5]], { orb_pink: 30, orb_red: 60 }],

@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint f8dgq73qju).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint s6ryefjo40).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -26,13 +26,13 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | areaChests | 20 | R | R:20 | Je Gebiet eine einmalige Gebietstruhe (Kap. 1: 6 Stage-Truhen der Referenz, Position D neben dem Truhenspawner); Inhalt eigen. |
 | giftChestLevels | 400 | R | R:400 | Gold L1=12 und L400=1.983.356 (D); Zwischenwerte geometrisch interpoliert (E). Bonus: Gold x5 + 10 Gems (D). |
 | keyHouseSlots | 15 | D | D:15 | 15 Freischaltzeilen; Gem-Summe 5.570. |
-| playerLevels | 400 | E | E:400 | XP-Schwellen unbekannt: eigene, austauschbare Kurve. Grundwerte je Level bewusst klein (Angriff 2 + Level, Leben 100 + 15 je Level): im Original kommt die Stärke fast ganz aus Fähigkeiten, Waffen und Helden (Vergleich mit Bildern der Vorlage). |
+| playerLevels | 400 | D | D:400 | XP-Schwellen, Grundwerte und XP-Obergrenze je Kill aus den Spieldaten (Level 1-400 von 1.500). |
 | upgradeTracks | 43 | R | D:36 R:4 E:3 | Ability 9 nutzbar (+ Critical Damage mit 0 Stufen) / Special 11 (Sternstufen) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen. |
 | rarities | 9 | E | E:9 | Seltenheitsnamen D; Multiplikatoren/Maxlevel eigen. |
 | weaponClasses | 6 | R | R:6 | 6 Klassen und S-Skill-Namen D; Reichweite/Takt/Passiva eigen. |
 | skills | 10 | E | E:10 | Skillnamen der S-Reihen D; Parameter eigen. |
 | typeBonus | 6 | D | D:6 | Bonus der Waffenart: gilt nur, wenn die Hauptwaffe zur Meisterschaft des aktiven Helden passt (Fan-Wiki). |
-| weapons | 84 | R | R:84 | 84 Varianten, 12 Reihen, Namen und Waffen-Fertigkeiten ab Epic mit Gesamtfaktor (D). Auslösung der Fertigkeit nach jedem n-ten Angriff (combat.weaponSkillEvery) ist eigen, die Quellen nennen keinen Auslöser. Schaden je Stufe linear zwischen Stufe-1- und Maximalwert, Maximalstufen und Stufen-Boni aus dem Fan-Wiki (D); Merge-Anzahl 3 (D), Evo-Kosten eigen. Transzendenz offen. |
+| weapons | 84 | R | R:84 | 84 Varianten, 12 Reihen, Namen und Waffen-Fertigkeiten ab Epic mit Gesamtfaktor (D). Fertigkeit löst nach ihrer Abklingzeit aus (D). Schaden je Stufe linear zwischen Stufe-1- und Maximalwert, Maximalstufen und Stufen-Boni aus dem Fan-Wiki (D); Merge-Anzahl 3 (D), Evo-Kosten eigen. Transzendenz offen. |
 | smithy | 8 | D | D:8 | Kosten = Upgrade zur nächsten Stufe (R). Sichtbare Raten summieren sich ab Stufe 2 auf 60 %; der Rest (otherW) ist NICHT normiert, sondern ein eigener, gekennzeichneter Sonstiges-Ausgang (E). |
 | heroes | 26 | R | E:21 B:1 D:4 | 26 Helden, 8 Seltenheitsstufen, Waffenklasse je Platz nach Heldenübersicht der Vorlage (B). Freyja/The Skull/Hana/Vlad: Exotic ohne Evolutionszeilen (D). Namen, Werte und Figuren-Designs eigen. |
 | heroLevelCosts | 5 | R | R:5 | Stützstufen 1 und 10..130 je Tiergruppe (D-Struktur); Evolution-Coin-Werte eigen. |
@@ -79,7 +79,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | dailyTickets | E | `{"ticket_tower":5,"ticket_raid":2,"ticket_tomb":3}` | Tägliche Grundtickets (Auffüllen bis zu diesem Wert). |
 | player | E | `{"baseCargo":20,"moveSpeed":230,"critChance":5,"critDmg":150,"pickupRadius":90,"regenPct":1,"radius":16}` | Grundwerte Spieler. |
 | statCaps | E | `{"critChance":100,"cooldownPct":70,"atkSpeedPct":400,"moveSpeedPct":150,"lifesteal":50,"multiHit":100,"trip…` | Obergrenzen; Kritchance <= 100. |
-| combat | R | `{"weaponSkillEvery":6,"weaponSkillRadius":110,"subIntervalMult":2.2,"subDmgMult":0.6,"dropDespawnSec":90,"r…` | Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt. |
+| combat | R | `{"weaponSkillRadius":110,"subRangeM":4,"fistAps":1.8,"enemyLeashM":8,"enemySpeedCap":300,"subIntervalMult":…` | Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt. |
 | weaponLevelCost | E | `{"scrollPer5":1,"goldBase":50}` | Scrolls = ceil(L/5)*(1+r); Gold = goldBase*L*(1+r)^2. |
 | craftCost | B | `[5,5,5,5,5,5,5,5]` | Schmieden kostet auf jeder Schmiedestufe 5 Kristalle (Vorlage). |
 | weaponSlots | ? | `[{"slot":1},{"slot":2,"quest":true},{"slot":3,"level":20,"cost":{"gold":20000}},{"slot":4,"level":40,"cost"…` | Slot 2 per Quest (D); Slots 3-6 eigene Kosten. |
@@ -98,7 +98,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | invasion | E | `{"entryCost":{"ticket_invasion":1},"k":32,"startRating":1000,"botsPerTier":30,"bankPerHour":20,"bankCap":20…` | Async-PvP gegen gekennzeichnete Bots/Snapshots. |
 | spin | ? | `{"unlockConfigRaw":"1,3","spinCost":{"spin_ticket":1}}` | Unlock-Config 1,3: Bedeutung ungeklärt, nicht angewendet. |
 | orbAlias | ? | `{"crimson":null,"azure":null,"soul":null}` | Interne Orb-Namen nicht zugeordnet; betroffene Reward-Zeilen sind deaktiviert. |
-| world | E | `{"normalPerNode":1,"rareRespawnMinSec":900,"spawnSpreadM":2.5,"activeRadiusM":40,"autoBossLevelGap":3}` | Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius. |
+| world | E | `{"normalPerNode":1,"rareRespawnMinSec":900,"spawnSpreadM":2.5,"activeRadiusM":40,"autoBossSafety":0.7}` | Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius. |
 | ledgerKeep | E | `400` |  |
 | saveSlots | E | `2` |  |
 | special | R | `{"maxStar":4,"starBonus":[{"stat":"atk","pct":5},{"stat":"cooldownPct","v":5}]}` | Vier Sternstufen (D). Bonus je Sternaufstieg +5 % Kraft / +5 % Abklingzeit nach einem Bild der Vorlage (B, dort für 3 -> 4 Sterne); für die übrigen Aufstiege übernommen. |

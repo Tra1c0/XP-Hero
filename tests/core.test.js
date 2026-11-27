@@ -67,7 +67,7 @@ test('T04 XP: unter/auf/über Schwelle, Mehrfachlevel, Überschuss, Cap, Meilens
   assert.equal(sumGems(got), 10, 'Gems 2 x5');
   assert.equal(code(() => game.cmd('claimNode', 'levelup', 'L5')), 'already_claimed');
   assert.equal(code(() => game.cmd('claimNode', 'levelup', 'L10')), 'not_ready');
-  prog.gainXp(g, 1e12, 'test');
+  prog.gainXp(g, 1e20, 'test'); // Original-Schwellen: Level 400 braucht rund 1,7e18 XP je Stufe
   assert.equal(s().player.level, 400); assert.equal(s().player.xp, 0, 'Cap-Verhalten discard');
   const all = game.cmd('claimAll', 'levelup');
   assert.equal(sumGems(all), 79 * 10, 'kein Meilenstein übersprungen oder doppelt');
@@ -289,7 +289,7 @@ test('T12 Upgrade-Pfade: Power-Stützzeilen, Mehrwährung, Max-Affordable, Cap, 
   give('gold', 10 + 10 + 5);
   const pv = game.cmd('buyUpgrade', 'ab_power', 'max');
   assert.equal(pv.to, 2); assert.equal(s().inv.gold, 5, 'Max-Affordable kauft nie über Budget');
-  assert.equal(game.stats.atk, Math.round((3 + 3) * (1 + 0.05)));
+  assert.equal(game.stats.atk, Math.round((2 + 3) * (1 + 0.05)), 'Grundangriff Level 1 = 2 (Spieldaten) + Kraft Stufe 2');
   for (const it of pack.tables.items) give(it.id, 1e15);
   // Spezial nach Wiki-Tabelle: Bänder 5/10/15/20 Stufen je Stern, gesperrte Pfade, Sternaufstieg erst wenn alle offenen voll sind
   const spT = pack.tables.upgradeTracks.filter((u) => u.family === 'special'), spc = pack.config.special;
@@ -434,17 +434,17 @@ test('T19 Simulation unabhängig von der Render-FPS (30/60/120)', () => {
   assert.equal(run(60), a); assert.equal(run(120), a);
 });
 
-test('Waffen-Fertigkeit: Namen und Faktoren aus den Referenzdaten, erst ab Epic, Auslösung nach jedem n-ten Angriff', () => {
+test('Waffen-Fertigkeit: Namen und Faktoren aus den Referenzdaten, erst ab Epic, Auslösung nach Abklingzeit', () => {
   const { game, clock, s, unlock } = mk();
   const W = (id) => game.c.get('weapons', id);
   assert.equal(W('w_dagger_n_0').name, 'Crude Dagger'); assert.equal(W('w_dagger_n_2').wskill, null, 'Normal bis Rare ohne Fertigkeit');
-  assert.deepEqual(W('w_dagger_n_3').wskill, { name: 'Spinner', mult: 1.7 }); assert.deepEqual(W('w_staff_n_7').wskill, { name: 'Electric Field', mult: 4.6 });
+  assert.deepEqual(W('w_dagger_n_3').wskill, { name: 'Spinner', mult: 1.7, cd: 7.7, rangeM: 2.5, bullets: 1 }); assert.equal(W('w_staff_n_7').wskill.mult, 4.6); assert.equal(W('w_dagger_n_0').aps, 2.7);
   assert.equal(W('w_sword_s_4').wskill, null, 'S-Reihe behält ihre eigene Fertigkeit');
   unlock('weaponVault'); game.cmd('grantExternal', 't', [{ weapon: 'w_sword_n_3' }]); game.cmd('equipWeapon', s().weapons.list[0].uid, 0);
   const w = game.world, e = w.enemies.find((x) => x.alive && x.v.rank === 'normal');
   Object.assign(e, { hp: 1e9, maxHp: 1e9 }); w.p.x = e.x - 30; w.p.y = e.y; w.p.hp = 1e9; game.g.stats.hp = 1e9;
   let n = 0, last = -1;
-  for (let k = 0; k < 30 * 12; k++) { game.tick(1 / 30); clock.t += 1000 / 30; const sk = (w.p.wsk || {})[0]; if (sk && sk.t !== last) { last = sk.t; n++; } e.x = w.p.x + 30; e.y = w.p.y; e.hp = 1e9; }
+  for (let k = 0; k < 30 * 25; k++) { game.tick(1 / 30); clock.t += 1000 / 30; const sk = (w.p.wsk || {})[0]; if (sk && sk.t !== last) { last = sk.t; n++; } e.x = w.p.x + 30; e.y = w.p.y; e.hp = 1e9; }
   assert.ok(n >= 2, `Fertigkeit löst wiederholt aus (${n})`);
 });
 
@@ -457,4 +457,17 @@ test('Raid: jeder Boss trägt seine Mechanik; Panzer blockt Treffer und wirft Fe
   const hp0 = w.p.hp; w.hit(e, 50, 'ranged'); assert.equal(e.hp, 1000, 'Treffer prallt ab'); assert.ok(w.p.hp < hp0, 'Fernangriff zurückgeworfen');
   w.hit(e, 50, 'melee'); assert.equal(e.hp, 1000); assert.equal(e.shell, 0);
   e.shield = 30; w.hit(e, 50, 'melee'); assert.ok(e.hp < 1000 && e.hp >= 970, 'Schild fängt einen Teil ab');
+});
+
+test('Spieldaten: XP je Gegner und je Level, Grundwerte, friedliche Startgegner wehren sich erst nach einem Treffer', () => {
+  const { game, clock, s } = mk();
+  const V = (id) => game.c.get('variants', id), L = (n) => game.c.get('playerLevels', n);
+  assert.deepEqual([V('mandragora').xp, V('slime').xp, V('spider').xp, V('boss_a1_1').xp, V('boss_a1_2').xp], [1, 2, 4, 100, 6370]);
+  assert.deepEqual([L(1).xp, L(2).xp, L(8).xp, L(1).atk, L(1).hp, L(30).atk, L(30).hp, L(1).killXpCap], [44, 46, 9867, 2, 50, 106, 8356, 20400]);
+  const w = game.world, e = w.enemies.find((x) => x.alive && x.v.id === 'mandragora');
+  w.p.x = e.x + 40; w.p.y = e.y; w.loadout(); w.heroSkill = null; const hp0 = w.p.hp;
+  for (const x of w.enemies) if (x !== e) x.alive = false;
+  for (let k = 0; k < 150; k++) { w.p.wcd[0] = 99; game.tick(1 / 30); clock.t += 33; w.p.x = e.x + 40; w.p.y = e.y; } // Figur schlägt nicht zu
+  assert.ok(e.st === 'idle' || e.st === 'patrol', 'Mandragora bleibt friedlich, obwohl die Figur daneben steht'); assert.equal(w.p.hp, hp0);
+  e.hp = e.maxHp = 1e6; w.hit(e, 1, 'melee'); assert.equal(e.st, 'chase', 'nach einem Treffer wehrt sie sich');
 });

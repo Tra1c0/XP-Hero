@@ -94,7 +94,11 @@ export class World {
     }
   }
   makeEnemy(v, x, y) {
-    const beh = this.g.c.get('behaviors', v.beh);
+    let beh = this.g.c.get('behaviors', v.beh);
+    // Verhalten aus den Spieldaten (falls vorhanden): Sicht- und Aktionsweite, Takt, Reichweite, Tempo, Rudel, Rückzugsradius
+    const ai = v.ai, cb = this.g.c.cfg.combat;
+    if (ai && beh.id !== 'node') beh = { ...beh, aggro: (ai.s === 3 ? ai.sight : ai.a === 3 ? ai.action : 0) * M, leash: cb.enemyLeashM * M, speed: Math.min(cb.enemySpeedCap, (ai.move / 10) * M), range: Math.max(30, ai.range * M - 20),
+      interval: Math.max(0.2, 1 / (ai.aps || 0.8) - beh.windup), assist: ai.flock > 1 ? 4 * M : 0, flock: ai.flock, passive: !(ai.s === 3 || ai.a === 3), onHit: ai.d };
     return { v, beh, x, y, px: x, py: y, hx: x, hy: y, hp: v.hp, maxHp: v.hp, st: 'spawn', t: 0.4, cd: 0, alive: true, slowT: 0, stunT: 0, burnT: 0, burnN: 0, burnAcc: 0,
       pcd: beh.pattern ? this.g.c.get('bossPatterns', beh.pattern).period : 0, tx: x, ty: y, cx: 0, cy: 0, ang: (this.eSeq = (this.eSeq || 0) + 1) * 2.399, r: v.rank === 'boss' ? 34 : v.rank === 'elite' ? 24 : 16 };
   }
@@ -152,10 +156,11 @@ export class World {
       const w = uid && g.state.weapons.list.find((x) => x.uid === uid);
       if (!w) return;
       const d = g.c.get('weapons', w.def), cls = g.c.get('weaponClasses', d.cls), sub = slot > 0;
+      // Takt und Reichweite je Waffe aus den Spieldaten; Nebenwaffen haben eine eigene feste Reichweite
       out.push({ slot, cls, sub, dmg: (st.atk + weaponDmg(g, w)) * cls.basicMult * (sub ? cb.subDmgMult : 1),
-        interval: (cls.interval * (sub ? cb.subIntervalMult : 1)) / (1 + st.atkSpeedPct / 100), range: cls.range, skill: d.skill ? (() => { const k = g.c.get('skills', d.skill); return d.skMult ? { ...k, name: d.skName || k.name, mult: d.skMult / (k.hits || 1) } : k; })() : null, wskill: d.wskill || null }); // S-Fertigkeit: Gesamtfaktor der Referenz auf die Treffer verteilt
+        interval: ((d.aps ? 1 / d.aps : cls.interval) * (sub ? cb.subIntervalMult : 1)) / (1 + st.atkSpeedPct / 100), range: sub ? cb.subRangeM * M : d.rangeM ? d.rangeM * M : cls.range, skill: d.skill ? (() => { const k = g.c.get('skills', d.skill); return d.skMult ? { ...k, name: d.skName || k.name, mult: d.skMult / (k.hits || 1), cd: d.skCd || k.cd } : k; })() : null, wskill: d.wskill || null }); // S-Fertigkeit: Gesamtfaktor der Referenz auf die Treffer verteilt
     });
-    if (!out.length) out.push({ slot: 0, cls: { id: 'fist', melee: true, range: 50, targets: 1, aoe: 0, proj: 0 }, sub: false, dmg: st.atk, interval: 0.8 / (1 + st.atkSpeedPct / 100), range: 50, skill: null });
+    if (!out.length) out.push({ slot: 0, cls: { id: 'fist', melee: true, range: 50, targets: 1, aoe: 0, proj: 0 }, sub: false, dmg: st.atk, interval: 1 / cb.fistAps / (1 + st.atkSpeedPct / 100), range: 2 * M, skill: null });
     const h = g.c.get('heroes', st.heroId);
     this.heroSkill = h.skill ? g.c.get('skills', h.skill) : null;
     this.p.hp = Math.min(this.p.hp, st.hp);
@@ -204,7 +209,8 @@ export class World {
     e.hp -= dealt; e.hitT = this.t; this.dmgDealt += dealt;
     if (st.lifesteal > 0 && this.p.alive) this.p.hp = Math.min(st.hp, this.p.hp + (dealt * st.lifesteal) / 100);
     this.text(e.x, e.y - e.r, dmg, crit ? 2 : 1);
-    if (e.beh.id !== 'node' && (e.st === 'idle' || e.st === 'patrol' || e.st === 'return')) { e.st = 'chase'; }
+    // Reaktion auf Treffer laut Daten: 3 kämpfen (und Rudel alarmieren), 4 fliehen, 0/1 ignorieren. Ohne Daten: kämpfen.
+    if (e.beh.id !== 'node' && (e.st === 'idle' || e.st === 'patrol' || e.st === 'return')) { const oh = e.beh.onHit; if (oh === undefined || oh === 3 || oh === 4 || oh === 2) { e.st = 'chase'; e.provoked = true; if (e.beh.assist) this.rally(e); } }
     if (e.hp <= 0) this.kill(e);
   }
   status(e, id, dur) {
@@ -232,6 +238,11 @@ export class World {
     e.mcd = m.period;
     if (m.id === 'summon') { for (let k = 0; k < m.count && this.enemies.length < 40; k++) { const a = (k / m.count) * 6.283, mn = this.makeEnemy({ ...modeVariant(this.g, this.mode.level, 'normal', 0.6), name: 'Mumie', monster: 'mummy' }, clamp(e.x + Math.cos(a) * 160, 40, this.map.w - 40), clamp(e.y + Math.sin(a) * 160, 40, this.map.h - 40)); mn.minion = true; this.enemies.push(mn); } return; }
     e.mch = m.charge || 1; e.tele = { t: e.mch, r: m.radius || 120 }; // Ankündigung für die Darstellung
+  }
+  // Rudel: nahe Artgenossen derselben Gruppe greifen mit an (höchstens Rudelgröße - 1)
+  rally(e) {
+    let n = (e.beh.flock || 3) - 1; const r2 = e.beh.assist ** 2;
+    for (const o of this.enemies) { if (n <= 0) break; if (o !== e && o.alive && o.gid === e.gid && (o.st === 'idle' || o.st === 'patrol') && dist2(o.x, o.y, e.x, e.y) < r2 * 4) { o.st = 'chase'; o.provoked = true; n--; } }
   }
   kill(e) {
     if (!e.alive) return; // genau einmal pro Tod
@@ -375,14 +386,15 @@ export class World {
       const inSafe = !this.mode && !!this.map.world && this.zone() === 'base';
       if (!inSafe) for (const l of load) {
         p.wcd[l.slot] -= dt * slowP;
+        if (l.wskill && p.wsc && p.wsc[l.slot] > 0) p.wsc[l.slot] -= dt;
         if (p.wcd[l.slot] <= 0) {
           let tgt = l.slot === 0 && p.cur && p.cur.alive && dist2(p.x, p.y, p.cur.x, p.cur.y) <= (l.range + p.cur.r) ** 2 ? p.cur : this.nearest(p.x, p.y, l.range);
           if (tgt) {
             if (l.slot === 0) p.cur = tgt;
             this.fire(l, tgt); p.wcd[l.slot] = l.interval;
-            // Waffen-Fertigkeit: nach jedem n-ten Angriff dieser Waffe ein Zusatzschlag mit dem Gesamtfaktor der Waffe, flächig am Ziel
-            if (l.wskill && ((p.wn ||= {})[l.slot] = (p.wn[l.slot] || 0) + 1) >= cfg.combat.weaponSkillEvery) {
-              p.wn[l.slot] = 0;
+            // Waffen-Fertigkeit: löst nach ihrer Abklingzeit beim nächsten Angriff aus – Zusatzschlag mit dem Gesamtfaktor der Waffe, flächig am Ziel
+            if (l.wskill && ((p.wsc ||= {})[l.slot] ?? 0) <= 0) {
+              p.wsc[l.slot] = (l.wskill.cd || 8) * (1 - st.cooldownPct / 100);
               const tx = tgt.x, ty = tgt.y, R = cfg.combat.weaponSkillRadius;
               this.query(tx, ty, R, (e) => this.hit(e, l.dmg * l.wskill.mult, l.cls.melee ? 'melee' : 'ranged', true));
               this.fx.push({ x: tx, y: ty, r: R, t: 0.3, k: 1 });
