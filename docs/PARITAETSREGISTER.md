@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1vxcbkc0f5s).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 201yrhtygd6).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -27,7 +27,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | giftChestLevels | 400 | R | R:400 | Gold L1=12 und L400=1.983.356 (D); Zwischenwerte geometrisch interpoliert (E). Bonus: Gold x5 + 10 Gems (D). |
 | keyHouseSlots | 15 | D | D:15 | 15 Freischaltzeilen; Gem-Summe 5.570. |
 | playerLevels | 400 | E | E:400 | XP-Schwellen unbekannt: EIGENE, austauschbare Kurve. ATK/HP an Tracker-L99 (4.055 / 627.721, interpoliert) verankert. |
-| upgradeTracks | 44 | R | D:1 E:40 R:3 | Ability 10 / Special 11 (4 Grade) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen. |
+| upgradeTracks | 44 | R | D:1 E:29 R:14 | Ability 10 / Special 11 (Sternstufen) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen. |
 | rarities | 9 | E | E:9 | Seltenheitsnamen D; Multiplikatoren/Maxlevel eigen. |
 | weaponClasses | 6 | R | R:6 | 6 Klassen und S-Skill-Namen D; Reichweite/Takt/Passiva eigen. |
 | skills | 10 | E | E:10 | Skillnamen der S-Reihen D; Parameter eigen. |
@@ -76,7 +76,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | applyDailyGemShopCapToFreeGems | ? | `false` | Semantik von Daily-Gem-Shop-RV-Cap 2 ungeklärt; standardmäßig nicht auf 9002-9004 angewendet. |
 | dailyTickets | E | `{"ticket_tower":5,"ticket_raid":2,"ticket_tomb":3}` | Tägliche Grundtickets (Auffüllen bis zu diesem Wert). |
 | player | E | `{"baseCargo":20,"moveSpeed":230,"critChance":5,"critDmg":150,"pickupRadius":90,"regenPct":1,"radius":16}` | Grundwerte Spieler. |
-| statCaps | E | `{"critChance":100,"cooldownPct":70,"atkSpeedPct":400,"moveSpeedPct":150,"lifesteal":50,"multiHit":100}` | Obergrenzen; Kritchance <= 100. |
+| statCaps | E | `{"critChance":100,"cooldownPct":70,"atkSpeedPct":400,"moveSpeedPct":150,"lifesteal":50,"multiHit":100,"trip…` | Obergrenzen; Kritchance <= 100. |
 | combat | R | `{"subIntervalMult":2.2,"subDmgMult":0.6,"dropDespawnSec":90,"respawnOfflineContinues":true,"defaultRespawnS…` | Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt. |
 | weaponLevelCost | E | `{"scrollPer5":1,"goldBase":50}` | Scrolls = ceil(L/5)*(1+r); Gold = goldBase*L*(1+r)^2. |
 | craftCost | E | `[20,60,200,500,1500,4000,10000,25000]` | Gold je Schmiedevorgang pro Schmiedestufe. |
@@ -98,6 +98,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | world | E | `{"normalPerNode":1,"rareRespawnMinSec":900,"spawnSpreadM":2.5,"activeRadiusM":40}` | Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius. |
 | ledgerKeep | E | `400` |  |
 | saveSlots | E | `2` |  |
+| special | R | `{"levelsPerStar":15,"maxStar":5,"pinkFirst":5,"starBonus":[{"stat":"atk","pct":5},{"stat":"cooldownPct","v"…` | 15 Stufen je Sternstufe, Bonus +5 % Kraft / +5 % Abklingzeit je Stern, Kosten rote Orbs = Stern + Stufe, 5 Pink-Orbs auf der ersten Stufe fortgeführter Pfade (B bei Stern 3); 5 Sterne und übrige Sternstufen eigen. |
 | multiplayer | E | `false` | Solo-Spiel: PvP-Arena und Invasion sind nicht Teil des Spiels. true im Content schaltet sie samt Zubehör wieder ein (Paket mit buildBaseContent({ multiplayer: true }) erzeugen). |
 
 ## Offene Originaldaten (nicht erfunden, nicht behauptet)

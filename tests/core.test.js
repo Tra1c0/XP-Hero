@@ -289,8 +289,20 @@ test('T12 Upgrade-Pfade: Power-Stützzeilen, Mehrwährung, Max-Affordable, Cap, 
   assert.equal(pv.to, 2); assert.equal(s().inv.gold, 5, 'Max-Affordable kauft nie über Budget');
   assert.equal(game.stats.atk, Math.round((3 + 3) * (1 + 0.05)));
   for (const it of pack.tables.items) give(it.id, 1e15);
+  // Spezial: Kosten aus Stern + Stufe, 15 Stufen je Stern, gesperrte Pfade, Sternaufstieg erst wenn alle offenen voll sind
+  const spT = pack.tables.upgradeTracks.filter((u) => u.family === 'special'), spc = pack.config.special;
+  assert.deepEqual(prog.stepCost(game.g, spT[0], 1), { orb_red: 2 });
+  assert.equal(code(() => game.cmd('buyUpgrade', 'sp_triple', 1)), 'locked');
+  assert.equal(game.cmd('buyUpgrade', spT[0].id, 'max').to, 15);
+  assert.equal(code(() => game.cmd('buyUpgrade', spT[0].id, 1)), 'star_cap');
+  for (let st = 1; st < spc.maxStar; st++) {
+    for (const u of spT) if (u.minStar <= st) game.try('buyUpgrade', u.id, 'max');
+    assert.equal(prog.spStar(game.g), st + 1, 'Sternaufstieg');
+  }
+  assert.deepEqual(prog.stepCost(game.g, spT[0], 61), { orb_red: 6, orb_pink: 5 });
+  assert.equal(prog.spProgress(game.g).total, 11 * 15);
   for (const u of pack.tables.upgradeTracks) {
-    game.cmd('buyUpgrade', u.id, 'max');
+    game.try('buyUpgrade', u.id, 'max');
     assert.equal(s().upgrades[u.id], u.max, u.id);
     assert.equal(code(() => game.cmd('buyUpgrade', u.id, 1)), 'max_level');
   }

@@ -9,7 +9,7 @@ import { NPC_REF } from './npc_ref.js';
 
 export const SCHEMA = 1;
 export const RARITIES = ['Normal', 'Fine', 'Rare', 'Epic', 'Legendary', 'Ancient', 'Mythic', 'Exotic', 'Eternal'];
-export const STATS = ['atk', 'hp', 'cargo', 'atkSpeedPct', 'regen', 'critChance', 'critDmg', 'moveSpeedPct', 'multiHit', 'lifesteal',
+export const STATS = ['atk', 'hp', 'cargo', 'atkSpeedPct', 'regen', 'critChance', 'critDmg', 'moveSpeedPct', 'multiHit', 'tripleHit', 'lifesteal',
   'skillDmgPct', 'cooldownPct', 'goldPct', 'xpPct', 'dmgPct', 'bossDmgPct', 'dropPct', 'meleePct', 'rangedPct', 'synergyPct'];
 
 // Eigene Gegnerkurve (E); von Content-Build und Modi (Tower/Tomb/Raid) gemeinsam genutzt.
@@ -48,7 +48,7 @@ export function buildBaseContent(opt = {}) {
   C('applyDailyGemShopCapToFreeGems', false, '?', 'Semantik von Daily-Gem-Shop-RV-Cap 2 ungeklärt; standardmäßig nicht auf 9002-9004 angewendet.');
   C('dailyTickets', { ticket_tower: 5, ticket_invasion: 5, ticket_raid: 2, ticket_tomb: 3, ticket_pvp: 5 }, 'E', 'Tägliche Grundtickets (Auffüllen bis zu diesem Wert).');
   C('player', { baseCargo: 20, moveSpeed: 230, critChance: 5, critDmg: 150, pickupRadius: 90, regenPct: 1, radius: 16 }, 'E', 'Grundwerte Spieler.');
-  C('statCaps', { critChance: 100, cooldownPct: 70, atkSpeedPct: 400, moveSpeedPct: 150, lifesteal: 50, multiHit: 100 }, 'E', 'Obergrenzen; Kritchance <= 100.');
+  C('statCaps', { critChance: 100, cooldownPct: 70, atkSpeedPct: 400, moveSpeedPct: 150, lifesteal: 50, multiHit: 100, tripleHit: 100 }, 'E', 'Obergrenzen; Kritchance <= 100.');
   C('combat', { subIntervalMult: 2.2, subDmgMult: 0.6, dropDespawnSec: 90, respawnOfflineContinues: true, defaultRespawnSec: 30, bossRespawnSec: 3600, tick: 1 / 30 }, 'R',
     'Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt.');
   C('weaponLevelCost', { scrollPer5: 1, goldBase: 50 }, 'E', 'Scrolls = ceil(L/5)*(1+r); Gold = goldBase*L*(1+r)^2.');
@@ -273,18 +273,37 @@ export function buildBaseContent(opt = {}) {
     [Math.max(2, Math.round(max / 2)), Math.round(effMax / 2), { [cur]: Math.round(Math.sqrt(c1 * cMax)) }], [max, effMax, { [cur]: cMax }]];
   U('ab_power', 'ability', 'Kraft', 'atk', 2000, [[1, 2, { gold: 10 }], [2, 3, { gold: 34 }], [4, 5, { gold: 120 }], [7, 8, { gold: 271 }], [106, 758, { gold: 3745 }],
     [334, 4149, { gold: 32272 }], [572, 17945, { gold: 503809, orb_jungle: 1 }], [999, 48409, { gold: 1331790 }], [1282, 84228, { gold: 7234109, orb_hell: 30 }],
-    [2000, 175100, { gold: 16896389, orb_hell: 30 }]], { s: 'D', note: 'Stützzeilen D; Interpolation R; Effekt/Orbs L2000 E.' });
-  U('ab_cargo', 'ability', 'Fracht', 'cargo', 1600, own(1600, 1600, 15, 5000000), { note: 'Max 1600 D.' });
-  U('ab_atkspeed', 'ability', 'Angriffstempo', 'atkSpeedPct', 55, own(55, 55, 100, 2000000), { note: 'Max 55 D.' });
-  U('ab_hp', 'ability', 'HP', 'hp', 2000, [[1, 5, { gold: 10 }], [100, 1500, { gold: 3000 }], [1000, 150000, { gold: 1200000 }], [2000, 600000, { gold: 16000000 }]]);
-  U('ab_regen', 'ability', 'HP-Regeneration', 'regen', 200, [[1, 1, { gold: 50 }], [100, 300, { gold: 40000 }], [200, 2000, { gold: 3000000 }]]);
-  U('ab_crit', 'ability', 'Kritische Chance', 'critChance', 40, own(40, 40, 200, 4000000));
-  U('ab_critdmg', 'ability', 'Kritischer Schaden', 'critDmg', 200, own(200, 200, 150, 6000000));
-  U('ab_move', 'ability', 'Bewegungstempo', 'moveSpeedPct', 40, own(40, 40, 120, 1500000));
-  U('ab_multi', 'ability', 'Doppelangriff', 'multiHit', 40, own(40, 40, 400, 8000000));
-  U('ab_lifesteal', 'ability', 'Lebensraub', 'lifesteal', 20, own(20, 10, 800, 9000000));
-  const SP = ['skillDmgPct', 'cooldownPct', 'critDmg', 'dmgPct', 'bossDmgPct', 'goldPct', 'xpPct', 'dropPct', 'meleePct', 'rangedPct', 'atkSpeedPct'];
-  SP.forEach((st, k) => U(`sp_${k}`, 'special', `Special ${k + 1}`, st, 40, own(40, st === 'cooldownPct' ? 20 : 80, 2, 60, k % 2 ? 'orb_pink' : 'orb_red'), { grades: 4 }));
+    [2000, 175100, { gold: 16896389, orb_hell: 30 }]], { s: 'D', note: 'Stützzeilen D; Interpolation R; Effekt/Orbs L2000 E.', desc: 'Erhöhe deine Macht' });
+  // Reihenfolge, Namen, Maximalstufen und Orb-Zusatzkosten nach der Upgrade-Seite der Vorlage (B). Effekt- und Goldkurven eigen (E).
+  // eff in Zehnteln (scale 0.1), show: Anzeige = base + Effekt * mul.
+  const T10 = (max, effMax, c1, cMax, x) => own(max, effMax * 10, c1, cMax).map(([lv, e, c]) => [lv, e, { ...c, ...(x && lv >= x[0] ? x[1] : {}) }]);
+  U('ab_cargo', 'ability', 'Fracht', 'cargo', 1600, own(1600, 1600, 15, 5000000), { note: 'Max 1600 D.', desc: 'Frachtkapazität erhöhen' });
+  U('ab_hp', 'ability', 'HP', 'hp', 2000, [[1, 5, { gold: 10 }], [100, 1500, { gold: 3000 }], [1000, 150000, { gold: 1200000 }], [2000, 600000, { gold: 16000000 }]], { note: 'Max 2000 B.', desc: 'Erhöhe deine Gesundheit' });
+  U('ab_regen', 'ability', 'Lebenspunkte regenerieren', 'regen', 1000, [[1, 1, { gold: 50 }], [500, 300, { gold: 40000 }], [1000, 2000, { gold: 3000000 }]], { note: 'Max 1000 B.', desc: 'HP-Regeneration erhöhen' });
+  U('ab_crit', 'ability', 'Kritische Chance', 'critChance', 10, [[1, 2, { gold: 200 }], [5, 10, { gold: 30000 }], [10, 20, { gold: 4000000 }]], { note: 'Max 10 = 20 % B.', unit: '%', desc: 'Kritische Trefferchance erhöhen' });
+  U('ab_move', 'ability', 'Bewegungsgeschwindigkeit', 'moveSpeedPct', 35, [[1, 2, { gold: 120 }], [10, 20, { gold: 20000, orb_pink: 10, orb_red: 15 }], [35, 70, { gold: 1500000, orb_pink: 10, orb_red: 15 }]],
+    { note: 'Max 35, Anzeige 50 + Stufe, Orbs 10/15 bei Stufe 14 (B); Orbs ab Stufe 10 eigen.', show: { base: 50, mul: 0.5 }, desc: 'Bewegungsgeschwindigkeit erhöhen' });
+  U('ab_atkspeed', 'ability', 'Angriffsgeschwindigkeit', 'atkSpeedPct', 55, [[1, 33, { gold: 100 }], [3, 100, { gold: 400 }], [10, 333, { gold: 9000, orb_pink: 8, orb_red: 12 }], [55, 1833, { gold: 2000000, orb_pink: 8, orb_red: 12 }]],
+    { scale: 0.1, note: 'Max 55 D; +3,33 % je Stufe, Orbs 8/12 bei Stufe 11 (B); Orbs ab Stufe 10 eigen.', unit: '%', show: { base: 100, mul: 1 }, desc: 'Angriffsgeschwindigkeit erhöhen' });
+  U('ab_multi', 'ability', 'Doppelangriff', 'multiHit', 20, T10(20, 70, 400, 8000000), { scale: 0.1, note: 'Max 20 = 70 % B.', unit: '%', desc: 'Chance auf Doppelangriff erhöhen' });
+  U('ab_triple', 'ability', 'Dreifacher Angriff', 'tripleHit', 20, T10(20, 70, 400000, 12000000, [1, { orb_pink: 8, orb_red: 12 }]), { scale: 0.1, note: 'Max 20, 3,5 % je Stufe, Orbs 8/12 (B).', unit: '%', desc: 'Chance für Dreifachangriff erhöhen' });
+  U('ab_critdmg', 'ability', 'Kritischer Schaden', 'critDmg', 200, own(200, 200, 150, 6000000), { note: 'Zehnter Pfad laut Zählung D; in der Vorlage bis Level 67 nicht sichtbar, Zuordnung eigen.', unit: '%', desc: 'Kritischen Schaden erhöhen' });
+  // Spezial: 11 Pfade (D). Je Sternstufe 15 Stufen pro offenem Pfad; sind alle voll, steigt die Sternstufe (Vorlage: 3 Sterne, 3/135 = 9 Pfade x 15).
+  // Werte bei Sternstufe 3 und Schrittweiten aus der Vorlage (B); Verlauf davor/danach und Freischaltsterne der ersten sieben eigen (E).
+  const SPC = [['muscle', 'Massive Muskeln', 'atk', 1, 9, 0.6, 'Erhöhe zusätzliche Kraft', true], ['load', 'Lastmeister', 'cargo', 1, 15, 1, 'Zusätzlichen Frachtplatz erhöhen', true],
+    ['hp', 'HP-Boost', 'hp', 1, 6, 0.4, 'Zusätzliche Lebenspunkte erhöhen', true], ['leech', 'Lebensraub', 'lifesteal', 1, 3, 0.2, 'Wandle Schaden in HP um'],
+    ['step', 'Schnellschritt', 'moveSpeedPct', 1, 9.9, 0.7, 'Zusätzliche Bewegungsgeschwindigkeit erhöhen'], ['heal', 'Schnelle Heilung', 'regen', 1, 4.4, 0.5, 'HP-Regeneration verbessern', true],
+    ['luck', 'Glücksschlag', 'critChance', 1, 2.2, 0.2, 'Erhöhe die kritische Trefferchance'], ['double', 'Doppelter Abzug', 'multiHit', 3, 0, 0.9, 'Chance auf Doppelangriff erhöhen'],
+    ['skill', 'Schadensfähigkeit', 'skillDmgPct', 3, 0, 0.6, 'Fähigkeitsschaden erhöhen'], ['triple', 'Dreifache Klinge', 'tripleHit', 4, 0, 0.9, 'Chance für Dreifachangriff erhöhen'],
+    ['cool', 'Abklingzeit', 'cooldownPct', 4, 0, 0.5, 'Abklingzeit der Fertigkeiten verringern']];
+  const SPL = 15, SPMAX = 5;
+  C('special', { levelsPerStar: SPL, maxStar: SPMAX, pinkFirst: 5, starBonus: [{ stat: 'atk', pct: 5 }, { stat: 'cooldownPct', v: 5 }] }, 'R',
+    '15 Stufen je Sternstufe, Bonus +5 % Kraft / +5 % Abklingzeit je Stern, Kosten rote Orbs = Stern + Stufe, 5 Pink-Orbs auf der ersten Stufe fortgeführter Pfade (B bei Stern 3); 5 Sterne und übrige Sternstufen eigen.');
+  for (const [id, nm, st, minStar, v30, step, desc, asPct] of SPC) {
+    const max = SPL * (SPMAX - minStar + 1), pre = SPL * (3 - minStar), r10 = (v) => Math.round(v * 10);
+    const rows = pre > 0 ? [[1, Math.max(1, r10(v30 / pre))], [pre, r10(v30)], [max, r10(v30 + (max - pre) * step)]] : [[1, r10(step)], [max, r10(max * step)]];
+    U(`sp_${id}`, 'special', nm, st, max, rows.map(([lv, e]) => [lv, e, {}]), { scale: 0.1, minStar, unit: '%', desc, ...(asPct ? { asPct: true } : {}), s: 'R' });
+  }
   ['dmgPct', 'critDmg', 'skillDmgPct', 'bossDmgPct', 'goldPct', 'xpPct', 'meleePct', 'rangedPct'].forEach((st, k) =>
     U(`ex_${k}`, 'extra', `Extra ${k + 1}`, st, 50, own(50, 100, 2, 80, k % 2 ? 'orb_jungle' : 'orb_ice')));
   ['dmgPct', 'critDmg', 'skillDmgPct', 'bossDmgPct', 'lifesteal', 'cooldownPct', 'critChance', 'multiHit', 'dropPct'].forEach((st, k) =>
@@ -292,7 +311,7 @@ export function buildBaseContent(opt = {}) {
   [['bl_0', 'Blessing I', 'dmgPct', 150], ['bl_1', 'Blessing II', 'critDmg', 350], ['bl_2', 'Blessing III', 'goldPct', 300]].forEach(([id, nm, st, v]) =>
     U(id, 'blessing', nm, st, 50, own(50, v, 1, 40, 'exp'), { s: 'R', note: 'Endwerte 150/350/300 D; Stat-Zuordnung und Kosten E.' }));
   ['dmg', 'crit', 'gold'].forEach((gkey, k) => U(`syn_${gkey}`, 'synergy', `Synergie ${k + 1}`, 'synergyPct', 20, own(20, 100, 5, 200, 'synergy_point')));
-  T('upgradeTracks', 'R', 'Ability 10 / Special 11 (4 Grade) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen.', up);
+  T('upgradeTracks', 'R', 'Ability 10 / Special 11 (Sternstufen) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen.', up);
 
   // ------------------------------------------------------------------ Waffen
   T('rarities', 'E', 'Seltenheitsnamen D; Multiplikatoren/Maxlevel eigen.', RARITIES.map((name, idx) =>

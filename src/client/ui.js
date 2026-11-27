@@ -54,7 +54,7 @@ function act(name, ...args) {
 const reward = (title, r) => { if (r.ok && r.value && r.value.length) toast(`${title}: ${fmtReward(r.value)}`, 3000); };
 const confirmBig = (cost, fn) => { if ((cost.gems || 0) >= 500) modal(t('Kauf bestätigen'), `${fmtCost(cost)} ausgeben?`, [['Abbrechen', null], ['Kaufen', fn, 'pri']]); else fn(); };
 const has = (f) => !!game.state.unlocks[f];
-const STAT = { atk: 'Angriff', hp: 'Leben', cargo: 'Cargo', atkSpeedPct: 'Angriffstempo %', regen: 'Regeneration/s', critChance: 'Krit-Chance %', critDmg: 'Krit-Schaden %', moveSpeedPct: 'Bewegung %', multiHit: 'Doppelangriff %', lifesteal: 'Lebensraub %',
+const STAT = { atk: 'Angriff', hp: 'Leben', cargo: 'Cargo', atkSpeedPct: 'Angriffstempo %', regen: 'Regeneration/s', critChance: 'Krit-Chance %', critDmg: 'Krit-Schaden %', moveSpeedPct: 'Bewegung %', multiHit: 'Doppelangriff %', tripleHit: 'Dreifachangriff %', lifesteal: 'Lebensraub %',
   skillDmgPct: 'Skill-Schaden %', cooldownPct: 'Abklingzeit −%', goldPct: 'Gold %', xpPct: 'XP %', dmgPct: 'Schaden %', bossDmgPct: 'Boss-Schaden %', dropPct: 'Drops %', meleePct: 'Nahkampf %', rangedPct: 'Fernkampf %', synergyPct: 'Synergie %' };
 const FEAT = { abilities: 'Ability-Upgrades', shop: 'Shop', weaponVault: 'Waffenkammer', craft: 'Schmieden', codex: 'Monster-Codex', missions: 'Mission Center', slot2: 'Zweiter Waffenslot', tower: 'Challenge Tower', battlePass: 'Battle Pass', sevenDay: '7-Tage-Event',
   carnival: 'Carnival', liveEvent: 'Live-Events', heroShop: 'Helden-Beschwörung', heroes: 'Helden', invasion: 'Invasion', pvp: 'PvP', portal: 'Portal', sTierChest: 'S-Tier-Truhe', heroEvolution: 'Helden-Evolution', heroCollection: 'Helden-Sammlung', traits: 'Traits',
@@ -98,32 +98,58 @@ P.quests = () => {
   offers.length ? sec('Neue Aufträge bei', offers.map((q) => row(giverName(q), q.name, game.questGoal(q) ? btn('Hinlaufen', () => walkTo(q)) : h('span', { cls: 'sub' }, 'in anderem Gebiet')))) : null,
   h('p', { cls: 'sub' }, `${done} / ${game.c.t.quests.length} Quests abgeschlossen`)];
 };
+// Kauf per Antippen; gedrückt halten kauft weiter (beschleunigend), bis losgelassen wird oder etwas fehlt.
+let holdT = null, holdN = 0;
+const holdStop = () => { clearTimeout(holdT); holdT = null; };
+function buyHold(id) {
+  holdStop(); holdN = 0;
+  let delay = 380;
+  const step = () => { holdT = null; if (!act('buyUpgrade', id, 1).ok || ++holdN >= 500) return; delay = Math.max(45, delay * 0.82); holdT = setTimeout(step, delay); };
+  step();
+}
+for (const ev of ['pointerup', 'pointercancel', 'touchend', 'touchcancel', 'blur']) addEventListener(ev, holdStop);
+const upVal = (u, e) => { const v = u.show ? u.show.base + e * u.show.mul : e; return (v >= 1000 ? fmt(v) : String(Math.round(v * 10) / 10)) + (u.unit || ''); };
+const upFamily = (family) => game.c.t.upgradeTracks.filter((u) => u.family === family);
+const upAvail = (family) => upFamily(family).some((u) => { const pv = prog.upgradePreview(game.g, u.id, 1); return !pv.locked && pv.to > pv.from; });
 function upgradeRows(family) {
   const g = game.g;
-  return game.c.t.upgradeTracks.filter((u) => u.family === family).map((u) => {
-    const pv = prog.upgradePreview(g, u.id, 1), mx = prog.upgradePreview(g, u.id, 'max'), full = pv.from >= u.max, can = pv.to > pv.from;
-    const mainCur = pv.next ? (pv.next.gold !== undefined ? 'gold' : Object.keys(pv.next)[0]) : null, extras = pv.next ? Object.entries(pv.next).filter(([i]) => i !== mainCur) : [];
-    return h('div', { cls: 'urow' }, h('div', { cls: 'uic' }, icon(STAT_ICON[u.stat] || 'star', null, 38)),
-      h('div', { cls: 'um' }, h('div', { cls: 'un' }, u.name), h('div', { cls: 'sub' }, sn(u.stat) + (u.grades ? ` · Grad ${Math.min(u.grades, Math.floor(pv.from / (u.max / u.grades)) + 1)}` : '')),
-        h('div', { cls: 'uv ot' }, fmt(pv.effFrom), full ? '' : ' > ', full ? null : h('em', {}, fmt(pv.effTo))), h('div', { cls: 'ul' }, `Stufe ${pv.from} / ${u.max}`)),
-      h('div', { cls: 'ur' }, full ? h('b', { cls: 'ot', style: 'font-size:1.3rem;padding:0 14px' }, 'MAX') : [
-        extras.length ? h('div', { cls: 'extra' }, extras.map(([i, n]) => h('span', { cls: econ.bal(g, i) >= n ? 'cost' : 'cost miss' }, itemIcon(i, 16), ' ', fmt(n)))) : null,
-        h('button', { cls: 'b cost' + (can ? '' : ' miss'), on: () => act('buyUpgrade', u.id, 1) }, itemIcon(mainCur, 22), fmt(pv.next[mainCur])),
-        h('div', { cls: 'mini' }, h('button', { cls: 'b sm', disabled: !can, on: () => act('buyUpgrade', u.id, 10) }, '+10'), h('button', { cls: 'b sm', disabled: mx.to === mx.from, on: () => act('buyUpgrade', u.id, 'max') }, `Max ${mx.to - mx.from}`))]));
+  return upFamily(family).map((u) => {
+    const pv = prog.upgradePreview(g, u.id, 1), full = pv.from >= u.max, capped = !full && pv.from >= pv.lim, can = pv.to > pv.from;
+    const ic = h('div', { cls: 'uic' }, icon(STAT_ICON[u.stat] || 'star', null, 38));
+    if (pv.locked) return h('div', { cls: 'urow lock ' + family }, ic, h('div', { cls: 'um' }, h('div', { cls: 'un' + (u.name.length > 17 ? ' long' : '') }, u.name), h('div', { cls: 'sub' }, u.desc || sn(u.stat)), h('div', { cls: 'uv ot' }, upVal(u, 0))),
+      h('div', { cls: 'ulock' }, icon('lock', '#d8d2cc', 30), h('div', {}, Array.from({ length: u.minStar }, () => icon('starf', '#ffd24a', 17)))));
+    const mainCur = pv.next ? (pv.next.gold !== undefined ? 'gold' : pv.next.orb_red !== undefined ? 'orb_red' : Object.keys(pv.next)[0]) : null, extras = pv.next ? Object.entries(pv.next).filter(([i]) => i !== mainCur) : [];
+    const buy = pv.next ? h('button', { cls: 'b cost ' + (can ? 'go' : 'miss'), 'aria-label': `${u.name} verbessern` }, itemIcon(mainCur, 24), fmt(pv.next[mainCur])) : null;
+    if (buy) { buy.addEventListener('pointerdown', (e) => { e.preventDefault(); buyHold(u.id); }); buy.addEventListener('touchend', holdStop); buy.addEventListener('touchcancel', holdStop); buy.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act('buyUpgrade', u.id, 1); } }); }
+    return h('div', { cls: 'urow ' + family }, ic,
+      h('div', { cls: 'um' }, h('div', { cls: 'un' + (u.name.length > 17 ? ' long' : '') }, u.name), h('div', { cls: 'sub' }, u.desc || sn(u.stat)),
+        h('div', { cls: 'uv ot' }, upVal(u, pv.effFrom), full || capped ? '' : ' > ', full || capped ? null : h('em', {}, upVal(u, pv.effTo))), h('div', { cls: 'ul' }, `Stufe ${pv.lvl} / ${pv.lvlMax}`)),
+      h('div', { cls: 'ur' }, full ? h('b', { cls: 'umax ot' }, 'MAX') : capped ? h('b', { cls: 'umax ot' }, icon('starf', '#ffd24a', 22)) : [
+        extras.length ? h('div', { cls: 'extra ot' }, extras.map(([i, n]) => h('span', { cls: econ.bal(g, i) >= n ? '' : 'miss' }, itemIcon(i, 17), fmt(n)))) : null, buy]));
   });
 }
 const chips = (...ids) => h('div', { cls: 'chips' }, ids.map((i) => h('span', { cls: 'chip ot' }, itemIcon(i, 22), fmt(econ.bal(game.g, i)))));
+const UPF = [['ability', 'Fähigkeit', 'abilities', '↑'], ['special', 'Spezial', 'special', 'S'], ['extra', 'Extra', 'extra', 'E'], ['soul', 'Soul', 'soul', '↑'], ['blessing', 'Segen', 'blessing', '↑']];
 P.hero = () => {
-  const fams = [['ability', 'Fähigkeit', 'abilities'], ['special', 'Spezial', 'special'], ['extra', 'Extra', 'extra'], ['soul', 'Soul', 'soul'], ['blessing', 'Segen', 'blessing']].filter((f) => has(f[2]));
-  const s = game.state, open = game.c.t.areas.filter((a) => game.canEnter(a.id)), ch = open.length ? open[open.length - 1].chapter : 1;
-  const head = [h('div', { cls: 'hq ot' }, 'Hauptquest', h('br'), `Kapitel ${ch}`),
+  const g = game.g, s = game.state, fams = UPF.filter((f) => has(f[2]));
+  const open = game.c.t.areas.filter((a) => game.canEnter(a.id)), ch = open.length ? open[open.length - 1].chapter : 1;
+  const quest = () => [h('div', { cls: 'hq ot' }, 'Hauptquest', h('br'), `Kapitel ${ch}`),
     h('div', { cls: 'bossrow' }, game.c.t.areas.filter((a) => a.chapter === ch).map((a) => h('div', { cls: 'bosst ' + (s.world.cleared[a.id] ? 'ok' : game.canEnter(a.id) ? '' : 'no'), title: game.c.get('variants', a.boss).name }, icon('skull', null, 30)))),
     h('p', { cls: 'sub center' }, 'Besiege alle Gebietsbosse!')];
-  if (!fams.length) return [...head, h('p', { cls: 'center' }, t('Baue das Bonfire, um Upgrades freizuschalten.'))];
+  if (!fams.length) return [h('div', { cls: 'uphead' }, quest()), h('p', { cls: 'center' }, t('Baue das Bonfire, um Upgrades freizuschalten.'))];
   const f = fams.find((x) => x[0] === tab.up) || fams[0];
   tab.up = f[0];
-  const cur = { ability: ['orb_jungle', 'orb_hell', 'gold'], special: ['orb_pink', 'orb_red'], extra: ['orb_ice', 'orb_jungle'], soul: ['orb_hell'], blessing: ['exp'] }[f[0]];
-  return [...head, chips(...cur), ...upgradeRows(f[0]), fams.length > 1 ? tabs('up', fams.map((x) => [x[0], x[1]])) : null];
+  const special = () => {
+    const p = prog.spProgress(g), look = game.c.get('heroes', s.heroes.active).look, top = p.star >= p.maxStar;
+    const card = (n, cls) => h('div', { cls: 'spcard ' + cls }, heroArt(look, 74), h('div', { cls: 'spstars' }, Array.from({ length: p.maxStar }, (_, k) => icon('starf', k < n ? '#ffd24a' : '#7a6a5c', 15))));
+    return [h('div', { cls: 'sprow' }, card(p.star, 'now'), h('div', { cls: 'spmid' }, h('div', { cls: 'sparrow' }, top ? '★' : '››››'),
+      top ? h('div', { cls: 'ot' }, 'Höchste Sternstufe') : p.bonus.map((b) => h('div', { cls: 'ot' }, `+ ${{ atk: 'Kraft', cooldownPct: 'Fertigkeiten-Abklingzeit' }[b.stat] || sn(b.stat)} `, h('em', {}, `${b.pct ?? b.v}%`)))), top ? null : card(p.star + 1, 'next')),
+    h('div', { cls: 'bar spbar' }, h('i', { style: `width:${Math.min(100, (100 * p.cur) / p.total)}%` }), h('span', { cls: 'ot' }, `${p.cur}/${p.total}`)),
+    h('p', { cls: 'sub center' }, top ? 'Alle Sternstufen erreicht' : 'Fülle alle Spezial-Upgrades für den nächsten Stern')];
+  };
+  const cur = { ability: ['orb_pink', 'orb_red', 'gold'], special: ['orb_pink', 'orb_red', 'gold'], extra: ['orb_ice', 'orb_jungle'], soul: ['orb_hell'], blessing: ['exp'] }[f[0]];
+  return [h('div', { cls: 'uphead' }, f[0] === 'special' ? special() : quest()), chips(...cur), ...upgradeRows(f[0]),
+    h('div', { cls: 'uptabs' }, fams.map((x) => h('button', { cls: 'utab ot' + (x[0] === f[0] ? ' on' : ''), on: () => { tab.up = x[0]; $('pbody').scrollTop = 0; render(); } }, t(x[1]), upAvail(x[0]) ? h('span', { cls: 'ubadge' }, x[3]) : null)))];
 };
 // Gibt es eine nicht ausgerüstete Waffe, die stärker ist als die schwächste ausgerüstete (oder ist ein freier Slot leer)?
 function betterWeapon() {

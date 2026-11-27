@@ -237,7 +237,8 @@ export class World {
       const d = Math.hypot(tgt.x - p.x, tgt.y - p.y) || 1;
       if (this.proj.length < 200) this.proj.push({ x: p.x, y: p.y, vx: ((tgt.x - p.x) / d) * l.cls.proj, vy: ((tgt.y - p.y) / d) * l.cls.proj, life: (l.range * 1.3) / l.cls.proj, dmg: l.dmg, aoe: l.cls.aoe, hostile: false });
     }
-    if (!bonus && st.multiHit > 0 && rnd(this.g.state.rng, 'world') * 100 < st.multiHit) this.fire(l, tgt, true);
+    if (!bonus && st.tripleHit > 0 && rnd(this.g.state.rng, 'world') * 100 < st.tripleHit) { this.fire(l, tgt, true); this.fire(l, tgt, true); }
+    else if (!bonus && st.multiHit > 0 && rnd(this.g.state.rng, 'world') * 100 < st.multiHit) this.fire(l, tgt, true);
   }
   cast(sk, tgt, base) {
     const p = this.p, st = this.g.stats;

@@ -63,7 +63,7 @@ export function icon(name, color, size = 28) {
   return e;
 }
 export const itemIcon = (id, size) => { const m = id.startsWith('piece:') ? ['helmet'] : ITEM[id] || ['star']; return icon(m[0], m[1], size); };
-export const STAT_ICON = { atk: 'sword', cargo: 'bag', hp: 'heart', regen: 'heartplus', critChance: 'burst', critDmg: 'burst', moveSpeedPct: 'boot', atkSpeedPct: 'bolt', multiHit: 'dagger', lifesteal: 'drop',
+export const STAT_ICON = { atk: 'sword', cargo: 'bag', hp: 'heart', regen: 'heartplus', critChance: 'burst', critDmg: 'burst', moveSpeedPct: 'boot', atkSpeedPct: 'bolt', multiHit: 'dagger', tripleHit: 'dagger', lifesteal: 'drop',
   skillDmgPct: 'staff', cooldownPct: 'bolt', goldPct: 'coin', xpPct: 'star', dmgPct: 'sword', bossDmgPct: 'skull', dropPct: 'gift', meleePct: 'blunt', rangedPct: 'crossbow', synergyPct: 'dice' };
 
 // ---------------------------------------------------------------- Heldenfiguren (eigene Entwürfe): klobiger Körper, großer Kopf, Kopfschmuck je Held

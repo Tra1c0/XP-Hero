@@ -34,8 +34,10 @@ export function computeStats(g, opt = {}) {
   for (const u of c.t.upgradeTracks) {
     const L = s.upgrades[u.id] || 0;
     if (!L) continue;
-    if (u.family === 'synergy') synLv[u.id] = effAt(u, L) * u.scale; else A(u.stat, effAt(u, L) * u.scale);
+    const v = effAt(u, L) * u.scale;
+    if (u.family === 'synergy') synLv[u.id] = v; else if (u.asPct) P(u.stat, v); else A(u.stat, v);
   }
+  for (const b of cfg.special.starBonus) B(b, spStar(g) - 1);
   const main = s.weapons.slots[0] && s.weapons.list.find((w) => w.uid === s.weapons.slots[0]);
   const mainCls = main ? c.get('weaponClasses', c.get('weapons', main.def).cls) : null;
   // Aktiver Held (nur dieser; Mehrheldenmodi übergeben heroId explizit)
@@ -87,12 +89,13 @@ export function computeStats(g, opt = {}) {
   const out = {
     atk: Math.max(1, Math.round((lv.atk + (flat.atk || 0)) * (1 + (pct.atk || 0) / 100))),
     hp: Math.max(1, Math.round((lv.hp + (flat.hp || 0)) * (1 + (pct.hp || 0) / 100))),
-    cargo: Math.floor(pl.baseCargo + (flat.cargo || 0)),
+    cargo: Math.floor((pl.baseCargo + (flat.cargo || 0)) * (1 + (pct.cargo || 0) / 100)),
     critChance: pl.critChance + (flat.critChance || 0), critDmg: pl.critDmg + (flat.critDmg || 0),
     heroId, mainCls: mainCls ? mainCls.id : null,
   };
-  for (const st of ['atkSpeedPct', 'regen', 'moveSpeedPct', 'multiHit', 'lifesteal', 'skillDmgPct', 'cooldownPct', 'goldPct', 'xpPct', 'dmgPct', 'bossDmgPct', 'dropPct', 'meleePct', 'rangedPct'])
+  for (const st of ['atkSpeedPct', 'regen', 'moveSpeedPct', 'multiHit', 'tripleHit', 'lifesteal', 'skillDmgPct', 'cooldownPct', 'goldPct', 'xpPct', 'dmgPct', 'bossDmgPct', 'dropPct', 'meleePct', 'rangedPct'])
     out[st] = flat[st] || 0;
+  out.regen *= 1 + (pct.regen || 0) / 100;
   for (const [k, mx] of Object.entries(caps)) if (out[k] !== undefined) out[k] = clamp(out[k], 0, mx);
   return out;
 }
@@ -142,33 +145,59 @@ export function costAt(def, L) {
   }
   return out;
 }
+// Spezial-Pfade: Sternstufe (1..maxStar). Je Stern levelsPerStar Stufen pro offenem Pfad; sind alle offenen voll, steigt der Stern.
+export const spStar = (g) => g.state.player.spStar || 1;
+export function spInfo(g, def) {
+  const cf = g.c.cfg.special, star = spStar(g), open = star >= def.minStar, base = open ? cf.levelsPerStar * (star - def.minStar) : 0;
+  return { star, open, base, cap: open ? base + cf.levelsPerStar : 0, per: cf.levelsPerStar };
+}
+export function spProgress(g) {
+  const cf = g.c.cfg.special, star = spStar(g);
+  let cur = 0, total = 0;
+  for (const u of g.c.t.upgradeTracks) if (u.family === 'special' && star >= u.minStar) { cur += Math.max(0, (g.state.upgrades[u.id] || 0) - spInfo(g, u).base); total += cf.levelsPerStar; }
+  return { star, cur, total, maxStar: cf.maxStar, bonus: cf.starBonus };
+}
+// Kosten für den Schritt (L-1) -> L; Spezial-Pfade rechnen aus Sternstufe und Stufe innerhalb des Sterns.
+export function stepCost(g, def, L) {
+  if (def.family !== 'special') return costAt(def, L);
+  const i = spInfo(g, def), k = L - i.base, out = { orb_red: i.star + k };
+  if (k === 1 && i.star > def.minStar) out.orb_pink = g.c.cfg.special.pinkFirst;
+  return out;
+}
 // Vorschau für n Stufen ('max' = so viele wie bezahlbar). Kauft nie teilweise mehr als bezahlbar.
 export function upgradePreview(g, id, n = 1) {
-  const def = upDef(g, id), from = g.state.upgrades[id] || 0;
-  const want = n === 'max' ? def.max - from : Math.min(n, def.max - from);
+  const def = upDef(g, id), from = g.state.upgrades[id] || 0, sp = def.family === 'special' ? spInfo(g, def) : null, lim = sp ? Math.min(def.max, sp.cap) : def.max;
+  const want = Math.max(0, n === 'max' ? lim - from : Math.min(n, lim - from));
   const total = {}, left = { ...g.state.inv };
   let to = from;
   for (let k = 0; k < want; k++) {
-    const c = costAt(def, to + 1);
+    const c = stepCost(g, def, to + 1);
     let ok = true;
     for (const [cur, v] of Object.entries(c)) if ((left[cur] || 0) < v) ok = false;
     if (!ok) break;
     for (const [cur, v] of Object.entries(c)) { left[cur] = (left[cur] || 0) - v; total[cur] = (total[cur] || 0) + v; }
     to++;
   }
-  const next = from < def.max ? costAt(def, from + 1) : null;
-  return { def, from, to, max: def.max, cost: total, next, missing: next ? missing(g, next) : {}, effFrom: effAt(def, from) * def.scale, effTo: effAt(def, Math.max(to, Math.min(from + 1, def.max))) * def.scale };
+  const next = from < lim ? stepCost(g, def, from + 1) : null;
+  return { def, from, to, max: def.max, lim, cost: total, next, missing: next ? missing(g, next) : {}, locked: !!sp && !sp.open, lvl: sp ? Math.max(0, from - sp.base) : from, lvlMax: sp ? sp.per : def.max,
+    effFrom: effAt(def, from) * def.scale, effTo: effAt(def, Math.max(to, Math.min(from + 1, def.max))) * def.scale };
 }
 export function buyUpgrade(g, id, n = 1) {
   const def = upDef(g, id);
   need(g, FAMILY_FEATURE[def.family]);
   const pv = upgradePreview(g, id, n);
+  if (pv.locked) fail('locked', `Erst ab ${def.minStar} Sternen`);
   if (pv.from >= def.max) fail('max_level', 'Maximalstufe erreicht');
+  if (pv.from >= pv.lim) fail('star_cap', 'Erst alle Spezial-Upgrades dieser Sternstufe abschließen');
   if (pv.to === pv.from) fail('insufficient', 'Nicht genug Ressourcen');
   if (!canAfford(g, pv.cost)) fail('insufficient');
   pay(g, pv.cost, `upgrade:${def.family}`, id);
   g.state.upgrades[id] = pv.to;
   emit(g, `upgrade:${id}`, pv.to - pv.from);
   emit(g, `upgrade:${def.family}`, pv.to - pv.from);
+  if (def.family === 'special') {
+    const p = spProgress(g);
+    if (p.cur >= p.total && p.star < p.maxStar) { g.state.player.spStar = p.star + 1; emit(g, 'specialStar'); if (g.events) g.events.push({ type: 'specialStar', star: p.star + 1 }); }
+  }
   return pv;
 }
