@@ -186,7 +186,7 @@ export class Renderer3D {
     for (const b of W.blockers || []) {
       if (b.kind !== 'water' && b.kind !== 'lava') continue;
       const cl = b.kind === 'lava' ? WATER.lava : WATER.water, em = b.kind === 'lava' ? 1 : 0.15;
-      if (b.c) { parts.push(['cyl8', b.c[0], 0.03, -b.c[1], 0.2, b.r * 2.5, 0.02, b.r * 2.5, cl, em], ['cyl8', b.c[0] - b.r * 0.3, 0.05, -b.c[1] - b.r * 0.25, 0.6, b.r * 0.9, 0.01, b.r * 0.5, '#ffffff', 0.5]); for (let k = 0; k < 8; k++) { const a = (k / 8) * 6.283 + 0.3; expand(k % 2 ? 'pebble' : 'grass', b.c[0] + Math.cos(a) * (b.r + 1.2), 0, -b.c[1] + Math.sin(a) * (b.r + 1.2), a, 1.2, parts); } }
+      if (b.c) { parts.push(['cyl8', b.c[0], 0.03, -b.c[1], 0.2, b.r * 2.5, 0.02, b.r * 2.5, cl, em], ['cyl8', b.c[0] - b.r * 0.3, 0.05, -b.c[1] - b.r * 0.25, 0.6, b.r * 0.7, 0.01, b.r * 0.3, '#8fd0f3', 0.2]); for (let k = 0; k < 8; k++) { const a = (k / 8) * 6.283 + 0.3; expand(k % 2 ? 'pebble' : 'grass', b.c[0] + Math.cos(a) * (b.r + 1.2), 0, -b.c[1] + Math.sin(a) * (b.r + 1.2), a, 1.2, parts); } }
       else { const xs = b.poly.map((p) => p[0]), zs = b.poly.map((p) => p[1]), cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2; parts.push(['cyl8', cx, 0.03, -cz, 0, Math.max(...xs) - Math.min(...xs) + 2, 0.02, Math.max(...zs) - Math.min(...zs) + 2, cl, em]); }
     }
     for (const lm of W.landmarks || []) {
