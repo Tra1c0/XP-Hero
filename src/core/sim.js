@@ -199,7 +199,7 @@ export class World {
     e.hp -= dealt; this.dmgDealt += dealt;
     if (st.lifesteal > 0 && this.p.alive) this.p.hp = Math.min(st.hp, this.p.hp + (dealt * st.lifesteal) / 100);
     this.text(e.x, e.y - e.r, dmg, crit ? 2 : 1);
-    if (e.st === 'idle' || e.st === 'patrol' || e.st === 'return') { e.st = 'chase'; }
+    if (e.beh.id !== 'node' && (e.st === 'idle' || e.st === 'patrol' || e.st === 'return')) { e.st = 'chase'; }
     if (e.hp <= 0) this.kill(e);
   }
   status(e, id, dur) {

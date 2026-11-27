@@ -239,8 +239,8 @@ export function buildBaseContent(opt = {}) {
     if (x) {
       const keep = v.s === 'D' && v.hp !== undefined && v.level === x[1] && v.hp === x[2];
       v.level = x[1];
-      if (!keep) Object.assign(v, mobStats(config, v.level, v.rank));
-      if (x[3] === 0) v.atk = 0; // z. B. Bat: greift im Original nicht an
+      if (!keep) Object.assign(v, mobStats(config, v.level, v.rank)); // liefert XP (eigene Kurve); Leben und Angriff folgen aus dem Bestiary
+      if (x[2] > 0) { v.hp = x[2]; v.atk = x[3]; } // Originalwerte (D); atk 0 z. B. bei Bat: greift nicht an
       if (x[5]) v.speed = Math.round(x[5] * 130);
       v.ref = { id: x[0], hp: x[2], atk: x[3], type: x[4] };
     }

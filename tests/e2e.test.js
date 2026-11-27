@@ -18,7 +18,7 @@ function bot(game, clock, done, maxSec) {
       if (o.cond && o.cond.cleared) return { boss: o.cond.cleared };
       if (o.counter.startsWith('upgrade:')) { game.try('buyUpgrade', o.counter.slice(8), 1); return { farm: true }; }
       if (o.counter.startsWith('gacha:')) { game.try('openBox', o.counter.slice(6), 1); return { farm: true }; }
-      if (o.counter === 'craft') { game.try('craft', 1); return { farm: true }; }
+      if (o.counter === 'craft') { if (game.try('craft', 1).ok) return { farm: true }; return (game.state.cargo.crystal || 0) >= 5 ? { base: true } : { farm: true }; } // Kristalle liegen bis zur Heimkehr in der Fracht
       if (o.counter.startsWith('talk:')) return { npc: o.counter.slice(5) };
       if (o.counter.startsWith('kill:')) return { kill: o.counter.slice(5) };
     }
@@ -37,6 +37,7 @@ function bot(game, clock, done, maxSec) {
     if (best && game.state.weapons.slots[0] !== best.uid) game.cmd('equipWeapon', best.uid, 0);
     // Basis liegt mitten in Greenhaven: nur dann zum Einstieg laufen, wenn die Karte keine Gegner kennt (Einzelkarten)
     if (game.state.world.area === 'base' && !w.enemies.length) { const q = w.map.entryOf('a1_1'); goto(q.x, q.y); continue; }
+    if (t.base) { const q = w.map.entryOf('base'); goto(q.x, q.y); continue; }
     let tgt = null;
     if (t.npc) { const n = w.map.objects.find((o) => o.id === t.npc); if (n) { if (goto(n.x, n.y) < n.r) game.try('talkNpc', n.id); continue; } }
     const pick = (f) => w.enemies.filter((e) => e.alive && f(e)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];

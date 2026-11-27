@@ -9,16 +9,21 @@ for (let stage = 1; stage <= 6; stage++) {
   for (const f of ['abilities', 'weaponVault', 'craft', 'shop', 'portal']) s().unlocks[f] = 1;
   for (let k = 1; k < stage; k++) s().world.cleared[`a1_${k}`] = 1;
   // Spielerstärke grob passend zum Gebiet: Level und Kraft/HP hochsetzen
-  s().player.level = [1, 12, 22, 36, 50, 70][stage - 1]; s().upgrades.ab_power = [0, 20, 60, 140, 260, 420][stage - 1]; s().upgrades.ab_hp = [0, 4, 8, 14, 20, 30][stage - 1];
-  s().settings.autoReturn = true;
+  // Spielerstärke je Gebiet: Stufe 6 entspricht dem Stand aus den Vorlagen-Bildern (Level 67, Kraft 360, HP 356); davor linear darunter. Waffen passend zur Schmiedestufe.
+  const k = stage - 1;
+  s().player.level = [1, 12, 24, 38, 52, 67][k]; s().upgrades.ab_power = [0, 60, 130, 200, 280, 360][k]; s().upgrades.ab_hp = [0, 60, 130, 200, 280, 356][k]; s().upgrades.ab_regen = [0, 20, 50, 90, 130, 163][k];
+  s().weapons.unlocked = Math.min(6, 1 + k);
+  game.cmd('grantExternal', 'soak', ['sword', 'dagger', 'blunt', 'crossbow', 'staff', 'gun'].slice(0, 1 + k).map((c) => ({ weapon: `w_${c}_n_${Math.min(5, k)}` })));
+  s().weapons.list.forEach((w, i) => { w.level = 5 + k * 10; game.try('equipWeapon', w.uid, i); });
+  s().settings.autoReturn = true; s().settings.autoMode = 'near'; // Gebietsprüfung: nächster Gegner statt Quest-Ziel
   game.tick(1 / 30); game.cmd('portal', area);
   const w0 = game.world; w0.p.auto = true;
   let kills0 = 0, idle = 0, deaths = 0, lastKills = 0, maxProj = 0, maxDrops = 0; const stT = new Map();
   for (let sec = 0; sec < MIN * 60; sec++) {
     for (let k = 0; k < 30; k++) { game.tick(1 / 30); clock.t += 1000 / 30; }
-    for (const ev of game.drainEvents()) if (ev.type === 'dead') deaths++;
+    game.drainEvents();
     const w = game.world, p = w.p, G = w.G;
-    if (!p.alive) { game.cmd('revive', 'base'); game.world.p.auto = true; continue; }
+    if (!p.alive) { deaths++; game.cmd('revive', 'base'); game.cmd('portal', area); game.world.p.auto = true; continue; }
     if (!Number.isFinite(p.x + p.y + p.hp)) note('Spieler: ungültige Zahl', area);
     if (!walkable(G, p.x, p.y)) note(`Spieler steht auf nicht begehbarer Zelle`, area);
     maxProj = Math.max(maxProj, w.proj.length); maxDrops = Math.max(maxDrops, w.drops.length);
