@@ -124,7 +124,8 @@ export function objectives(g, q) {
 export function refreshQuests(g) {
   const s = g.state.quests;
   for (const q of g.c.t.quests) {
-    if (q.giver || s.done[q.id] || s.active[q.id] || !(q.prereq || []).every((p) => s.done[p])) continue; // Questgeber-Quests nimmt man beim NPC an
+    if (s.done[q.id] || s.active[q.id] || !(q.prereq || []).every((p) => s.done[p])) continue;
+    if (q.giver && (g.c.cfg.quests.npcTurnIn || (q.start && !check(g, q.start)))) continue; // mit npcTurnIn nimmt man Questgeber-Quests beim NPC an
     acceptQuest(g, q);
   }
 }
@@ -141,7 +142,7 @@ function acceptQuest(g, q) {
 }
 export function claimQuest(g, id, atNpc = false) {
   const q = g.c.get('quests', id), st = questState(g, q);
-  if (q.giver && !atNpc) fail('at_npc', `Abgabe bei ${npcName(g, q)}`);
+  if (q.giver && !atNpc && g.c.cfg.quests.npcTurnIn) fail('at_npc', `Abgabe bei ${npcName(g, q)}`);
   if (st !== 'satisfied') fail(st === 'completed' ? 'already_claimed' : 'not_ready', 'Quest nicht abschließbar');
   g.state.quests.done[id] = g.now();
   delete g.state.quests.active[id];
@@ -162,7 +163,7 @@ export function npcStatus(g, npc) {
   for (const q of g.c.t.quests) {
     if (!q.giver || !givesHere(q, npc)) continue;
     const st = questState(g, q);
-    if (st === 'satisfied') return 'turnin';
+    if (st === 'satisfied' && g.c.cfg.quests.npcTurnIn) return 'turnin';
     if (st === 'available') offer = true; else if (st === 'active') busy = true;
   }
   if (offer || npcScenes(g, npc).some((sc) => !g.state.npc.seen[`${npc.id}:${sc.id}`])) return 'offer';
@@ -188,7 +189,7 @@ export function talkNpc(g, npcId) {
 // Wohin führt die Quest? Beschreibung des Ziels; die Weltposition löst Game.questGoal auf.
 export function questTarget(g, q) {
   const st = questState(g, q), o = q.obj[0];
-  if (q.giver && (st === 'satisfied' || st === 'available')) return { npc: q.at, char: q.giver };
+  if (q.giver && g.c.cfg.quests.npcTurnIn && (st === 'satisfied' || st === 'available')) return { npc: q.at, char: q.giver };
   if (o.cond) { if (o.cond.building) return { building: o.cond.building }; if (o.cond.cleared) return { boss: o.cond.cleared }; return null; }
   if (o.counter.startsWith('talk:char:')) return { char: o.counter.slice(10) };
   if (o.counter.startsWith('talk:')) return { npc: o.counter.slice(5) };

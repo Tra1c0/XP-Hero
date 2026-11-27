@@ -45,6 +45,7 @@ test('Dialog: Szenen der Reihe nach, Freischaltung per Quest/Boss, gesehen-Statu
 
 test('Questgeber Taid: Annahme und Abgabe nur vor Ort, Kette in Referenzreihenfolge, Belohnung genau einmal', () => {
   const { game, g, s } = mk();
+  game.c.cfg.quests.npcTurnIn = true; // Variante mit Annahme/Abgabe beim NPC (Standard ist aus)
   s().world.cleared.a1_1 = 1; game.tick(0.3);
   const first = game.c.get('quests', 'nq_10001');
   assert.equal(meta.questState(g, first), 'available');
@@ -68,6 +69,7 @@ test('Questgeber Taid: Annahme und Abgabe nur vor Ort, Kette in Referenzreihenfo
 
 test('Ryan-Kette: Gespräch schaltet Boss Raid frei, Raid Camp, Quest-Boss unabhängig vom Tagesboss, Abgabe bei Ryan', () => {
   const { game, g, s, give } = mk();
+  game.c.cfg.quests.npcTurnIn = true;
   assert.ok(!s().unlocks.raid);
   s().world.cleared.a1_1 = 1; game.tick(0.3);
   at(game, 'npc_ryan_0');
@@ -100,4 +102,14 @@ test('Solo-Spiel: keine PvP-/Invasion-Inhalte im Standardpaket, Questkette bleib
   assert.ok(T.quests.every((q) => q.prereq.every((p) => ids.has(p))), 'kein Verweis auf entfernte Quest');
   const { buildBaseContent } = await import('../src/core/content/base.js'), { validateContent } = await import('../src/core/content/validate.js');
   assert.deepEqual(validateContent(buildBaseContent({ multiplayer: true })), [], 'Mehrspieler-Paket bleibt gültig');
+});
+
+test('Standard ohne NPC-Abgabe: Aufträge starten von selbst und werden über die Questkarte abgeschlossen', () => {
+  const { game, g, s } = mk();
+  assert.equal(game.c.cfg.quests.npcTurnIn, false);
+  s().world.cleared.a1_1 = 1; g.dirty = true; game.tick(0.3);
+  assert.ok(s().quests.active.nq_10001, 'Taid-Auftrag läuft ohne Gespräch');
+  s().counters['kill:any'] = (s().counters['kill:any'] || 0) + 10;
+  assert.ok(game.cmd('claimQuest', 'nq_10001').length > 0, 'Abschluss ohne NPC');
+  assert.equal(code(() => game.cmd('claimQuest', 'nq_10001')), 'already_claimed');
 });

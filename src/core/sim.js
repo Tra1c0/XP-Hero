@@ -230,6 +230,7 @@ export class World {
   // ---- Angriffe
   fire(l, tgt, bonus = false) {
     const p = this.p, st = this.g.stats, kind = l.cls.melee ? 'melee' : 'ranged';
+    if (!bonus) (p.wfire ||= {})[l.slot] = { t: this.t, a: Math.atan2(tgt.x - p.x, tgt.y - p.y) }; // für die Schlag-Animation
     if (l.cls.melee) {
       let n = 0;
       this.query(p.x, p.y, l.range, (e) => { if (n < l.cls.targets) { n++; this.hit(e, l.dmg, kind); } });
@@ -261,10 +262,28 @@ export class World {
     if (!this.mode && this.hooks.cargoFull && this.hooks.cargoFull() && g.state.settings.autoReturn) { this.pending = { travel: 'base', autoBack: g.state.world.area }; return; }
     // Jagdgebiet = Gebiet, in dem die Auto-Jagd eingeschaltet wurde (aus der Basis heraus: das erste betretene). Sie wandert nicht in stärkere Nachbargebiete.
     if (!this.mode && this.map.world && !p.huntArea) { const z = this.zone(); if (z && z !== 'base') p.huntArea = z; }
+    // Quest-Modus (Einstellung autoMode: 'quest' = Standard, 'near' = nächster Gegner): Ziel ist die Monsterart bzw. der Boss der offenen Quest,
+    // auch in einem anderen offenen Gebiet. Ist gerade keins am Leben, wartet die Figur an dessen Spawnplatz.
+    let focus = null;
+    if (!this.mode && this.map.world && g.state.settings.autoMode !== 'near' && this.hooks.questFocus) {
+      if (!(p.focusT > this.t)) { p.focusT = this.t + 1; p.focus = this.hooks.questFocus(); }
+      focus = p.focus;
+    }
+    if (focus) {
+      const want = (e) => e.gid && e.group && this.areaOpen(e.group.area) && (focus.monster ? e.v.monster === focus.monster : e.v.rank === 'boss' && e.group.area === focus.boss);
+      if (!p.tgt || !p.tgt.alive || !want(p.tgt)) {
+        let best = null, bd = Infinity, home = null, hd = Infinity;
+        for (const e of this.enemies) { if (!want(e)) continue; const d = dist2(p.x, p.y, e.alive ? e.x : e.hx, e.alive ? e.y : e.hy); if (e.alive && p.skip[e.gid + ':' + e.slot] > this.t) continue; if (e.alive) { if (d < bd) { bd = d; best = e; } } else if (d < hd) { hd = d; home = e; } }
+        if (best) { p.tgt = best; p.huntArea = best.group.area; p.stuckT = 0; p.stuckD = bd; p.path = null; }
+        else if (home) { p.tgt = null; p.huntArea = home.group.area; if (hd > (3 * M) ** 2) this.follow(home.hx, home.hy, dt, 2 * M); else p.mx = p.my = 0; return; }
+      }
+    }
     if (!p.tgt || !p.tgt.alive || p.skip[p.tgt.gid + ':' + p.tgt.slot] > this.t) {
       const R2 = (g.c.cfg.world.activeRadiusM * (this.map.world ? this.map.world.ppm : M)) ** 2, cand = [];
       for (const e of this.enemies) {
         if (!e.alive || (e.v.rank === 'boss' && !bossOk) || p.skip[e.gid + ':' + e.slot] > this.t || (p.huntArea && e.group && e.group.area !== p.huntArea)) continue;
+        // Ohne Quest-Vorgabe meidet die Auto-Jagd Gegner über dem eigenen Level (normale ab +3, Elite/Selten/Spezial ab +2)
+        if (!this.mode && e.v.rank !== 'node' && e.v.rank !== 'boss' && e.v.level > g.state.player.level + (e.v.rank === 'normal' ? 2 : 1)) continue;
         const d = dist2(p.x, p.y, e.x, e.y);
         if (d < R2) cand.push([e.v.rank === 'node' ? d + R2 : d, e]); // Rohstoffe erst, wenn kein Gegner in Reichweite ist
       }

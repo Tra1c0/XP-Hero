@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1dwuqca3juq).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1bpv9ejmwi8).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -85,6 +85,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | runes | ? | `{"slots":6,"slotLevels":[1,60,90,120,160,200],"dismantleRefundPct":80,"milestoneEvery":10,"milestonePct":10}` | Slots und Refund eigen. |
 | heroes | E | `{"starter":"h_01","levelPct":2,"selectTicketPieces":50,"raidTeam":3}` | Heldenlevel: +levelPct% ATK/HP je Level über 1. |
 | keyhouse | E | `{"speedUpGemsPerMin":1,"chapterBound":true}` | Beschleunigung nur gegen erspielte Gems; kein Ad-Skip. |
+| quests | R | `{"npcTurnIn":false}` | false: Aufträge der Figuren starten von selbst und werden über die Questkarte abgeschlossen (die Referenzdaten kennen keinen Abgabe-Schritt beim NPC). true: Annahme und Abgabe beim NPC. |
 | homeReturn | E | `{"cost":{}}` | Rückkehr zur Basis: unbegrenzt und kostenlos (Tageslimit auf Nutzerwunsch entfernt). |
 | remoteBaseAccess | E | `true` | Komfort: Basis-Menüs von überall (weniger Laufwege). |
 | randomReward | E | `{"everySec":300}` | Intervall der Bonusbelohnung im Feld (früher Rewarded Ad). |

@@ -63,6 +63,7 @@ export function buildBaseContent(opt = {}) {
   C('runes', { slots: 6, slotLevels: [1, 60, 90, 120, 160, 200], dismantleRefundPct: 80, milestoneEvery: 10, milestonePct: 10 }, '?', 'Slots und Refund eigen.');
   C('heroes', { starter: 'h_01', levelPct: 2, selectTicketPieces: 50, raidTeam: 3 }, 'E', 'Heldenlevel: +levelPct% ATK/HP je Level über 1.');
   C('keyhouse', { speedUpGemsPerMin: 1, chapterBound: true }, 'E', 'Beschleunigung nur gegen erspielte Gems; kein Ad-Skip.');
+  C('quests', { npcTurnIn: false }, 'R', 'false: Aufträge der Figuren starten von selbst und werden über die Questkarte abgeschlossen (die Referenzdaten kennen keinen Abgabe-Schritt beim NPC). true: Annahme und Abgabe beim NPC.');
   C('homeReturn', { cost: {} }, 'E', 'Rückkehr zur Basis: unbegrenzt und kostenlos (Tageslimit auf Nutzerwunsch entfernt).');
   C('remoteBaseAccess', true, 'E', 'Komfort: Basis-Menüs von überall (weniger Laufwege).');
   C('randomReward', { everySec: 300 }, 'E', 'Intervall der Bonusbelohnung im Feld (früher Rewarded Ad).');

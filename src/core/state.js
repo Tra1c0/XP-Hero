@@ -23,7 +23,7 @@ export function newState(c, now, seed = (now ^ 0x9e3779b9) | 0, profileId = null
     gacha: {}, shop: { bought: {}, merchant: {} },
     modes: { session: null, tower: { best: 0 }, raid: { best: {} }, tomb: { best: 0 }, pvp: { rating: cfg.pvp.startRating, wins: 0 },
       invasion: { rating: cfg.invasion.startRating, tier: 0, streak: 0, bank: 0, bankAt: now, history: [], season: 0, defense: null, revenge: [] } },
-    settings: { autoBoss: false, dmgNumbers: true, reducedFx: false, haptics: true, sfx: 0.6, music: 0.4, textScale: 1, colorblind: false, autoReturn: true },
+    settings: { autoBoss: false, dmgNumbers: true, reducedFx: false, haptics: true, sfx: 0.6, music: 0.4, textScale: 1, colorblind: false, autoReturn: true, autoMode: 'quest' },
     sync: { rev: 0, server: null }, codes: {},
   };
 }

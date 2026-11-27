@@ -79,6 +79,16 @@ export class Game {
         return true;
       },
       cargoFull: () => home.cargoFree(g) <= 0,
+      // Ziel der Auto-Jagd laut erster offener Quest mit Kampfziel: bestimmte Monsterart oder Gebietsboss. null = keine Vorgabe.
+      questFocus: () => {
+        for (const { q, state } of meta.currentQuests(g)) {
+          if (state !== 'active') continue;
+          const t = meta.questTarget(g, q);
+          if (t && t.monster && t.monster !== '*' && t.monster !== '#boss') return { monster: t.monster };
+          if (t && t.boss) return { boss: t.boss };
+        }
+        return null;
+      },
       interact: (o, world) => {
         try {
           if (o.type === 'gate') { if (o.open()) world.pending = { travel: o.to, back: !!o.back }; else g.events.push({ type: 'toast', msg: 'Tor verschlossen – besiege zuerst den Boss.' }); } else if (o.type === 'chest') { if (home.chestSpawnerReady(g, o.id)) { home.pickupChest(g, o.id); g.events.push({ type: 'toast', msg: 'Feldtruhe ins Key House gelegt.' }); } } else if (o.type === 'gift') { if (home.giftReady(g, o.id)) g.events.push({ type: 'reward', title: 'Gift Chest', got: home.openGift(g, o.id) }); } else if (o.type === 'areachest') { if (!g.state.claims[`areachest:${o.id}`]) g.events.push({ type: 'reward', title: 'Gebietstruhe', got: home.openAreaChest(g, o.id) }); } else if (o.type === 'gatebar') { const b = g.c.by.areas.get(o.needs); g.events.push({ type: 'toast', msg: `Tor verschlossen – besiege zuerst ${b ? g.c.get('variants', b.boss).name : 'den Boss'}.` }); }

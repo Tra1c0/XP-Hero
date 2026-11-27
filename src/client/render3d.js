@@ -290,7 +290,39 @@ export class Renderer3D {
       part('box', -0.52, 0.42, 0.05, 0.22, 0.5, 0.26, '#8a5a3c'), part('box', 0.52, 0.42, 0.05, 0.22, 0.5, 0.26, '#8a5a3c'),
       part('box', 0, 0.5, -0.36, 0.5, 0.42, 0.24, '#6a4a30'),
       part('box', 0, 0.96, 0, 0.78, 0.68, 0.7, hc2), part('box', 0, 0.97, 0.01, 0.16, 0.69, 0.72, ac2), part('box', 0, 1.62, 0, 0.26, 0.16, 0.26, '#7a5236'),
-      part('box', 0.62, 0.55, 0.45, 0.12, 0.12, 0.8, '#d9dde3', 0.1)];
+      ];
+    // Waffen: Hauptwaffe in der Hand mit Schwungbogen, Nebenwaffen schweben im Kreis um die Figur und stoßen beim Angriff zum Ziel (eigene Darstellung, Zeit aus der Simulation)
+    {
+      const tm = w.t + a / 30, load = w.loadout(), subs = load.filter((l) => l.slot > 0), wf = w.p.wfire || {}, ws = [];
+      const model = (cls, x, y, z, yaw, k = 1) => { // Teile entlang der lokalen Vorwärtsachse (z), nur um die Hochachse drehbar
+        const cy = Math.cos(yaw), sy = Math.sin(yaw), q = (shape, f, r, yy, sx, sy2, sz, c3, em = 0) => ws.push([shape, x + (r * cy + f * sy) * k, y + yy * k, z + (-r * sy + f * cy) * k, yaw, sx * k, sy2 * k, sz * k, c3, em]);
+        if (cls === 'sword') { q('box', 0.1, 0, 0, 0.1, 0.1, 0.3, '#7a4a2c'); q('box', 0.27, 0, 0, 0.42, 0.1, 0.08, '#f0c14b'); q('box', 0.75, 0, 0.01, 0.16, 0.07, 0.95, '#e8eef5', 0.15); }
+        else if (cls === 'dagger') { q('box', 0.08, 0, 0, 0.09, 0.09, 0.22, '#5a3a6a'); q('box', 0.2, 0, 0, 0.28, 0.09, 0.07, '#b04bd0'); q('box', 0.45, 0, 0.01, 0.12, 0.06, 0.5, '#e8eef5', 0.15); }
+        else if (cls === 'blunt') { q('box', 0.35, 0, 0, 0.1, 0.1, 0.8, '#7a4a2c'); q('box', 0.85, 0, -0.12, 0.42, 0.36, 0.36, '#8a8e9c'); q('cone6', 0.85, 0, 0.24, 0.16, 0.2, 0.16, '#c5c8d2'); }
+        else if (cls === 'crossbow') { q('box', 0.4, 0, 0, 0.14, 0.12, 0.85, '#8a5a3c'); q('box', 0.7, 0, 0.02, 0.9, 0.08, 0.1, '#5a5e6c'); q('box', 0.85, 0, 0.1, 0.06, 0.05, 0.4, '#e8eef5'); }
+        else if (cls === 'gun') { q('box', 0.35, 0, 0, 0.16, 0.2, 0.7, '#4a4d5c'); q('box', 0.1, 0, -0.16, 0.14, 0.24, 0.16, '#7a4a2c'); q('box', 0.8, 0, 0.06, 0.09, 0.09, 0.3, '#2a2a32'); }
+        else if (cls === 'staff') { q('box', 0.5, 0, 0, 0.09, 0.09, 1.1, '#7a5236'); q('sphere', 1.1, 0, -0.1, 0.34, 0.34, 0.34, '#7fd8ff', 1); }
+        else q('box', 0.3, 0, 0, 0.22, 0.22, 0.3, '#f1c9a5');
+      };
+      const ease = (u) => Math.sin(Math.min(1, Math.max(0, u)) * Math.PI);
+      for (const l of load) {
+        const fr = wf[l.slot], dt2 = fr ? tm - fr.t : 9, dur = Math.min(0.28, Math.max(0.14, l.interval * 0.6)), u = dt2 >= 0 && dt2 < dur ? dt2 / dur : -1;
+        if (l.slot === 0) {
+          // Hauptwaffe: Nahkampf schwingt in einem Bogen von rechts nach links durch die Zielrichtung, Fernwaffen zucken zurück
+          if (u >= 0) this.face = fr.a;
+          const base = this.face, sw = u >= 0 && l.cls.melee ? (0.5 - u) * 2.6 : 0.9, rec = u >= 0 && !l.cls.melee ? -0.18 * ease(u) : 0, yaw = base + sw;
+          model(l.cls.id, px + Math.sin(yaw) * (0.45 + rec), 0.62, pz + Math.cos(yaw) * (0.45 + rec), yaw, 1);
+          if (u >= 0 && l.cls.melee) for (let k2 = 0; k2 < 5; k2++) { const ya = base + (0.5 - (u - k2 * 0.05)) * 2.6; if (u - k2 * 0.05 > 0) fx.push(['disc', px + Math.sin(ya) * 1.35, 0.5, pz + Math.cos(ya) * 1.35, 0, 0.5 - k2 * 0.08, 1, 0.5 - k2 * 0.08, '#ffffff', 1]); }
+        } else {
+          const n = subs.length, k2 = subs.indexOf(l), oa = tm * 1.1 + (k2 / n) * 6.283, bob = Math.sin(tm * 2.6 + k2 * 1.7) * 0.1;
+          let ox = Math.sin(oa) * 1.25, oz = Math.cos(oa) * 1.25, yaw = oa + 1.571;
+          if (u >= 0) { const e2 = ease(u), reach = Math.min(2.4, l.cls.melee ? 1.9 : 0.5); ox = ox * (1 - e2) + Math.sin(fr.a) * reach * e2; oz = oz * (1 - e2) + Math.cos(fr.a) * reach * e2; yaw = l.cls.melee ? fr.a + (0.5 - u) * 5 : fr.a; }
+          model(l.cls.id, px + ox, 1.05 + bob, pz + oz, yaw, 0.85);
+          shadows.push(['disc', px + ox, 0.02, pz + oz, 0, 0.5, 1, 0.5, '#000000', 0]);
+        }
+      }
+      ch.push(...ws);
+    }
     fx.push(['disc', px, 0.04, pz, 0, 3.2, 1, 3.2, '#8dff7a', 1]);
     out.push(...ch); xray.push(...ch); shadows.push(['disc', px, 0.02, pz, 0, 1.2, 1, 1.2, '#000000', 0]);
     // Gegner

@@ -112,10 +112,10 @@ const P = {};
 P.quests = () => {
   const g = game.g, list = meta.currentQuests(g), done = Object.keys(game.state.quests.done).length;
   const giverName = (q) => (game.c.t.npcs.find((n) => (q.at ? n.id === q.at : n.char === q.giver)) || {}).name;
-  const offers = game.c.t.quests.filter((q) => q.giver && meta.questState(g, q) === 'available');
+  const offers = game.c.cfg.quests.npcTurnIn ? game.c.t.quests.filter((q) => q.giver && meta.questState(g, q) === 'available') : [];
   return [sec('Aktive Quests', list.length ? list.map(({ q, state, obj }) => row(`${q.giver ? `[${giverName(q)}] ` : ''}${q.name}`, `${obj.map((o) => `${fmt(o.cur)}/${fmt(o.need)}`).join(' · ')} — Belohnung: ${fmtReward(q.reward)}${q.unlock ? ' · schaltet frei: ' + q.unlock.map(fn).join(', ') : ''}`,
     game.questGoal(q) ? btn('Zum Ziel', () => walkTo(q)) : null,
-    q.giver ? (state === 'satisfied' ? h('span', { cls: 'cost' }, `bei ${giverName(q)} abgeben`) : null) : btn('Abschließen', () => reward('Quest', act('claimQuest', q.id)), state !== 'satisfied', 'pri'))) : h('p', {}, t('Alle verfügbaren Quests abgeschlossen.'))),
+    q.giver && game.c.cfg.quests.npcTurnIn ? (state === 'satisfied' ? h('span', { cls: 'cost' }, `bei ${giverName(q)} abgeben`) : null) : btn('Abschließen', () => reward('Quest', act('claimQuest', q.id)), state !== 'satisfied', 'pri'))) : h('p', {}, t('Alle verfügbaren Quests abgeschlossen.'))),
   offers.length ? sec('Neue Aufträge bei', offers.map((q) => row(giverName(q), q.name, game.questGoal(q) ? btn('Hinlaufen', () => walkTo(q)) : h('span', { cls: 'sub' }, 'in anderem Gebiet')))) : null,
   h('p', { cls: 'sub' }, `${done} / ${game.c.t.quests.length} Quests abgeschlossen`)];
 };
@@ -595,7 +595,7 @@ P.settings = () => {
   const s = game.state, g = game.g;
   const tog = (k, label) => row(label, '', btn(s.settings[k] ? 'An' : 'Aus', () => act('setSetting', k, !s.settings[k])));
   const gemTot = Object.entries(s.totals.gems || {}).sort((a, b) => b[1] - a[1]);
-  return [sec('Einstellungen', tog('autoBoss', 'Auto-Hunt greift Bosse an'), tog('autoReturn', 'Auto-Hunt: bei vollem Cargo heimkehren'), tog('dmgNumbers', 'Schadenszahlen'), tog('reducedFx', 'Reduzierte Effekte'), tog('colorblind', 'Farbblind-Modus (Labels statt Farbe)'),
+  return [sec('Einstellungen', row('Auto-Jagd: Ziel', s.settings.autoMode === 'near' ? 'Greift den nächsten Gegner im Gebiet an' : 'Jagt die Gegner der aktuellen Quest, sonst den nächsten', btn(s.settings.autoMode === 'near' ? 'Nächster Gegner' : 'Quest', () => act('setSetting', 'autoMode', s.settings.autoMode === 'near' ? 'quest' : 'near'))), tog('autoBoss', 'Auto-Jagd greift Bosse an'), tog('autoReturn', 'Auto-Jagd: bei voller Fracht heimkehren'), tog('dmgNumbers', 'Schadenszahlen'), tog('reducedFx', 'Reduzierte Effekte'), tog('colorblind', 'Farbblind-Modus (Labels statt Farbe)'),
     row('Schriftgröße', `${Math.round(s.settings.textScale * 100)}%`, btn('−', () => act('setSetting', 'textScale', Math.max(0.8, s.settings.textScale - 0.1))), btn('+', () => act('setSetting', 'textScale', Math.min(1.5, s.settings.textScale + 0.1))))),
   sec('App', row('Nach Updates suchen', 'Lädt die neueste signierte APK, Spielstand bleibt erhalten', btn('Prüfen', async () => { const r = await window.__checkUpdate(true); if (r.status === 'current') toast(`Aktuell (${r.current})`); else if (r.status === 'offline') toast('Keine Verbindung'); else if (r.status === 'none') toast('Es ist noch keine Version veröffentlicht.'); else if (r.status === 'dev') toast('Entwicklungsversion – Updates gibt es nur in der installierten App.'); else if (r.status === 'error') toast(r.error); }))),
   sec('Spielstand', row(`Profil ${s.profileId}`, `Content ${game.c.version} · Revision ${s.sync.rev}`, btn('Exportieren', () => net.exportSave()), btn('Importieren', () => net.importSave())),
