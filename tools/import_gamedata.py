@@ -71,6 +71,16 @@ for r in load('LevelUpRewardData_2'):
 CFA = {r['key']: r['value'] for r in load('ConfigData')}
 ECON = {'craftCost': int(CFA['WeaponGachaCost']), 'chestPrice': [int(CFA['ChestShop_ChestPrice_Wooden']), int(CFA['ChestShop_ChestPrice_Silver'])], 'homePortalCd': int(CFA['HomePortalCoolTimeSec']), 'blessSec': int(CFA['BLESSING_BUFF_DURATION']),
         'bless': [int(CFA['BLESSING_VAMPIRIC_RATE']), int(CFA['BLESSING_EXPANSION_RATE']), int(CFA['BLESSING_GROWTH_RATE'])]}
+# Hauptquestkette Kapitel 1: der NextId-Kette ab Quest 1 folgen, bis zum Wechsel ins zweite Kapitel. Nur Bedingung, Menge und Belohnung – keine Texte.
+QR = {r['id']: r for r in load('QuestData') if r.get('GroupId') == '1'}
+RI = {0: 'gold', 1: 'crystal', 2001: 'key_novice', 2002: 'key_expert', 2003: 'key_warrior', 301: 'weapon_scroll'}
+MAINQ = []; cur = '1'
+while cur in QR:
+    r = QR[cur]; rt = r.get('Reward_Type_1'); n = i(r.get('Reward_Value_1'))
+    rk = 'xp' if rt == 'Exp' else RI.get(i(r.get('Reward_Id_1')), '') if rt == 'StackableItem' else ''
+    MAINQ.append([int(cur), i(r['Condition_Type']), i(r.get('Condition_Param')), i(r['Condition_Value']), rk if n else '', n, 1 if r.get('Accumulate') == 'TRUE' else 0])
+    if r['Condition_Type'] == '6003': break
+    cur = r['NextId']
 J = lambda v: json.dumps(v, separators=(',', ':'))
 open(__file__.replace('tools/import_gamedata.py', 'src/core/content/econ_ref.js'), 'w').write(
     '// GENERIERT von tools/import_gamedata.py – nicht von Hand ändern.\n// Quelle: Datentabellen des Spiels, Version 27.2.0. Nur Zahlen, Schlüssel und Regeln.\n'
@@ -82,6 +92,7 @@ open(__file__.replace('tools/import_gamedata.py', 'src/core/content/econ_ref.js'
     '// KEYHOUSE = [[Stufe, offene Plätze, Kosten zur nächsten Stufe], ...]; KEYSLOT = [[Kapitel, Platz, Kosten], ...]\nexport const KEYHOUSE = ' + J(KEYHOUSE) + ';\nexport const KEYSLOT = ' + J(KEYSLOT) + ';\n'
     '// SUBSLOT = [[Level, Kosten, Quest-id], ...] für Waffenplatz 2-6\nexport const SUBSLOT = ' + J(SUBSLOT) + ';\n'
     '// WGOLD = [[Waffenstufe, Gold für den nächsten Schritt], ...] (Stützstufen); WSCROLL[stufe-1] = Schriftrollen für den nächsten Schritt\nexport const WGOLD = ' + J(WGOLD) + ';\nexport const WSCROLL = ' + J(WSCROLL) + ';\n'
+    '// MAINQ = [[id, Bedingungstyp, Parameter, Menge, Belohnung (xp oder Item), Belohnungsmenge, zählt seit jeher], ...] in Kettenreihenfolge\nexport const MAINQ = ' + J(MAINQ) + ';\n'
     '// LVREW[Level] = Belohnung beim Erreichen\nexport const LVREW = ' + J(LVREW) + ';\nexport const ECON = ' + J(ECON) + ';\n')
 open(__file__.replace('tools/import_gamedata.py', 'src/core/content/game_ref.js'), 'w').write(
     '// GENERIERT von tools/import_gamedata.py – nicht von Hand ändern.\n// Quelle: Datentabellen des Spiels, Version 27.2.0 (vom Nutzer bereitgestellte Spieldatei). Nur Zahlen, Schlüssel und Regeln.\n'

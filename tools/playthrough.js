@@ -45,8 +45,16 @@ const quests = () => {
   for (const { q, state } of currentQuests(g)) {
     if (state !== 'active') continue;
     const o = q.obj[0], t = questTarget(g, q);
-    if (o.cond && o.cond.building) { const cost = c.get('buildings', o.cond.building).cost; if (Object.entries(cost).every(([i, n]) => (s().inv[i] || 0) >= n)) { if (!game.try('build', o.cond.building).ok && s().world.area !== 'base') game.try('returnHome'); } }
-    else if (o.cond && o.cond.mainEquipped) spend();
+    if (o.cond && o.cond.building) { const cost = c.get('buildings', o.cond.building).cost; if (s().buildings[o.cond.building]) { game.try('craft', 1); game.try('upgradeBuilding', o.cond.building); } else if (Object.entries(cost).every(([i, n]) => (s().inv[i] || 0) >= n)) { if (!game.try('build', o.cond.building).ok && s().world.area !== 'base') game.try('returnHome'); } }
+    else if (o.cond && o.cond.mainEquipped) { const w0 = s().weapons.list[0]; if (w0 && !s().weapons.slots[0]) game.try('equipWeapon', w0.uid, 0); spend(); }
+    else if (o.cond && o.cond.weaponSlots) { if (!game.try('unlockWeaponSlot').ok && (s().cargo.stone || 0) >= 5) game.try('returnHome'); }
+    else if (o.cond && o.cond.equippedSubs) { const w2 = s().weapons.list.find((w) => !s().weapons.slots.includes(w.uid)); if (w2) game.try('equipWeapon', w2.uid, 1); else game.try('craft', 1); }
+    else if (o.cond && o.cond.keySlots) { for (let i = 0; i < 5; i++) game.try('unlockKeySlot', i); game.try('upgradeBuilding', 'chesthouse'); }
+    else if (o.cond && o.cond.unlock) { /* erledigt sich mit der Annahme */ }
+    else if (o.counter === 'craft') { if (!game.try('craft', 1).ok && (s().cargo.crystal || 0) >= 5) game.try('returnHome'); }
+    else if (o.counter === 'gacha:any') { for (const b of ['novice', 'expert', 'warrior']) if (game.try('openBox', b, 1).ok) break; }
+    else if (o.counter === 'weapon:merge') game.try('mergeAll');
+    else if (o.counter === 'weapon:level') { for (const w of s().weapons.list) if (game.try('weaponLevelUp', w.uid, 1).ok) break; }
     else if (o.cond && o.cond.upgrade) game.try('buyUpgrade', o.cond.upgrade, 1);
     else if (o.counter === 'heroLevel') game.try('heroLevelUp', s().heroes.active);
     else if (o.counter === 'heroStar') game.try('heroStarUp', s().heroes.active);

@@ -163,6 +163,9 @@ export function progress(g, cond, ctx = {}) {
   if (cond.upgrade !== undefined) return [s.upgrades[cond.upgrade] || 0, cond.gte];
   if (cond.towerBest !== undefined) return [s.modes.tower.best, cond.towerBest];
   if (cond.stage !== undefined) return [Object.keys(s.world.cleared).length, cond.stage];
+  if (cond.weaponSlots !== undefined) return [s.weapons.unlocked, cond.weaponSlots];
+  if (cond.playerLevel !== undefined) return [s.player.level, cond.playerLevel];
+  if (cond.keySlots !== undefined) return [s.keyhouse.slots.filter((x) => x.open).length, cond.keySlots];
   if (cond.mainEquipped !== undefined) return [s.weapons.slots[0] ? 1 : 0, 1];
   if (cond.equippedSubs !== undefined) return [s.weapons.slots.slice(1).filter(Boolean).length, cond.equippedSubs];
   if (cond.hasWeaponRarity !== undefined) return [s.weapons.list.some((w) => g.c.get('weapons', w.def).rarity >= cond.hasWeaponRarity) ? 1 : 0, 1];

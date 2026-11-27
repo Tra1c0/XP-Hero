@@ -13,7 +13,15 @@ function bot(game, clock, done, maxSec) {
     for (const { q, state } of currentQuests(g)) {
       if (state === 'satisfied') { game.cmd('claimQuest', q.id); return null; }
       const o = q.obj[0];
-      if (o.cond && o.cond.building) { game.try('build', o.cond.building); return { farm: true }; }
+      const st = game.state, stone = (st.inv.stone || 0) + (st.cargo.stone || 0);
+      if (o.cond && o.cond.building) { if (!game.try('build', o.cond.building).ok) { game.try('craft', 1); game.try('upgradeBuilding', o.cond.building); } return { farm: true }; }
+      if (o.cond && o.cond.upgrade) { game.try('buyUpgrade', o.cond.upgrade, 1); return { farm: true }; }
+      if (o.cond && o.cond.weaponSlots) { if (game.try('unlockWeaponSlot').ok) return { farm: true }; return stone >= 5 ? { base: true } : { node: 'node_rock' }; }
+      if (o.cond && o.cond.equippedSubs) { const w2 = st.weapons.list.find((w) => !st.weapons.slots.includes(w.uid)); if (w2) game.try('equipWeapon', w2.uid, 1); else game.try('craft', 1); return { farm: true }; }
+      if (o.cond && !o.cond.mainEquipped && !o.cond.cleared) return { farm: true };
+      if (o.counter === 'returnBase') return { base: true };
+      if (o.counter && o.counter.startsWith('collect:')) return { node: o.counter === 'collect:wood' ? 'node_tree' : 'node_rock' };
+      if (o.counter === 'gacha:any') { for (const b of ['novice', 'expert', 'warrior']) if (game.try('openBox', b, 1).ok) break; return { farm: true }; }
       if (o.cond && o.cond.mainEquipped) { const w = game.state.weapons.list[0]; if (w) game.cmd('equipWeapon', w.uid, 0); return { farm: true }; }
       if (o.cond && o.cond.cleared) return { boss: o.cond.cleared };
       if (o.counter.startsWith('upgrade:')) { game.try('buyUpgrade', o.counter.slice(8), 1); return { farm: true }; }
@@ -42,6 +50,7 @@ function bot(game, clock, done, maxSec) {
     if (t.npc) { const n = w.map.objects.find((o) => o.id === t.npc); if (n) { if (goto(n.x, n.y) < n.r) game.try('talkNpc', n.id); continue; } }
     const pick = (f) => w.enemies.filter((e) => e.alive && f(e)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
     if (t.kill) tgt = pick((e) => e.v.monster === t.kill);
+    else if (t.node) tgt = pick((e) => e.v.id === t.node);
     else if (t.boss) tgt = game.state.player.level >= 7 ? pick((e) => e.v.rank === 'boss') : pick((e) => e.v.rank === 'normal');
     else tgt = pick((e) => e.v.rank === 'normal');
     if (tgt) { if (goto(tgt.x, tgt.y) < 40) w.goTo(null); } else w.goTo(null);
@@ -52,7 +61,7 @@ function bot(game, clock, done, maxSec) {
 test('T01/T03 Tutorial bis erster Boss: Quests, Unlocks genau einmal, Loot, Respawn, Codex, Gate', () => {
   const { game, clock, s } = mk({ seed: 2024 });
   assert.equal(game.canEnter('a1_2'), false, 'Gate 1.2 anfangs verschlossen');
-  const sec = bot(game, clock, () => !!s().quests.done.q_a1_1_boss, 3600);
+  const sec = bot(game, clock, () => !!s().quests.done.mq_28, 3600);
   assert.ok(sec > 0, `Boss-Quest nicht innerhalb einer Spielstunde abgeschlossen (Level ${s().player.level}, aktive Quest ${Object.keys(s().quests.active)})`);
   console.log(`    Tutorial bis Rootling: ${Math.round(sec / 60)} Spielminuten, Level ${s().player.level}, Power ${s().upgrades.ab_power}`);
   for (const f of ['abilities', 'shop', 'weaponVault', 'craft']) assert.equal(s().counters[`unlock:${f}`], 1, `${f} genau einmal`);

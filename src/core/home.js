@@ -55,7 +55,7 @@ export const cargoFree = (g) => Math.max(0, g.stats.cargo - cargoUsed(g));
 // Nimmt so viel auf, wie Platz ist; gibt die tatsächlich aufgenommene Stückzahl zurück.
 export function cargoAdd(g, item, n) {
   const w = g.c.get('items', item).cargo || 1, take = Math.min(n, Math.floor(cargoFree(g) / w));
-  if (take > 0) g.state.cargo[item] = (g.state.cargo[item] || 0) + take;
+  if (take > 0) { g.state.cargo[item] = (g.state.cargo[item] || 0) + take; emit(g, `collect:${item}`, take); }
   return take;
 }
 export function deliver(g) {

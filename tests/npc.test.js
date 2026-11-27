@@ -33,7 +33,7 @@ test('Dialog: Szenen der Reihe nach, Freischaltung per Quest/Boss, gesehen-Statu
   assert.deepEqual(game.cmd('talkNpc', 'npc_kain').lines, l2, 'ohne neue Szene wiederholt sich die letzte');
   assert.equal(meta.npcStatus(g, kain), null);
   assert.equal(s().counters['talk:npc_kain'], 3);
-  s().quests.done.q_001 = 1;
+  s().quests.done.mq_2 = 1;
   assert.equal(meta.npcStatus(g, kain), 'offer', 'neue Szene nach Quest 1');
   const l3 = game.cmd('talkNpc', 'npc_kain').lines;
   assert.match(l3[0], /Lagerfeuer/);
@@ -63,7 +63,7 @@ test('Questgeber Taid: Annahme und Abgabe nur vor Ort, Kette in Referenzreihenfo
   assert.equal(game.cmd('talkNpc', 'npc_taid_2').claimed.length, 0);
   assert.equal(meta.questState(g, game.c.get('quests', 'nq_11001')), 'unavailable', 'Ebonhollow-Kette erst mit Gebiet');
   // Zielführung: Ziel der laufenden Quest liegt in der Welt
-  const goal = game.questGoal(game.c.get('quests', 'q_001'));
+  const goal = game.questGoal(game.c.get('quests', 'mq_2'));
   assert.ok(goal && goal.label === 'Mandragora');
 });
 

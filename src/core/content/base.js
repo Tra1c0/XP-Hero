@@ -7,7 +7,7 @@ import { WORLD, BUILDINGS as W1_BUILDINGS, BASE as W1_BASE, REF as W1, zoneOf as
 import { inPoly } from '../worldgrid.js';
 import { BESTIARY } from './bestiary_ref.js';
 import { ABILITY_REF, BLESS_REF } from './progression_ref.js';
-import { BUILD, SMITHY, SMITHY_RATES, SMITHY_ROLL, CHEST, CHESTSPAWN, KEYHOUSE, KEYSLOT, SUBSLOT, WGOLD, LVREW } from './econ_ref.js';
+import { BUILD, SMITHY, SMITHY_RATES, SMITHY_ROLL, CHEST, CHESTSPAWN, KEYHOUSE, KEYSLOT, SUBSLOT, WGOLD, LVREW, MAINQ } from './econ_ref.js';
 import { WEAPON_REF } from './weapon_ref.js';
 import { WEAPON_WIKI, TYPE_BONUS, UPGRADE_WIKI } from './wiki_ref.js';
 import { ENEMY as G_ENEMY, LEVEL_XP, KILL_XP_LIMIT, PLAYER_LV, WEAPON as G_WEAPON, CONFIG as G_CONFIG } from './game_ref.js';
@@ -89,7 +89,7 @@ export function buildBaseContent(opt = {}) {
     I('bluestone', 'BlueStone'), I('rune_dust', 'Rune Dust'), I('weapon_scroll', 'Weapon Scroll'),
     I('wood', 'Holz', 'material', { cargo: 1 }), I('stone', 'Stein', 'material', { cargo: 1, s: 'E' }),
     I('evo_coin', 'Evolution Coin'), I('attr_point', 'Attribute Point'), I('synergy_point', 'Synergy Point'),
-    I('key_warrior', 'Warrior Chest Key', 'key'), I('key_stier', 'S-Tier Chest Key', 'key'), I('key_special_hero', 'Special Hero Chest Key', 'key'),
+    I('key_novice', 'Novizen-Schlüssel', 'key'), I('key_expert', 'Experten-Schlüssel', 'key'), I('key_warrior', 'Warrior Chest Key', 'key'), I('key_stier', 'S-Tier Chest Key', 'key'), I('key_special_hero', 'Special Hero Chest Key', 'key'),
     I('hero_select_ticket', 'Hero Select Ticket', 'ticket'),
     I('ticket_tower', 'Tower-Ticket', 'ticket'), I('ticket_invasion', 'Invasion-Ticket', 'ticket'), I('ticket_raid', 'Raid-Ticket', 'ticket'),
     I('ticket_tomb', 'Tomb-Ticket', 'ticket'), I('ticket_pvp', 'PvP-Ticket', 'ticket', { s: 'B' }),
@@ -217,7 +217,7 @@ export function buildBaseContent(opt = {}) {
     for (let k = 0; k < ng; k++) giftSpawners.push({ id: `gs_${id}_${k}`, area: id, x: 220 + k * 560, y: 900 + k * 420, respawn: 900, s: 'E' });
   });
   // Kapitel-1-Rohstoffe (E) und die 17 Gift-Chest-Spawner der Referenz (Position + Respawn D)
-  [['tree', 'a1_1', [-10, -26]], ['tree', 'a1_1', [27, -24]], ['tree', 'a1_2', [-40, 24]], ['rock', 'a1_3', [30, 26]], ['rock', 'a1_4', [70, -24]], ['rock', 'a1_5', [80, 70]], ['rock', 'a1_6', [-50, 82]]]
+  [['tree', 'a1_1', [-10, -26]], ['tree', 'a1_1', [27, -24]], ['rock', 'a1_1', [20, -30]], ['tree', 'a1_2', [-40, 24]], ['rock', 'a1_3', [30, 26]], ['rock', 'a1_4', [70, -24]], ['rock', 'a1_5', [80, 70]], ['rock', 'a1_6', [-50, 82]]]
     .forEach(([t, area, pos], k) => resGroups.push({ id: `rg_${area}_${t}_${k}`, area, v: `node_${t}`, count: 4, respawn: t === 'tree' ? 60 : 90, pos, r: 2.5 }));
   W1.gifts.forEach(([nm, X, Z, resp], k) => giftSpawners.push({ id: `gs_ch1_${k}`, ref: nm, area: zoneOf(X, Z) || 'a1_1', pos: [X, Z], respawn: resp, s: 'D' }));
   V('node_tree', 'Baum', 1, 'node', { hp: 20, drops: [{ item: 'wood', n: 1, count: 2, chance: 1 }] });
@@ -446,7 +446,9 @@ export function buildBaseContent(opt = {}) {
   // ------------------------------------------------------------------ Gacha
   const wp = (series, rarity, w) => ({ w, weaponPool: { series, rarity } });
   const rate = [
-    { id: 'rg_warrior', rows: [wp('n', 0, 60), wp('n', 1, 28), wp('n', 2, 9), wp('n', 3, 2.5), wp('n', 4, 0.5)], s: 'E' },
+    { id: 'rg_novice', rows: [wp('n', 0, 40), wp('n', 1, 20), { w: 30, item: 'weapon_scroll', min: 2, max: 10 }, { w: 10, item: 'weapon_scroll', min: 11, max: 20 }], s: 'D' },
+    { id: 'rg_expert', rows: [wp('n', 0, 30), wp('n', 1, 15), wp('n', 2, 10), wp('n', 3, 5), { w: 30, item: 'weapon_scroll', min: 2, max: 10 }, { w: 10, item: 'weapon_scroll', min: 11, max: 20 }], s: 'D' },
+    { id: 'rg_warrior', rows: [wp('n', 0, 40), wp('n', 1, 26), wp('n', 2, 20), wp('n', 3, 10), wp('n', 4, 4)], s: 'D' },
     { id: 'rg_stier', rows: [wp('s', 3, 90), wp('s', 4, 9), wp('s', 5, 1)], s: 'E' },
     { id: 'rg_hero', rows: [{ w: 70, heroPieces: { rarity: 'rare', n: 2 } }, { w: 22, heroPieces: { rarity: 'epic', n: 2 } }, { w: 6.5, heroPieces: { rarity: 'legendary', n: 2 } },
       { w: 1.5, heroPieces: { rarity: 'mythic', n: 2 } }], s: 'E' },
@@ -458,6 +460,8 @@ export function buildBaseContent(opt = {}) {
   ];
   T('rateGroups', 'R', 'Rate-Gruppe 4001 = 65/30/4/1 (D); übrige Gewichte eigen.', rate);
   const boxes = [
+    { id: 'novice', name: 'Novizen-Truhe', costs: [{ key_novice: 1 }, { gems: 30 }], multi: [1, 10], per: 1, rate: 'rg_novice', unlock: { unlock: 'shop' }, s: 'R', note: 'Inhalt D; Gem-Preis eigen.' },
+    { id: 'expert', name: 'Experten-Truhe', costs: [{ key_expert: 1 }, { gems: 60 }], multi: [1, 10], per: 1, rate: 'rg_expert', unlock: { unlock: 'shop' }, s: 'R', note: 'Inhalt D; Gem-Preis eigen.' },
     { id: 'warrior', name: 'Warrior Chest', costs: [{ key_warrior: 1 }, { gems: 100 }], multi: [1, 10], per: 1, rate: 'rg_warrior', unlock: { unlock: 'shop' } },
     { id: 'stier', name: 'S-Tier Chest', costs: [{ key_stier: 1 }, { gems: 300 }], multi: [1, 10], per: 1, rate: 'rg_stier', unlock: { unlock: 'sTierChest' } },
     { id: 'hero', name: 'Hero Chest (Featured)', costs: [{ gems: 150 }], multi: [1, 10], per: 1, rate: 'rg_hero', pity: { n: 50, rate: 'rg_hero_pity' }, unlock: { unlock: 'heroShop' }, s: '?' },
@@ -485,7 +489,7 @@ export function buildBaseContent(opt = {}) {
   const stageArea = (n) => areas[n - 1];
   const KAIN = [SC('k1', null, 'Du kommst von jenseits des Meeres? Dann bist du unsere letzte Hoffnung.', 'Sieben Tage hat der Angriff gedauert. Übrig ist nur diese Siedlung.'),
     SC('k2', null, 'Die Mandragoras wühlen die Felder um. Fang mit ihnen an.'),
-    SC('k3', { questDone: 'q_001' }, 'Gut gemacht. Am Lagerfeuer in der Siedlung kannst du deine Kräfte ausbauen.'),
+    SC('k3', { questDone: 'mq_2' }, 'Gut gemacht. Am Lagerfeuer in der Siedlung kannst du deine Kräfte ausbauen.'),
     SC('k4', { cleared: 'a1_1' }, 'Rootling ist gefallen! Der Weg nach Westen in die Wüste ist frei.', 'Halte dort Ausschau nach Taid. Er kennt die Gegend.'),
     SC('k5', { cleared: 'a1_2' }, 'Die Spinnenkönigin ist besiegt. Hinter der Wüste liegt Ebonhollow – dort scheint keine Sonne.'),
     SC('k6', { cleared: 'a1_3' }, 'Der Gargoyle wachte über das Tor zum Eis. Zieh dich warm an.'),
@@ -527,17 +531,53 @@ export function buildBaseContent(opt = {}) {
   const Q = (id, name, obj, reward, x = {}) => { quests.push({ id, name, prereq: quests.length ? [quests[quests.length - 1].id] : [], obj: [obj], reward, ...x }); };
   const kill = (m, n) => ({ counter: `kill:${m}`, n, from: 'accept' });
   const G = (n) => [{ item: 'gold', n }];
-  Q('q_001', 'Besiege 5 Mandragora', kill('mandragora', 5), G(10));
-  Q('q_002', 'Baue das Lagerfeuer', { cond: { building: 'bonfire' } }, G(20), { unlock: ['abilities'], unlockOn: 'clear', s: 'D' });
-  Q('q_003', 'Verbessere Kraft 2x', { counter: 'upgrade:ab_power', n: 2, from: 'life' }, [{ item: 'key_warrior', n: 1 }, { item: 'gold', n: 30 }]);
-  Q('q_004', 'Öffne eine Waffentruhe', { counter: 'gacha:warrior', n: 1, from: 'life' }, G(30), { unlock: ['shop'], unlockOn: 'receive', s: 'D' });
-  Q('q_005', 'Rüste eine Waffe aus', { cond: { mainEquipped: true } }, G(30), { unlock: ['weaponVault'], unlockOn: 'receive', s: 'D' });
-  Q('q_006', 'Besiege 8 Slimes', kill('slime', 8), G(40));
-  Q('q_007', 'Baue die Schmiede', { cond: { building: 'smithy' } }, G(60), { unlock: ['craft'], unlockOn: 'clear', s: 'D' });
-  Q('q_008', 'Schmiede 3 Waffen', { counter: 'craft', n: 3, from: 'life' }, G(60));
-  Q('q_009', 'Besiege 6 Mushrooms', kill('mushroom', 6), G(60));
-  Q('q_010', 'Sprich mit Kain', { counter: 'talk:npc_kain', n: 1, from: 'life' }, G(40));
-  Q('q_011', 'Besiege 6 Spinnen', kill('spider', 6), G(80));
+  // Hauptquestkette Kapitel 1 aus den Spieldaten (D): Reihenfolge, Bedingung, Menge, Belohnung (meist Erfahrung) und Freischaltungen. Questnamen sind eigene Texte.
+  const ABID = { 1: 'ab_power', 2: 'ab_cargo', 3: 'ab_move', 4: 'ab_hp', 5: 'ab_crit', 8: 'ab_atkspeed', 10: 'ab_regen', 11: 'ab_multi', 12: 'ab_triple' }, ABN = { 1: 'Kraft', 2: 'Fracht', 3: 'Bewegungstempo', 4: 'HP', 5: 'Kritische Chance', 8: 'Angriffstempo', 10: 'HP-Regeneration', 11: 'Doppelangriff', 12: 'Dreifachangriff' };
+  const BID = { 1: ['bonfire', 'das Lagerfeuer'], 2: ['chesthouse', 'das Schlüsselhaus'], 3: ['smithy', 'die Schmiede'], 4: ['lumbermill', 'das Sägewerk'], 5: ['costumeshop', 'den Kostümladen'], 6: ['portal', 'das Portal'], 7: ['quarry', 'den Steinbruch'] };
+  const byRef = new Map(variants.filter((v) => v.ref).map((v) => [String(v.ref.id), v]));
+  const cnt = (counter, n, acc) => ({ counter, n, from: acc ? 'life' : 'accept' });
+  const mainObj = (type, param, n, acc) => {
+    const v = byRef.get(String(param));
+    switch (type) {
+      case 2001: case 14: return ['Rüste eine Waffe aus', { cond: { mainEquipped: true } }];
+      case 8: return v ? [`Besiege ${n > 1 ? n + ' ' : ''}${v.name}`, cnt(`kill:${v.monster}`, n, acc)] : null;
+      case 3: return [`Besiege ${n} Gegner`, cnt('kill:any', n, acc)];
+      case 13: return [n > 1 ? `Besiege ${n} Bosse oder seltene Gegner` : 'Besiege einen Boss oder seltenen Gegner', cnt('kill:bossAny', n, acc)];
+      case 7: return BID[param] ? [`Baue ${BID[param][1]}`, { cond: { building: BID[param][0] } }] : param === 8 ? ['Schalte die Spezial-Upgrades frei', { cond: { unlock: 'special' } }] : null;
+      case 26: return ABID[param] ? [`Verbessere ${ABN[param]} auf Stufe ${n}`, { cond: { upgrade: ABID[param], gte: n } }] : null;
+      case 18: return ['Kehre zur Basis zurück', cnt('returnBase', 1, 0)];
+      case 21: return [n > 1 ? `Schmiede ${n} Waffen` : 'Schmiede eine Waffe', cnt('craft', n, acc)];
+      case 1000: return [`Verbessere die Schmiede auf Stufe ${n}`, { cond: { building: 'smithy', lv: n } }];
+      case 4200: return ['Öffne eine Waffentruhe im Shop', cnt('gacha:any', n, acc)];
+      case 4201: return ['Öffne eine Novizen-Truhe', cnt('gacha:novice', n, acc)];
+      case 4202: return ['Öffne eine Experten-Truhe', cnt('gacha:expert', n, acc)];
+      case 4203: return ['Öffne eine Krieger-Truhe', cnt('gacha:warrior', n, acc)];
+      case 4204: return ['Beschwöre einen Helden', cnt('gacha:hero', n, 1)];
+      case 23: return ['Rüste eine Nebenwaffe aus', { cond: { equippedSubs: 1 } }];
+      case 19: return [`Schalte Waffenplatz ${n} frei`, { cond: { weaponSlots: n } }];
+      case 9: return param === 0 ? [`Sammle ${n} Gold von Gegnern`, cnt('coins', n, acc)] : [`Sammle ${n} ${param === 10 ? 'Holz' : 'Stein'}`, cnt(`collect:${param === 10 ? 'wood' : 'stone'}`, n, acc)];
+      case 24: return [`Erreiche Level ${n}`, { cond: { playerLevel: n } }];
+      case 10: return ['Finde eine Feldtruhe und bring sie ins Schlüsselhaus', cnt('chest:pickup', n, acc)];
+      case 15: return ['Öffne eine Truhe im Schlüsselhaus', cnt('chest:claim', n, acc)];
+      case 31: return ['Verschmelze Waffen', cnt('weapon:merge', n, acc)];
+      case 3001: return ['Finde und öffne eine Geschenkkiste', cnt('gift:open', n, acc)];
+      case 28: return ['Verbessere eine Waffe', cnt('weapon:level', n, acc)];
+      case 4000: return ['Kaufe ein Spezial-Upgrade', cnt('upgrade:special', n, acc)];
+      case 22: return [`Schalte ${n} Truhenplätze frei`, { cond: { keySlots: n } }];
+      case 4002: return [n > 1 ? `Verbessere ${n}-mal eine Fähigkeit` : 'Verbessere eine Fähigkeit', cnt('upgrade:ability', n, acc)];
+      case 6003: return ['Besiege den letzten Boss des Kapitels', { cond: { cleared: 'a1_6' } }];
+      default: return null;
+    }
+  };
+  const UNL = { 3: [['abilities'], 'clear'], 18: [['weaponVault'], 'receive'], 9: [['craft'], 'clear'], 17: [['shop'], 'receive'], 32: [['codex'], 'clear'], 36: [['missions'], 'clear'], 24: [['slot2'], 'receive'], 224: [['tower'], 'clear'],
+    217: [['heroShop'], 'receive'], 218: [['heroes'], 'receive'], 146: [['sTierChest'], 'clear'], 168: [['heroEvolution', 'heroCollection'], 'clear'], 69: [['special'], 'receive'] };
+  const pendUnl = [];
+  for (const [qid, type, param, n, rk, rn, acc] of MAINQ) {
+    const o = mainObj(type, param, n, acc), u = UNL[qid];
+    if (!o) { if (u) pendUnl.push(u); continue; } // nicht abbildbare Schritte entfallen; ihre Freischaltung wandert zur nächsten Quest
+    const us = [...(u ? [u] : []), ...pendUnl.splice(0)];
+    Q(`mq_${qid}`, o[0], o[1], rn ? [rk === 'xp' ? { xp: rn } : { item: rk, n: rn }] : [], { s: 'D', ...(qid === 1 ? { grant: [{ weapon: 'w_sword_n_0' }] } : {}), ...(us.length ? { unlock: us.flatMap((x) => x[0]), unlockOn: us.every((x) => x[1] === 'clear') ? 'clear' : 'receive' } : {}) });
+  }
   const feat = {
     2: [['Besiege 15 Kakteen', kill('cactus', 15), { unlock: ['codex'], unlockOn: 'clear', s: 'D' }],
       ['Baue das Schlüsselhaus', { cond: { building: 'chesthouse' } }, {}],
@@ -553,10 +593,11 @@ export function buildBaseContent(opt = {}) {
     4: [['Baue das Portal', { cond: { building: 'portal' } }, { unlock: ['portal'], unlockOn: 'clear', s: 'D' }],
       ['Stelle deine Invasion-Verteidigung auf', { counter: 'invasion:defenseSet', n: 1, from: 'life' }, { unlock: ['invasion', 'pvp'], unlockOn: 'receive', s: 'D' }],
       ['Nutze ein Extra-Upgrade', { counter: 'upgrade:extra', n: 1, from: 'life' }, { unlock: ['extra'], unlockOn: 'receive', grant: [{ item: 'orb_ice', n: 6 }], s: 'E' }]],
-    7: [['Wirke ein Soul-Upgrade', { counter: 'upgrade:soul', n: 1, from: 'life' }, { unlock: ['soul'], unlockOn: 'receive', grant: [{ item: 'orb_hell', n: 6 }], s: 'D' }],
+    7: [['Nutze ein Extra-Upgrade', { counter: 'upgrade:extra', n: 1, from: 'life' }, { unlock: ['extra'], unlockOn: 'receive', grant: [{ item: 'orb_ice', n: 6 }], s: 'R' }], ['Wirke ein Soul-Upgrade', { counter: 'upgrade:soul', n: 1, from: 'life' }, { unlock: ['soul'], unlockOn: 'receive', grant: [{ item: 'orb_hell', n: 6 }], s: 'D' }],
       ['Rolle einen Trait', { counter: 'traitRoll', n: 1, from: 'life' }, { unlock: ['traits'], unlockOn: 'receive', grant: [{ item: 'attr_point', n: 30 }], s: 'D' }]],
   };
   for (const a of areas) {
+    if (a.chapter === 1) continue; // Kapitel 1 kommt vollständig aus den Spieldaten
     const s = a.stage, ms = variants.filter((v) => v.rank === 'normal' && groups.some((g) => g.area === a.id && g.v === v.id));
     for (const [nm, obj, x] of feat[s] || []) { const { id, reward, ...rest } = x; Q(id || `q_${a.id}_f${quests.length}`, nm, obj, reward || G(50 * s * s), rest); }
     if (s > 1) { Q(`q_${a.id}_k1`, `Besiege 10 ${ms[0].name}`, kill(ms[0].id, 10), G(60 * s * s)); const m2 = ms[Math.min(2, ms.length - 1)]; Q(`q_${a.id}_k2`, `Besiege 10 ${m2.name}`, kill(m2.id, 10), G(80 * s * s)); }

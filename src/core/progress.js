@@ -9,7 +9,6 @@ export function unlock(g, feature) {
   const s = g.state;
   if (s.unlocks[feature]) return false;
   s.unlocks[feature] = g.now();
-  if (feature === 'slot2') s.weapons.unlocked = Math.max(s.weapons.unlocked, 2);
   emit(g, 'unlock:' + feature);
   if (g.events) g.events.push({ type: 'unlock', feature });
   return true;

@@ -89,6 +89,19 @@ export class Game {
           else if (t && t.boss) bosses.push(t.boss);
           else if (t && t.building) { const cost = g.c.get('buildings', t.building).cost || {}; if ((cost.wood || 0) > econ.bal(g, 'wood') + (g.state.cargo.wood || 0)) monsters.push('node_tree'); if ((cost.stone || 0) > econ.bal(g, 'stone') + (g.state.cargo.stone || 0)) monsters.push('node_rock'); } // fehlendes Baumaterial sammeln
         }
+        // Quests ohne festes Ziel (Level erreichen, beliebige Gegner, Gold sammeln): im stärksten offenen Gebiet jagen, dessen Gegner zum eigenen Level passen
+        if (!monsters.length && !bosses.length) {
+          const open = meta.currentQuests(g).some(({ q, state }) => { const o = q.obj[0]; return state === 'active' && ((o.cond && o.cond.playerLevel) || o.counter === 'kill:any' || o.counter === 'coins'); });
+          if (open) {
+            const L = g.state.player.level;
+            for (const a of [...g.c.t.areas].reverse()) {
+              if (a.chapter !== 1 || !(a.prev === 'base' || g.state.world.cleared[a.prev])) continue;
+              const ms = new Set();
+              for (const sg of g.c.t.spawnGroups) if (sg.area === a.id) { const v = g.c.get('variants', sg.v); if (v.rank === 'normal' && v.level <= L + 2 && v.xp > 1) ms.add(v.monster); }
+              if (ms.size) { monsters.push(...ms); break; }
+            }
+          }
+        }
         return monsters.length || bosses.length ? { monsters, bosses } : null;
       },
       interact: (o, world) => {

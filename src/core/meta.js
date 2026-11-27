@@ -190,7 +190,10 @@ export function talkNpc(g, npcId) {
 export function questTarget(g, q) {
   const st = questState(g, q), o = q.obj[0];
   if (q.giver && g.c.cfg.quests.npcTurnIn && (st === 'satisfied' || st === 'available')) return { npc: q.at, char: q.giver };
-  if (o.cond) { if (o.cond.building) return { building: o.cond.building }; if (o.cond.cleared) return { boss: o.cond.cleared }; return null; }
+  if (o.cond) { if (o.cond.building) return { building: o.cond.building }; if (o.cond.cleared) return { boss: o.cond.cleared };
+    if (o.cond.weaponSlots) { const r = g.c.cfg.weaponSlots.find((x) => x.slot === o.cond.weaponSlots), need = (r && r.cost && r.cost.stone) || 0; return need > (g.state.inv.stone || 0) + (g.state.cargo.stone || 0) ? { monster: 'node_rock' } : { area: 'base' }; }
+    return null; }
+  if (o.counter.startsWith('collect:')) return { monster: o.counter === 'collect:wood' ? 'node_tree' : 'node_rock' };
   if (o.counter.startsWith('talk:char:')) return { char: o.counter.slice(10) };
   if (o.counter.startsWith('talk:')) return { npc: o.counter.slice(5) };
   if (o.counter === 'kill:any' || o.counter === 'coins') return { monster: '*' };

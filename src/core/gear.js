@@ -94,7 +94,7 @@ export function mergeAll(g) {
 export function nextWeaponSlot(g) { return g.c.cfg.weaponSlots.find((r) => r.slot === g.state.weapons.unlocked + 1) || null; }
 export function unlockWeaponSlot(g) {
   const r = nextWeaponSlot(g) || fail('max_level', 'Alle Slots frei');
-  if (r.quest) fail('locked', 'Wird per Quest freigeschaltet');
+  if (r.quest && !g.state.unlocks.slot2) fail('locked', 'Wird per Quest freigeschaltet');
   if (g.state.player.level < r.level) fail('locked', `Benötigt Level ${r.level}`);
   pay(g, r.cost, 'weapon:slot', String(r.slot));
   g.state.weapons.unlocked = r.slot;

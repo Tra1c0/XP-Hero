@@ -217,7 +217,7 @@ P.weapons = () => {
   const main = ws.slots[0] && ws.list.find((x) => x.uid === ws.slots[0]), mainDmg = main ? prog.weaponDmg(g, main) : 0;
   const slot = (i) => {
     const w = ws.slots[i] && ws.list.find((x) => x.uid === ws.slots[i]), locked = i >= ws.unlocked, req = c.cfg.weaponSlots.find((r) => r.slot === i + 1) || {};
-    return h('button', { cls: 'slot6' + (i === 0 ? ' main' : ''), style: w ? `background:${rarCol(w)}` : null, on: () => (w ? weaponSheet(w) : locked ? toast(req.quest ? 'Wird per Quest freigeschaltet.' : `Slot ${i + 1}: ab Level ${req.level}`) : toast('Wähle unten eine Waffe.')) },
+    return h('button', { cls: 'slot6' + (i === 0 ? ' main' : ''), style: w ? `background:${rarCol(w)}` : null, on: () => (w ? weaponSheet(w) : locked ? (i === ws.unlocked && s.player.level >= (req.level || 0) && (!req.quest || has('slot2')) ? confirmBig(req.cost, () => act('unlockWeaponSlot')) : toast(req.quest && !has('slot2') ? 'Wird per Quest freigeschaltet.' : `Platz ${i + 1}: ab Level ${req.level}`)) : toast('Wähle unten eine Waffe.')) },
       i === 0 ? h('small', {}, 'MAIN') : null, w ? [wIcon(w, 40), h('span', { cls: 'lvt ot' }, `Lv.${w.level}`)] : locked ? [icon('lock', null, 26), req.level ? h('span', { cls: 'cnt ot', style: 'position:absolute;bottom:0;font-size:.6rem' }, `Lv${req.level}`) : null] : h('span', { cls: 'plus' }, '+'));
   };
   const list = [...ws.list].sort((a, b) => c.get('weapons', b.def).rarity - c.get('weapons', a.def).rarity || b.level - a.level);

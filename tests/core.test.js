@@ -158,11 +158,11 @@ test('T08 Gacha: Kosten atomar, Pity, Meilensteine, deterministische Seeds, Rate
   assert.equal(code(() => a.game.cmd('openBox', 'warrior', 3)), 'bad_amount');
   const r1 = a.game.cmd('openBox', 'warrior', 10), r2 = b.game.cmd('openBox', 'warrior', 10);
   assert.deepEqual(r1, r2, 'gleicher Seed -> gleiche Ergebnisse');
-  assert.equal(r1.length, 10); assert.equal(a.s().weapons.list.length, 10);
+  assert.equal(r1.length, 10); assert.equal(a.s().weapons.list.length, 11, 'zehn gezogene plus Startschwert');
   assert.equal(a.s().inv.gems, 500000 - 1000);
   const poor = mk(); poor.unlock('shop'); poor.give('gems', 950);
   assert.equal(code(() => poor.game.cmd('openBox', 'warrior', 10)), 'insufficient');
-  assert.equal(poor.s().inv.gems, 950); assert.equal(poor.s().weapons.list.length, 0);
+  assert.equal(poor.s().inv.gems, 950); assert.equal(poor.s().weapons.list.length, 1);
   // Special Hero Chest: Meilensteine 70/150/300, danach 340/380/420 ...
   const box = pack.tables.gachaBoxes.find((x) => x.id === 'special_hero');
   assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((k) => gear.milestoneAt(box, k)), [70, 150, 300, 340, 380, 420, 460]);
@@ -442,7 +442,7 @@ test('Waffen-Fertigkeit: Namen und Faktoren aus den Referenzdaten, erst ab Epic,
   assert.equal(W('w_dagger_n_0').name, 'Crude Dagger'); assert.equal(W('w_dagger_n_2').wskill, null, 'Normal bis Rare ohne Fertigkeit');
   assert.deepEqual(W('w_dagger_n_3').wskill, { name: 'Spinner', mult: 1.7, cd: 7.7, rangeM: 2.5, bullets: 1 }); assert.equal(W('w_staff_n_7').wskill.mult, 4.6); assert.equal(W('w_dagger_n_0').aps, 2.7);
   assert.equal(W('w_sword_s_4').wskill, null, 'S-Reihe behält ihre eigene Fertigkeit');
-  unlock('weaponVault'); game.cmd('grantExternal', 't', [{ weapon: 'w_sword_n_3' }]); game.cmd('equipWeapon', s().weapons.list[0].uid, 0);
+  unlock('weaponVault'); game.cmd('grantExternal', 't', [{ weapon: 'w_sword_n_3' }]); game.cmd('equipWeapon', s().weapons.list.at(-1).uid, 0);
   const w = game.world, e = w.enemies.find((x) => x.alive && x.v.rank === 'normal');
   Object.assign(e, { hp: 1e9, maxHp: 1e9 }); w.p.x = e.x - 30; w.p.y = e.y; w.p.hp = 1e9; game.g.stats.hp = 1e9;
   let n = 0, last = -1;
