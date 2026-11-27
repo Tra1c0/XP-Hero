@@ -221,3 +221,7 @@ input { background:var(--cream); color:var(--ink); border:3px solid var(--ink); 
 /* Sprechblase */
 .speech { position:fixed; left:14px; right:14px; top:36%; z-index:6; background:var(--cream); color:var(--woodDD); border:3px solid var(--ink); border-radius:10px; padding:8px 12px 10px; font-weight:800; font-size:.92rem; min-height:54px; box-shadow:0 4px 0 #0005; }
 .speech b { display:block; font-size:.7rem; color:#a4502a; text-transform:uppercase; } .speech::after { content:""; position:absolute; left:50%; bottom:-12px; width:18px; height:12px; transform:translateX(-50%); background:var(--ink); clip-path:polygon(0 0,100% 0,50% 100%); }
+
+/* Stick-Anzeige: dünner Ring in Daumengröße mit Knopf, durchsichtig, fängt keine Eingaben ab */
+#joy { position:absolute; left:0; top:0; width:92px; height:92px; border:2px solid #fff9; border-radius:50%; background:#fff1; pointer-events:none; z-index:1; }
+#joy[hidden] { display:none; } #joy i { position:absolute; left:50%; top:50%; width:36px; height:36px; margin:-18px 0 0 -18px; border-radius:50%; background:#fff6; border:2px solid #fffb; }

@@ -6,7 +6,7 @@ import { FLOOR, WALL, WATER as K_WATER, LAVA, walkIdx, findPath } from '../core/
 import { npcStatus, currentQuests } from '../core/meta.js';
 import { enemyParts, enemyTop } from './enemy3d.js';
 
-const VIEW_W = 21, TILT = (52 * Math.PI) / 180; // sichtbare Breite in Metern (Hochformat), Neigung
+const VIEW_W = 11.5, TILT = (45 * Math.PI) / 180; // an der Vorlage vermessen: Figur ca. 1/13 der Bildbreite, Kreise auf dem Boden ca. 0,7-fach gestaucht; // sichtbare Breite in Metern (Hochformat), Neigung
 const INST = 11; // pos3, rot, scl3, rgba(em)
 const VS_I = `#version 300 es
 layout(location=0) in vec3 p; layout(location=1) in vec3 n; layout(location=2) in vec3 ip; layout(location=3) in float ir; layout(location=4) in vec3 is; layout(location=5) in vec4 ic;
@@ -316,7 +316,9 @@ export class Renderer3D {
     // Kamera folgt dem Spieler (gedämpft), sichtbarer Ausschnitt in Metern
     const tx = B.minX + w.p.x / ppm, tz = w.p.y / ppm - B.maxZ;
     if (!this.cam || this.cam.map !== map) this.cam = { x: tx, z: tz, map };
-    this.cam.x += (tx - this.cam.x) * 0.2; this.cam.z += (tz - this.cam.z) * 0.2;
+    // Nachführen unabhängig von der Bildrate (bei wenigen Bildern pro Sekunde hing die Figur sonst sichtbar aus der Mitte)
+    const nowC = performance.now(), kc = 1 - Math.exp(-Math.min(0.25, (nowC - (this.camT || nowC)) / 1000) * 14); this.camT = nowC;
+    this.cam.x += (tx - this.cam.x) * kc; this.cam.z += (tz - this.cam.z) * kc;
     const aspect = this.h / this.w, hw = VIEW_W / 2, hh = hw * aspect, D = 60;
     const eye = [this.cam.x, Math.sin(TILT) * D, this.cam.z + Math.cos(TILT) * D], tgt = [this.cam.x, 0, this.cam.z];
     const vp = mul(ortho(-hw, hw, -hh, hh, 1, 140), lookAt(eye, tgt));
