@@ -627,8 +627,8 @@ P.settings = () => {
 const TITLES = { quests: 'Quests', hero: 'Upgrades', weapons: 'Ausrüstung', base: 'Basis', shop: 'Shop', heroes: 'Helden', traits: 'Traits', runes: 'Runen', modes: 'Herausforderungen', events: 'Events', map: 'Karte', settings: 'Mehr',
   inv: 'Inventar', smithy: 'Schmiede', menu: 'Menü', fusion: 'Waffen verbessern' };
 const BAR = [['hero', 'up', ['abilities']], ['weapons', 'sword', ['weaponVault']], ['craft', 'anvil', ['craft']], ['modes', 'tower', ['tower', 'raid', 'tomb', 'pvp', 'invasion']], ['shop', 'shop', ['shop']]];
-export function open(id) { if (!cur) { try { history.pushState({ panel: 1 }, ''); } catch { /* Verlauf nicht verfügbar */ } } cur = id; render(); }
-export function close() { cur = null; $('panel').hidden = true; drawNav(); }
+export function open(id) { drawNav.force = true; if (!cur) { try { history.pushState({ panel: 1 }, ''); } catch { /* Verlauf nicht verfügbar */ } } cur = id; render(); }
+export function close() { drawNav.force = true; cur = null; $('panel').hidden = true; drawNav(); }
 export function render() {
   if (!cur) return;
   const body = $('pbody'), y = body.scrollTop;
@@ -637,11 +637,20 @@ export function render() {
   $('panel').hidden = false; body.scrollTop = y;
   drawNav();
 }
+// Solange ein Finger auf dem Bildschirm liegt, werden Leiste und Fenster nicht neu aufgebaut: Sonst verschwindet der Knopf unter dem Finger
+// und das Tippen (oder Gedrückthalten) geht verloren. Der Neuaufbau wird beim nächsten Takt nachgeholt.
+let fingerDown = false, fingerT = 0;
+if (typeof addEventListener === 'function') {
+  addEventListener('pointerdown', () => { fingerDown = true; fingerT = Date.now(); }, true);
+  for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, () => { fingerDown = false; fingerT = Date.now(); }, true);
+}
+const touching = () => (fingerDown && Date.now() - fingerT < 4000) || Date.now() - fingerT < 120;
 function drawNav() {
   const g = game.g, tier = gear.smithyTier(g), cost = tier ? game.c.cfg.craftCost[tier - 1] : 0;
   const n = notices(), key = BAR.map(([, , f]) => (f.some(has) ? 1 : 0)).join('') + cur + tier + (econ.bal(g, 'crystal') >= cost) + [n.merge, n.better, n.modes, n.shop].join();
   if (drawNav.key === key) return;
-  drawNav.key = key;
+  if (touching() && drawNav.key !== undefined && !drawNav.force) return;
+  drawNav.key = key; drawNav.force = false;
   $('nav').replaceChildren(...BAR.map(([id, ic, f]) => {
     const ok = f.some(has), locked = () => toast('Noch nicht freigeschaltet – folge den Quests.');
     if (id === 'craft') return h('button', { cls: 'nb craft' + (ok ? '' : ' locked'), 'aria-label': 'Schmieden', on: () => (!ok ? locked() : !tier ? toast('Baue zuerst die Schmiede in der Basis.') : reward('Geschmiedet', act('craft', 1))) },
@@ -697,7 +706,7 @@ export function hud() {
   $('area').textContent = w.mode ? 'Arena' : s.world.area === 'base' ? 'Basis' : game.c.get('areas', s.world.area).name;
   document.documentElement.style.fontSize = `${16 * s.settings.textScale}px`;
   drawNav();
-  if (cur && game.changed && Date.now() - (hud.last || 0) > 1000) { hud.last = Date.now(); game.changed = false; render(); }
+  if (cur && game.changed && !touching() && Date.now() - (hud.last || 0) > 1000) { hud.last = Date.now(); game.changed = false; render(); }
 }
 export function handleEvents(events) {
   for (const e of events) {

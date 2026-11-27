@@ -28,7 +28,7 @@ const cv = document.getElementById('cv');
 // 3D-Renderer (WebGL2); ohne WebGL2 oder mit ?r2d bleibt die 2D-Draufsicht als Rückfallebene.
 let R;
 try { if (new URLSearchParams(location.search).has('r2d')) throw new Error('2D erzwungen'); R = new Renderer3D(document.getElementById('gl'), cv); } catch (e) { console.warn('3D nicht verfügbar:', e.message); document.getElementById('gl').hidden = true; R = new Renderer(cv); }
-window.__renderer = R;
+window.__renderer = R; window.__ui = ui;
 addEventListener('resize', () => R.resize());
 
 // Eingabe: virtueller Stick (Pointer) und Tastatur. Manuelle Bewegung hat Vorrang vor Auto-Hunt.
@@ -39,7 +39,8 @@ const setMove = (x, y) => { const p = game.world.p; if (x || y) p.goal = null; i
 // statt erst den ganzen Weg zurück zu brauchen). In der Totzone steht die Figur. Ein zweiter Finger übernimmt den Stick nicht.
 const JOY_R = 46, JOY_DEAD = 7, joy = document.getElementById('joy'), knob = joy.firstElementChild;
 const joyDraw = (kx, ky) => { joy.hidden = !stick; if (!stick) return; joy.style.transform = `translate(${stick.x - JOY_R}px,${stick.y - JOY_R}px)`; knob.style.transform = `translate(${kx}px,${ky}px)`; };
-cv.addEventListener('pointerdown', (e) => { if (stick) return; stick = { id: e.pointerId, x: e.clientX, y: e.clientY }; try { cv.setPointerCapture(e.pointerId); } catch { /* Zeiger schon weg */ } joyDraw(0, 0); });
+// Ein neuer Erstfinger bedeutet: kein anderer Finger liegt mehr auf. Ein hängengebliebener Stick (verlorenes Loslassen) wird dann übernommen statt alle Eingaben zu sperren.
+cv.addEventListener('pointerdown', (e) => { if (stick && !e.isPrimary) return; stick = { id: e.pointerId, x: e.clientX, y: e.clientY }; try { cv.setPointerCapture(e.pointerId); } catch { /* Zeiger schon weg */ } joyDraw(0, 0); });
 cv.addEventListener('pointermove', (e) => {
   if (!stick || e.pointerId !== stick.id) return;
   let dx = e.clientX - stick.x, dy = e.clientY - stick.y, d = Math.hypot(dx, dy);
@@ -49,6 +50,8 @@ cv.addEventListener('pointermove', (e) => {
 });
 const up = (e) => { if (stick && e.pointerId === stick.id) { stick = null; joyDraw(0, 0); setMove(0, 0); if (!game.world.p.auto) { game.world.p.mx = 0; game.world.p.my = 0; } } };
 for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) cv.addEventListener(ev, up);
+for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, up); // Loslassen über einem Fenster oder Knopf zählt auch
+document.addEventListener('visibilitychange', () => { if (document.hidden && stick) up({ pointerId: stick.id }); });
 addEventListener('blur', () => { if (stick) up({ pointerId: stick.id }); });
 const KEYMAP = { w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
 const keyMove = () => { let x = 0, y = 0; for (const k of keys) { x += KEYMAP[k][0]; y += KEYMAP[k][1]; } const d = Math.hypot(x, y) || 1; if (x || y || !game.world.p.auto) setMove(x / d, y / d); };
@@ -58,21 +61,32 @@ addEventListener('keyup', (e) => { if (keys.delete(e.key)) keyMove(); });
 // Schleife: Simulation mit festem Tick im Kern; hier nur Zeit zuführen, zeichnen, HUD gebündelt aktualisieren.
 const perf = new URLSearchParams(location.search).has('perf'), ft = [];
 let last = performance.now(), hudT = 0, saveT = 0;
+// Jeder Abschnitt ist einzeln abgesichert: Ein Fehler in Simulation, Bild oder Anzeige darf die Schleife nie anhalten (sonst friert die Figur dauerhaft ein).
+const errSeen = new Set();
+function guard(name, fn) {
+  try { fn(); } catch (e) {
+    const key = name + ':' + (e && e.message);
+    if (!errSeen.has(key)) { errSeen.add(key); console.error('[' + name + ']', e); try { ui.toast('Fehler in ' + name + ': ' + String((e && e.message) || e).slice(0, 80), 5000); } catch { /* Anzeige selbst defekt */ } }
+    if (name === 'Anzeige') { try { ui.close(); } catch { /* ignorieren */ } } // defektes Fenster schließen, statt bei jedem Takt erneut zu scheitern
+  }
+}
 function frame(ts) {
+  requestAnimationFrame(frame);
   const dt = Math.min(0.25, (ts - last) / 1000); last = ts;
-  game.tick(dt);
-  R.draw(game);
+  guard('Simulation', () => game.tick(dt));
+  guard('Bild', () => R.draw(game));
   hudT += dt; saveT += dt;
   if (hudT >= 0.2) {
     hudT = 0;
-    const ev = game.drainEvents();
-    for (const e of ev) { if (e.type === 'modeStart' && !e.resumed) net.modeStart(e.mode, e.param); if (e.type === 'modeResult') net.modeComplete(e.result); }
-    ui.handleEvents(ev); ui.hud();
-    if (perf) { const s = [...ft].sort((a, b) => a - b), q = (p) => (s[Math.floor(s.length * p)] || 0).toFixed(1); const el = document.getElementById('perf'); el.hidden = false; el.textContent = `Frame ms p50 ${q(0.5)} p95 ${q(0.95)} p99 ${q(0.99)}\nGegner ${game.world.enemies.length} Proj ${game.world.proj.length} Drops ${game.world.drops.length}`; }
+    guard('Anzeige', () => {
+      const ev = game.drainEvents();
+      for (const e of ev) { if (e.type === 'modeStart' && !e.resumed) net.modeStart(e.mode, e.param); if (e.type === 'modeResult') net.modeComplete(e.result); }
+      ui.handleEvents(ev); ui.hud();
+      if (perf) { const s = [...ft].sort((a, b) => a - b), q = (p) => (s[Math.floor(s.length * p)] || 0).toFixed(1); const el = document.getElementById('perf'); el.hidden = false; el.textContent = `Frame ms p50 ${q(0.5)} p95 ${q(0.95)} p99 ${q(0.99)}\nGegner ${game.world.enemies.length} Proj ${game.world.proj.length} Drops ${game.world.drops.length}`; }
+    });
   }
   if (perf) { ft.push(dt * 1000); if (ft.length > 600) ft.shift(); }
-  if (saveT >= 10) { saveT = 0; game.save(); }
-  requestAnimationFrame(frame);
+  if (saveT >= 10) { saveT = 0; guard('Speichern', () => game.save()); }
 }
 requestAnimationFrame(frame);
 setTimeout(() => checkForUpdate(ui), 1500);

@@ -5,7 +5,7 @@ import { SHAPES, BIOMES, WATER, SCATTER, expand, hex } from './assets3d.js';
 const TREE = { a1_1: 'tree_round', a1_2: 'palm', a1_4: 'pine_snow' }; // fällbare Bäume je Gebiet
 import { FLOOR, WALL, WATER as K_WATER, LAVA, walkIdx, findPath } from '../core/worldgrid.js';
 import { npcStatus, currentQuests } from '../core/meta.js';
-import { enemyParts, enemyTop, npcParts } from './enemy3d.js';
+import { enemyParts, enemyTop, npcParts, heroBody, WEAPON_PARTS } from './enemy3d.js';
 
 const VIEW_W = 11.5, TILT = (45 * Math.PI) / 180; // an der Vorlage vermessen: Figur ca. 1/13 der Bildbreite, Kreise auf dem Boden ca. 0,7-fach gestaucht; // sichtbare Breite in Metern (Hochformat), Neigung
 const INST = 13; // pos3, rot, scl3, rgba(em), Neigung (vor/zurück, seitlich)
@@ -321,12 +321,7 @@ export class Renderer3D {
     const bc2 = p.alive ? okc(look[0], '#f5a524') : '#555c66', hc2 = p.alive ? okc(look[1], '#ffc94a') : '#777f8a', ac2 = okc(look[3], '#3f8ee0'), f = this.face, cf = Math.cos(f), sf = Math.sin(f);
     const at = (dx, dz) => [px + dx * cf + dz * sf, pz - dx * sf + dz * cf]; // dx = rechts, dz = vorn
     const part = (shape, dx, y, dz, sx, sy, sz, c2, em = 0) => { const [x, z] = at(dx, dz); return [shape, x, y, z, f, sx, sy, sz, c2, em]; };
-    const ch = [part('box', -0.2, 0, 0, 0.26, 0.4, 0.3, '#7a4a2c'), part('box', 0.2, 0, 0, 0.26, 0.4, 0.3, '#7a4a2c'),
-      part('box', 0, 0.36, 0, 0.82, 0.62, 0.52, bc2), part('box', 0, 0.36, 0.02, 0.84, 0.14, 0.54, '#7a4a2c'),
-      part('box', -0.52, 0.42, 0.05, 0.22, 0.5, 0.26, '#8a5a3c'), part('box', 0.52, 0.42, 0.05, 0.22, 0.5, 0.26, '#8a5a3c'),
-      part('box', 0, 0.5, -0.36, 0.5, 0.42, 0.24, '#6a4a30'),
-      part('box', 0, 0.96, 0, 0.78, 0.68, 0.7, hc2), part('box', 0, 0.97, 0.01, 0.16, 0.69, 0.72, ac2), part('box', 0, 1.62, 0, 0.26, 0.16, 0.26, '#7a5236'),
-      ];
+    const ch = heroBody(bc2, hc2, ac2).map((q) => part(...q));
     // Bewegung der Figur: Schrittzyklus (Beine und Arme gegenläufig, Rumpf wippt und lehnt sich vor), Treffer-Blitz, Umfallen beim Tod
     {
       const tnow = performance.now() / 1000, dtf = Math.min(0.1, tnow - (this.animT || tnow)); this.animT = tnow;
@@ -345,13 +340,7 @@ export class Renderer3D {
       const tm = w.t + a / 30, load = w.loadout(), subs = load.filter((l) => l.slot > 0), wf = w.p.wfire || {}, ws = [];
       const model = (cls, x, y, z, yaw, k = 1) => { // Teile entlang der lokalen Vorwärtsachse (z), nur um die Hochachse drehbar
         const cy = Math.cos(yaw), sy = Math.sin(yaw), q = (shape, f, r, yy, sx, sy2, sz, c3, em = 0) => ws.push([shape, x + (r * cy + f * sy) * k, y + yy * k, z + (-r * sy + f * cy) * k, yaw, sx * k, sy2 * k, sz * k, c3, em]);
-        if (cls === 'sword') { q('box', 0.1, 0, 0, 0.1, 0.1, 0.3, '#7a4a2c'); q('box', 0.27, 0, 0, 0.42, 0.1, 0.08, '#f0c14b'); q('box', 0.75, 0, 0.01, 0.16, 0.07, 0.95, '#e8eef5', 0.15); }
-        else if (cls === 'dagger') { q('box', 0.08, 0, 0, 0.09, 0.09, 0.22, '#5a3a6a'); q('box', 0.2, 0, 0, 0.28, 0.09, 0.07, '#b04bd0'); q('box', 0.45, 0, 0.01, 0.12, 0.06, 0.5, '#e8eef5', 0.15); }
-        else if (cls === 'blunt') { q('box', 0.35, 0, 0, 0.1, 0.1, 0.8, '#7a4a2c'); q('box', 0.85, 0, -0.12, 0.42, 0.36, 0.36, '#8a8e9c'); q('cone6', 0.85, 0, 0.24, 0.16, 0.2, 0.16, '#c5c8d2'); }
-        else if (cls === 'crossbow') { q('box', 0.4, 0, 0, 0.14, 0.12, 0.85, '#8a5a3c'); q('box', 0.7, 0, 0.02, 0.9, 0.08, 0.1, '#5a5e6c'); q('box', 0.85, 0, 0.1, 0.06, 0.05, 0.4, '#e8eef5'); }
-        else if (cls === 'gun') { q('box', 0.35, 0, 0, 0.16, 0.2, 0.7, '#4a4d5c'); q('box', 0.1, 0, -0.16, 0.14, 0.24, 0.16, '#7a4a2c'); q('box', 0.8, 0, 0.06, 0.09, 0.09, 0.3, '#2a2a32'); }
-        else if (cls === 'staff') { q('box', 0.5, 0, 0, 0.09, 0.09, 1.1, '#7a5236'); q('sphere', 1.1, 0, -0.1, 0.34, 0.34, 0.34, '#7fd8ff', 1); }
-        else q('box', 0.3, 0, 0, 0.22, 0.22, 0.3, '#f1c9a5');
+        for (const t of WEAPON_PARTS[cls] || WEAPON_PARTS.fist) q(...t);
       };
       const ease = (u) => Math.sin(Math.min(1, Math.max(0, u)) * Math.PI);
       for (const l of load) {
