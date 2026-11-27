@@ -35,7 +35,7 @@ export function fmtReward(list) {
   const agg = {};
   for (const e of list || []) {
     const k = e.item ? itemName(e.item) : e.weapon ? '⚔ ' + game.c.get('weapons', e.weapon).name : e.rune ? '◈ ' + game.c.get('runes', e.rune).name : e.hero ? 'Held ' + e.hero : e.flag ? 'Perk' : e.points ? 'Punkte' : e.heroPieces ? 'Heldenscherben' : e.weaponPool ? 'Waffe' : '?';
-    agg[k] = (agg[k] || 0) + (e.n ?? (e.min !== undefined ? 0 : 1)); if (e.min !== undefined) agg[k] = `${e.min}–${e.max}`;
+    agg[k] = (agg[k] || 0) + (e.n ?? (e.min !== undefined ? 0 : 1)); if (e.min !== undefined) agg[k] = e.min === e.max ? e.min : `${e.min}–${e.max}`;
   }
   return Object.entries(agg).map(([k, n]) => (n === 1 && /^[⚔◈]/.test(k) ? k : `${typeof n === 'number' ? fmt(n) : n} ${k}`)).join(', ');
 }
@@ -60,7 +60,7 @@ const FEAT = { abilities: 'Ability-Upgrades', shop: 'Shop', weaponVault: 'Waffen
   carnival: 'Carnival', liveEvent: 'Live-Events', heroShop: 'Helden-Beschwörung', heroes: 'Helden', invasion: 'Invasion', pvp: 'PvP', portal: 'Portal', sTierChest: 'S-Tier-Truhe', heroEvolution: 'Helden-Evolution', heroCollection: 'Helden-Sammlung', traits: 'Traits',
   soul: 'Soul Imprint', raid: 'Boss Raid', tomb: 'Tomb of Heroes', runes: 'Runen', special: 'Special-Upgrades', extra: 'Extra-Upgrades', blessing: 'Blessings', spin: 'Lucky Spin', randomReward: 'Bonusbelohnung', keyhouse: 'Key House' };
 const sn = (k) => t(STAT[k] || k), fn = (k) => t(FEAT[k] || k);
-const tabs = (key, list) => { tab[key] ||= list[0][0]; return h('div', { cls: 'tabs' }, list.map(([id, label]) => h('button', { cls: 'tab' + (tab[key] === id ? ' on' : ''), on: () => { tab[key] = id; render(); } }, t(label)))); };
+const tabs = (key, list) => { if (!list.some((x) => x[0] === tab[key])) tab[key] = list[0][0]; return h('div', { cls: 'tabs' }, list.map(([id, label, badge]) => h('button', { cls: 'tab' + (tab[key] === id ? ' on' : '') + (badge ? ' badge' : ''), on: () => { tab[key] = id; render(); } }, t(label)))); };
 const cap = (key, list, n = 40) => { const lim = more[key] || n; return [...list.slice(0, lim), list.length > lim ? btn(`mehr anzeigen (${list.length - lim})`, () => { more[key] = lim + n * 2; render(); }) : null]; };
 
 // Zielführung: Figur läuft per Pfadsuche zum Questziel (manuelle Eingabe bricht ab).
@@ -331,19 +331,53 @@ function trackView(id) {
         h('div', { cls: 'mb' }, st === 'claimed' ? '✓' : st === 'expired' ? 'vorbei' : btn('Annehmen', () => claim(n), st !== 'ready', 'go')));
     }), 12));
 }
+// Gruppen des Events-Fensters; nur Gruppen mit Inhalt werden gezeigt, Gruppen mit abholbaren Belohnungen tragen ein "!".
+function eventGroups() {
+  const g = game.g, defs = [['missions', 'Missionen', ['daily', 'weekly']], ['level', 'Level', ['levelup']], ['login', 'Login', ['login']], ['events', 'Events', ['sevenDay', 'carnival', ...(game.c.t.events || []).map((e) => e.track.id)]],
+    ['pass', 'Pässe', ['battlepass', 'chapterpass_1', 'chapterpass_2', 'chapterpass_3']], ['codex', 'Codex', ['codex']]];
+  const out = [];
+  for (const [id, label, ids] of defs) {
+    let active = false, ready = false;
+    for (const tid of ids) { const d = econ.trackDef(g, tid), ts = econ.trackActive(g, d); if (!ts) continue; active = true; if (d.nodes.some((n) => econ.nodeState(g, d, n, ts) === 'ready')) ready = true; }
+    if (active) out.push([id, label, ready, ids]);
+  }
+  out.push(['spin', 'Glücksrad', has('spin') && econ.capLeft(g, 'freeSpin') > 0, []]);
+  return out;
+}
+const SEG_COL = ['#f5a524', '#4aa8e8', '#e5503f', '#8f5ad9', '#5fd04a', '#ef5fd0', '#3fb7a8', '#ffd24a'];
+let wheelRot = 0, spinning = false;
+function wheel() {
+  const g = game.g, seg = meta.spinSegment(g), n = seg.rows.length, step = 360 / n, free = econ.capLeft(g, 'freeSpin') > 0;
+  const grad = seg.rows.map((_, i) => `${SEG_COL[i % SEG_COL.length]} ${i * step}deg ${(i + 1) * step}deg`).join(',');
+  const wh = h('div', { cls: 'wheel', style: `background:conic-gradient(${grad});transform:rotate(${wheelRot}deg)` }, seg.rows.map((r, i) => h('div', { cls: 'seg', style: `transform:rotate(${(i + 0.5) * step}deg)` },
+    h('div', { cls: 'ot' }, itemIcon(r.item, 30), r.min === r.max ? fmt(r.min) : `${fmt(r.min)}–${fmt(r.max)}`))));
+  const box = h('div', { cls: 'wheelbox' }, h('div', { cls: 'pin' }), wh);
+  const done = (res) => { spinning = false; modal('Glücksrad', h('div', { cls: 'center' }, fmtReward(res.got))); render(); };
+  const go = () => {
+    if (spinning) { wh.style.transition = 'none'; return; } // Tippen während der Drehung überspringt sie; das Ergebnis steht bereits fest
+    const r = game.try('spin');
+    if (!r.ok) return toast(r.error);
+    spinning = true;
+    const target = 360 - (r.value.index + 0.5) * step, cur = ((wheelRot % 360) + 360) % 360;
+    wheelRot += 360 * 5 + ((target - cur + 360) % 360);
+    let fin = false; const end = () => { if (fin) return; fin = true; done(r.value); };
+    wh.addEventListener('transitionend', end, { once: true }); setTimeout(end, matchMedia('(prefers-reduced-motion: reduce)').matches ? 50 : 3400);
+    requestAnimationFrame(() => { wh.style.transform = `rotate(${wheelRot}deg)`; });
+  };
+  box.append(h('button', { cls: 'b pri hub', on: go }, free ? 'Gratis drehen' : 'Drehen'));
+  wh.addEventListener('click', () => { if (spinning) { wh.style.transition = 'none'; wh.style.transform = `rotate(${wheelRot}deg)`; } });
+  return [box, h('p', { cls: 'sub center' }, free ? 'Heute ist eine Gratis-Drehung frei.' : `Weitere Drehung: ${fmtCost(game.c.cfg.spin.spinCost)} (du hast ${econ.bal(g, 'spin_ticket')})`)];
+}
 P.events = () => {
-  const g = game.g, groups = [['missions', 'Missionen', ['daily', 'weekly']], ['level', 'Level', ['levelup']], ['login', 'Login', ['login']], ['events', 'Events', ['sevenDay', 'carnival', ...(game.c.t.events || []).map((e) => e.track.id)]], ['pass', 'Pässe', ['battlepass', 'chapterpass_1', 'chapterpass_2', 'chapterpass_3']], ['codex', 'Codex', ['codex']], ['spin', 'Spin & Codes', []]];
-  const out = [tabs('ev', groups.map((x) => [x[0], x[1]]))], gsel = groups.find((x) => x[0] === tab.ev);
-  const views = gsel[2].map(trackView).filter(Boolean);
+  const groups = eventGroups(), out = [tabs('ev', groups.map((x) => [x[0], x[1], x[2]]))], gsel = groups.find((x) => x[0] === tab.ev);
   if (tab.ev === 'spin') {
-    const seg = meta.spinSegment(g), free = econ.capLeft(g, 'freeSpin') > 0;
-    out.push(has('spin') ? sec(`Lucky Spin (${seg.id})`, h('p', { cls: 'sub' }, seg.rows.map((r) => fmtReward([r])).join(' · ')), btn(free ? 'Gratis drehen' : `Drehen (${fmtCost(game.c.cfg.spin.spinCost)})`, () => { const r = act('spin'); if (r.ok) modal('Lucky Spin', fmtReward(r.value.got)); }, false, 'pri')) : h('p', {}, t('Lucky Spin wird später freigeschaltet.')),
+    out.push(has('spin') ? wheel() : h('p', { cls: 'center' }, t('Das Glücksrad wird mit Level 8 freigeschaltet.')),
       sec('Code einlösen', h('input', { id: 'code', placeholder: 'Code' }), btn('Einlösen', async () => {
         const code = $('code').value, r = game.try('redeemLocal', code);
         if (r.ok) return reward('Code', r), render();
         if (net && net.online()) { const x = await net.redeem(code); toast(x.ok ? `Code: ${fmtReward(x.got)}` : x.error); render(); } else toast(r.error);
       })));
-  } else out.push(views.length ? views : h('p', {}, t('Noch nicht freigeschaltet.')));
+  } else out.push(gsel[3].map(trackView).filter(Boolean));
   return out;
 };
 P.map = () => {
@@ -408,7 +442,7 @@ function drawNav() {
   $('nav').replaceChildren(...BAR.map(([id, ic, f]) => {
     const ok = f.some(has), locked = () => toast('Noch nicht freigeschaltet – folge den Quests.');
     if (id === 'craft') return h('button', { cls: 'nb craft' + (ok ? '' : ' locked'), 'aria-label': 'Schmieden', on: () => (!ok ? locked() : !tier ? toast('Baue zuerst die Smithy in der Basis.') : reward('Geschmiedet', act('craft', 1))) },
-      icon(ic, null, 46), h('span', { cls: 'info ot' }, 'x1', h('small', { cls: econ.bal(g, 'gold') >= cost ? '' : 'cost miss' }, tier ? `${fmt(cost)} Gold · St. ${tier}` : '—')));
+      tier ? h('span', { cls: 'tier ot' }, tier) : null, icon(ic, null, 44), h('span', { cls: 'info ot' }, 'x1', h('small', { cls: econ.bal(g, 'gold') >= cost ? '' : 'cost miss' }, tier ? [itemIcon('gold', 13), fmt(cost)] : '—')));
     return h('button', { cls: 'nb' + (cur === id ? ' on' : '') + (ok ? '' : ' locked'), 'aria-label': TITLES[id], on: () => (!ok ? locked() : cur === id ? close() : open(id)) }, icon(ic, null, 42));
   }));
 }
@@ -418,9 +452,9 @@ let notes = { t: 0 };
 function notices() {
   const now = Date.now();
   if (now - notes.t < 1000) return notes;
-  const g = game.g, s = game.state, rdy = (ids) => ids.some((id) => { try { const d = econ.trackDef(g, id), ts = econ.trackActive(g, d); return ts && d.nodes.some((n) => econ.nodeState(g, d, n, ts) === 'ready'); } catch { return false; } });
-  notes = { t: now, missions: has('missions') && rdy(['daily', 'weekly']), pass: rdy(['login', 'levelup', 'battlepass', 'sevenDay', 'minimap', 'chapterpass_1']),
-    chest: s.keyhouse.slots.some((x) => x.chest && g.now() >= x.chest.readyAt), menu: meta.currentQuests(g).some((q) => q.state === 'satisfied' && !q.q.giver) };
+  const g = game.g, s = game.state, ready = eventGroups().filter((x) => x[2]).map((x) => x[0]);
+  // Jedes "!" führt genau dorthin, wo etwas abzuholen ist: Missionen-Knopf -> Missionen, Stern-Knopf -> erste andere Gruppe mit Belohnung
+  notes = { t: now, missions: ready.includes('missions'), passTab: ready.find((x) => x !== 'missions') || null, chest: s.keyhouse.slots.some((x) => x.chest && g.now() >= x.chest.readyAt) };
   return notes;
 }
 export function hud() {
@@ -445,7 +479,7 @@ export function hud() {
   }
   const n = notices();
   $('b_missions').hidden = !has('missions'); $('b_missions').classList.toggle('badge', !!n.missions);
-  $('b_pass').classList.toggle('badge', !!n.pass); $('b_chest').classList.toggle('badge', !!n.chest); $('b_menu').classList.toggle('badge', !!n.menu);
+  $('b_pass').classList.toggle('badge', !!n.passTab); $('b_chest').classList.toggle('badge', !!n.chest);
   $('auto').classList.toggle('on', w.p.auto);
   $('homebtn').hidden = !!w.mode || s.world.area === 'base'; $('abort').hidden = !w.mode;
   $('bonus').hidden = !meta.randomRewardReady(g) || !!w.mode;
@@ -475,7 +509,7 @@ export function init(gm, nt) {
   document.querySelector('#p_gold .slot').append(icon('coin', null, 30)); document.querySelector('#p_gems .slot').append(icon('gem', null, 30)); document.querySelector('#p_third .slot').append(icon('scroll', null, 30));
   $('pclose').addEventListener('click', close);
   $('b_menu').addEventListener('click', () => (cur === 'menu' ? close() : open('menu')));
-  $('b_pass').addEventListener('click', () => { tab.ev = 'pass'; open('events'); });
+  $('b_pass').addEventListener('click', () => { notes.t = 0; tab.ev = notices().passTab || tab.ev || 'level'; open('events'); });
   $('b_missions').addEventListener('click', () => { tab.ev = 'missions'; open('events'); });
   $('b_map').addEventListener('click', () => open('map'));
   $('b_chest').addEventListener('click', () => open('base'));

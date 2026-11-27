@@ -400,7 +400,9 @@ export class Renderer3D {
       }
       cx.putImageData(img, 0, 0);
     }
-    const ctx = this.ctx, mw = Math.min(118, this.w * 0.3), mh = (mw * G.rows) / G.cols, x0 = this.w - mw - 8, y0 = 96;
+    // unter den Quest-Karten platzieren (deren Höhe wechselt), nie darunter verdeckt
+    const qb = document.getElementById('quests'), cvr = this.ov.getBoundingClientRect(), qbot = qb && qb.childElementCount ? qb.getBoundingClientRect().bottom - cvr.top : 0;
+    const ctx = this.ctx, mw = Math.min(104, this.w * 0.26), mh = (mw * G.rows) / G.cols, x0 = this.w - mw - 8, y0 = Math.max(100, qbot + 8);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(sc.minimap, x0, y0, mw, mh);
     ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.strokeRect(x0 + 0.5, y0 + 0.5, mw - 1, mh - 1);
