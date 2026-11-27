@@ -28,11 +28,12 @@ Das Spiel läuft auch ganz ohne Backend: Ordner `src/` mit einem beliebigen stat
 | Simulation | `src/core/sim.js` | Fester Tick (30 Hz), Gegner-Zustandsmaschine, Kampf, Drops, Auto-Hunt |
 | Fassade | `src/core/game.js` | Transaktionale Befehle, Weltwechsel, Persistenz |
 | Persistenz | `src/core/state.js` | Prüfsumme, zwei Slots, Migration, Recovery |
-| Client | `src/client/` | Canvas-Renderer, Menüs, Eingabe, optionale Netzanbindung (alles Platzhalter-Design) |
+| Welt | `src/core/content/world1.js`, `ch1_ref.js`, `src/core/worldgrid.js` | Kapitel-1-Layout (Zonen, Tore, Hindernisse, Landmarken), Referenzpunkte, Begehbarkeitsraster + A* |
+| Client | `src/client/` | WebGL2-Renderer `render3d.js` mit Asset-Bibliothek `assets3d.js` (Low-Poly-Platzhalter), 2D-Rückfall `render.js` (`?r2d`), Menüs, Eingabe |
 | Backend | `server/server.js` | Content-Versionen, Profile, Sync, Codes, Grants, Ranglisten, Admin-API |
 | Admin | `admin/` | Content/Balancing-Editor, Events, Codes, Profile/Grants, Audit, Konten, Backup |
 
-Design tauschen: nur `src/client/render.js` und `style.css`. Balancing ändern: Admin-Panel oder `base.js`; der Gameplay-Code enthält keine Zahlen.
+Design tauschen: `src/client/assets3d.js` (Formen, Paletten, Requisiten), `render3d.js` und `style.css`. Weltpositionen ändern: Admin-Panel → Tabelle `worlds` bzw. `pos` in Spawn-, Truhen-, NPC- und Gebäudezeilen; `node tools/world_check.js karte.png` prüft Begehbarkeit und zeichnet eine Draufsicht. Balancing ändern: Admin-Panel oder `base.js`; der Gameplay-Code enthält keine Zahlen.
 
 ## Systemstatus
 
@@ -41,6 +42,7 @@ die Zahlen sind mangels Originaldaten eigene, gekennzeichnete Werte (siehe `docs
 
 | System | Status | Test |
 |---|---|---|
+| Kapitel 1 als zusammenhängende 3D-Welt (Basis + 6 Gebiete), Kollision, Pfadsuche, Tore | implementiert; Punkte aus Szenendaten, Layout eigen | world.test, tools/world_check.js |
 | Bewegung, Auto-Angriff, Haupt-/Nebenwaffen, Skills, Statuseffekte, Krit, Lifesteal | implementiert, Werte eigen | T19, Tutorial |
 | Gegner-KI (Spawn/Idle/Patrol/Aggro/Chase/Attack/Return/Tod/Respawn), Bosse | implementiert, Muster eigen | Tutorial |
 | 20 Gebiete, 19 Gates, Spawn-Gruppen 82/71/58, Respawn per Zeitstempel | implementiert; Karten/Koordinaten eigen | Content, Tutorial |

@@ -27,14 +27,14 @@ export const GATES = [
   { id: 'g_3_6', from: 'a1_3', to: 'a1_6', a: [6, 47], b: [6, 59], w: 6, needs: 'a1_5' },
 ];
 
-// Nicht begehbare Flächen innerhalb der Zonen. kind: rock (erhöht), water, lava. Kreise: c + r, sonst poly.
+// Nicht begehbare Flächen innerhalb der Zonen. kind: rock (Felsplateau), solid (ebenerdig, Landmarke ist das Hindernis), water, lava. Kreise: c + r, sonst poly.
 export const BLOCKERS = [
-  { kind: 'water', c: [22, -45], r: 4 }, { kind: 'rock', c: [26, -51], r: 2.5 }, { kind: 'rock', c: [-9, -40], r: 3 },
-  { kind: 'rock', c: [-30, 6], r: 3 }, { kind: 'rock', c: [-52, 14], r: 2.5 },
-  { kind: 'water', c: [44, 40], r: 3.5 }, { kind: 'rock', c: [20, 28], r: 2 },
-  { kind: 'water', c: [79, -4], r: 5 }, { kind: 'rock', c: [61, 8.5], r: 1.8 }, { kind: 'rock', c: [99, 13], r: 2 },
-  { kind: 'rock', c: [60, 62], r: 2.5 },
-  { kind: 'lava', c: [-31, 87], r: 4 }, { kind: 'lava', poly: [[-60, 94], [-54, 92], [-52, 99], [-58, 100]] }, { kind: 'rock', c: [-35, 70], r: 2 },
+  { kind: 'water', c: [22, -45], r: 4 }, { kind: 'rock', c: [26, -51], r: 2.5 }, { kind: 'solid', c: [-9, -40], r: 3 },
+  { kind: 'solid', c: [-30, 6], r: 3 }, { kind: 'solid', c: [-52, 14], r: 2.5 },
+  { kind: 'water', c: [44, 40], r: 3.5 }, { kind: 'solid', c: [20, 28], r: 2 },
+  { kind: 'water', c: [79, -4], r: 5 }, { kind: 'solid', c: [61, 8.5], r: 1.8 }, { kind: 'solid', c: [99, 13], r: 2 },
+  { kind: 'solid', c: [60, 62], r: 2.5 },
+  { kind: 'lava', c: [-31, 87], r: 4 }, { kind: 'lava', poly: [[-60, 94], [-54, 92], [-52, 99], [-58, 100]] }, { kind: 'solid', c: [-35, 70], r: 2 },
 ];
 
 // Landmarken: hand gesetzte Weltobjekte (Typen = Client-Assets). r = Drehung (Grad), s = Skalierung.

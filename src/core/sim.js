@@ -19,7 +19,7 @@ const M = 40; // Fallback px pro Meter
 // Zusammenhängende Welt (Kapitel 1): ein Raster, alle Gebiete + Basis, Tore als begehbare Korridore.
 function buildWorldMap(g, W) {
   const c = g.c, inW = (a) => W.areas.includes(a);
-  const solid = c.t.buildings.filter((b) => b.pos).map((b) => ({ kind: 'rock', c: b.pos, r: b.id === 'bonfire' ? 0.6 : 1.6, building: b.id }));
+  const solid = c.t.buildings.filter((b) => b.pos).map((b) => ({ kind: 'solid', c: b.pos, r: b.id === 'bonfire' ? 0.6 : 1.6, building: b.id }));
   const G = buildGrid({ ...W, blockers: [...(W.blockers || []), ...solid] }), ppm = W.ppm;
   const at = (pos, zone, roam) => { const q = G.toPx(pos[0], pos[1]); return snap(G, q.x, q.y, 40, roam || !zone ? -1 : G.zoneIds.indexOf(zone)) || q; };
   const objects = [];

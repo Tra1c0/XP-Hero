@@ -23,8 +23,21 @@ Serverzwang; versteckte Gratis-Geschenke als Ersatz für Bezahlinhalte.
 
 ## Nicht umgesetzt
 
-- Kollisionshindernisse und Navigationsflächen: Karten sind offene Rechtecke. Auto-Hunt hat Stuck-Erkennung, aber
-  nichts zum Umlaufen.
+- Kapitel 2 und 3 sind weiterhin Einzelkarten (Rechtecke mit Rand, gleiche Kollision/Pfadsuche, schlichte 3D-Optik).
+  Nur Kapitel 1 ist als zusammenhängende Welt gebaut.
+- Kapitel-1-Layout: Die Referenz liefert nur Punkte (Spawns, Truhen, NPCs, Portale), keine Geländeform. Zonenumrisse,
+  Tore, Felsen, Wasser und Landmarken sind eigenes Level-Design um diese Punkte. Die Basis liegt in der freien Mitte;
+  im Original ist die Stadt eine eigene Szene (Lage dort nicht übertragbar).
+- Gegner je Spawnknoten: 1 (eigener Wert `config.world.normalPerNode`). Mit 3 starb ein Level-1-Spieler am
+  Greenhaven-Eingang dauerhaft.
+- Fledermäuse aus Sandevil/Frostbound/Hellfire stehen laut Referenz außerhalb ihres Gebiets; sie erscheinen dort erst,
+  wenn ihr Gebiet freigeschaltet ist (eigene Regel).
+- Boss-Raid-Steine und Invasionsportale stehen an den Referenzpositionen, sind aber Deko/Hinweis; die Modi starten
+  weiterhin über das Menü.
+- Gelände ist auf 2-m-Zellen gerastert; Ränder sind dadurch stufig (Spielzeug-Terrassen), Wasser-/Lavaflächen werden
+  als weiche Formen darübergelegt.
+- Leistung: CPU pro Bild gemessen (Renderer 0,1–0,3 ms, Simulation ≤ 0,2 ms, Szenenaufbau einmalig 88 ms). GPU-Bildzeit
+  auf echten Handys ist nicht gemessen; im Container gibt es nur Software-Rendering.
 - Audio, Haptik, Controller, Farbblind-Modus: Einstellungen sind gespeichert, Audio/Haptik gibt es noch nicht
   (keine Assets); der Farbblind-Schalter ändert derzeit nichts Sichtbares.
 - Lokalisierung: Mechanismus vorhanden (`t()` mit Übersetzungstabelle), nur Deutsch gepflegt; Content-Namen sind nicht

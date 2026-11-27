@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1v2yulqpwlz).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint nxdhusj9n1).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -13,17 +13,17 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 |---|---|---|---|---|
 | items | 31 | D | D:23 ?:1 E:6 B:1 | Währungen/Items laut Abschnitt 11; nicht alle 116 Originalitems bekannt. |
 | areas | 20 | D | D:20 | 20 Gebiete, 19 Gates; Kartenlayout/Koordinaten eigen (E). |
-| monsters | 127 | E | E:127 | 206 Monster/246 Varianten im Original; hier dokumentierte Beispiele (D) + eigene Platzhalter. |
-| variants | 127 | E | D:12 E:114 B:1 | Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops). |
-| spawnGroups | 211 | R | R:191 E:16 D:4 | 82/71/58 Gruppen je Kapitel (D); Verteilung, Position, Standard-Respawn eigen. |
+| monsters | 138 | E | E:138 | 206 Monster/246 Varianten im Original; hier dokumentierte Beispiele (D) + eigene Platzhalter. |
+| variants | 141 | E | D:10 E:89 B:42 | Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops). |
+| spawnGroups | 253 | R | D:128 R:115 E:10 | Kapitel 1: 124 platzierte Spawnknoten mit Monster, Position, Respawn und Patrol aus den Szenendaten (D). Kapitel 2/3: 71/58 Gruppen (D), Position eigen. |
 | resourceGroups | 7 | E | E:7 | Rohstoffstellen als angreifbare Knoten. |
 | behaviors | 6 | E | E:6 | Gegner-KI-Parameter je Typ; Original-KI unbekannt. |
 | bossPatterns | 1 | E | E:1 | Generische, eigene Bossfähigkeiten (keine Originalmuster). |
 | statuses | 3 | E | E:3 | Statuseffekte: Stack-Limit, Erneuerung, Immunität. |
-| chestSpawners | 20 | R | E:8 D:12 | Spawner-Respawn Stage 7-12/14-19 dokumentiert; Rest eigen. |
-| giftSpawners | 45 | R | E:45 | Kap. 1: 17 Gift-Chest-Spawner (D); Position/Respawn eigen. |
+| chestSpawners | 20 | R | D:18 E:2 | Kapitel 1: Position + Respawn aus Szenendaten (D); Stage 7-12/14-19 Respawn dokumentiert; Rest eigen. |
+| giftSpawners | 45 | R | E:28 D:17 | Kapitel 1: 17 Gift-Chest-Spawner mit Position und Respawn 300 s aus Szenendaten (D); Kap. 2/3 eigen. |
 | chestTypes | 2 | D | D:2 | Reveal-Timer und Pool-Zeilen dokumentiert; Gewichte und Goldmenge eigen. Auswahlmodus one = R. |
-| areaChests | 20 | R | R:20 | Je Gebiet eine einmalige Gebietstruhe (Kap. 1: 6 = D); Inhalt eigen. |
+| areaChests | 20 | R | R:20 | Je Gebiet eine einmalige Gebietstruhe (Kap. 1: 6 Stage-Truhen der Referenz, Position D neben dem Truhenspawner); Inhalt eigen. |
 | giftChestLevels | 400 | R | R:400 | Gold L1=12 und L400=1.983.356 (D); Zwischenwerte geometrisch interpoliert (E). Bonus: Gold x5 + 10 Gems (D). |
 | keyHouseSlots | 15 | D | D:15 | 15 Freischaltzeilen; Gem-Summe 5.570. |
 | playerLevels | 400 | E | E:400 | XP-Schwellen unbekannt: EIGENE, austauschbare Kurve. ATK/HP an Tracker-L99 (4.055 / 627.721, interpoliert) verankert. |
@@ -45,7 +45,9 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | rateGroups | 7 | R | E:5 R:1 D:1 | Rate-Gruppe 4001 = 65/30/4/1 (D); übrige Gewichte eigen. |
 | gachaBoxes | 12 | R | R:10 ?:1 D:1 | 26 Boxdefinitionen im Original; hier 12 belegbare (inkl. 8 Runentruhen, Special Hero Chest). Gem-Preise eigen, kein universeller 10er-Preis. |
 | buildings | 7 | D | D:7 | 26 Gebäudedefinitionen im Original; hier die 7 dokumentierten Einstiegskosten (Gold D, Materialmengen E). |
-| npcs | 3 | E | E:3 | NPC-Daten/Dialoge des Originals nicht erfasst; eigene Platzhalter. |
+| npcs | 14 | E | E:4 D:10 | NPC-Daten/Dialoge des Originals nicht erfasst; eigene Platzhalter. |
+| worldObjects | 15 | D | D:15 | Invasionsportale (Positionen der Referenz, dekorativ: Invasion läuft über das Menü) und Lagerfeuer. |
+| worlds | 1 | R | R:1 | Zusammenhängende Kapitel-1-Welt: Zonen, Tore, Hindernisse, Landmarken (Level-Design E um Referenzpunkte D). Meter, X=Ost, Z=Nord. |
 | unlocks | 7 | D | D:4 E:2 R:1 | Levelgebundene Freischaltungen (D); blessing/spin/special/extra/pvp eigen platziert. |
 | quests | 87 | R | R:66 D:17 ?:1 E:3 | Hauptquestkette (Original ca. 850 Einträge nicht erfasst): dokumentierte Unlock-Kopplungen (s=D) + eigene Gebietsquests. |
 | tracks | 13 | R | R:4 D:4 E:5 | Generische Claim-Tracks (Meilensteine, Missionen, Pässe, Events). Status je Track im Feld s. |
@@ -93,6 +95,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | invasion | E | `{"entryCost":{"ticket_invasion":1},"k":32,"startRating":1000,"botsPerTier":30,"bankPerHour":20,"bankCap":20…` | Async-PvP gegen gekennzeichnete Bots/Snapshots. |
 | spin | ? | `{"unlockConfigRaw":"1,3","spinCost":{"spin_ticket":1}}` | Unlock-Config 1,3: Bedeutung ungeklärt, nicht angewendet. |
 | orbAlias | ? | `{"crimson":null,"azure":null,"soul":null}` | Interne Orb-Namen nicht zugeordnet; betroffene Reward-Zeilen sind deaktiviert. |
+| world | E | `{"normalPerNode":1,"rareRespawnMinSec":900,"spawnSpreadM":2.5,"activeRadiusM":40}` | Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius. |
 | ledgerKeep | E | `400` |  |
 | saveSlots | E | `2` |  |
 

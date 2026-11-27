@@ -65,7 +65,7 @@ export class Renderer {
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(x0, y0, mw, mh);
     const fog = game.state.world.fog[w.map.id];
-    if (w.map.kind === 'field' && fog) { ctx.fillStyle = 'rgba(255,255,255,.18)'; for (const k of Object.keys(fog)) { const cxl = k % 100, cyl = Math.floor(k / 100); ctx.fillRect(x0 + cxl * 200 * sx, y0 + cyl * 200 * sy, 200 * sx + 0.5, 200 * sy + 0.5); } }
+    if (w.map.kind !== 'arena' && fog && w.G) { const G = w.G; ctx.fillStyle = 'rgba(255,255,255,.18)'; for (const k of Object.keys(fog)) { const cxl = k % G.cols, cyl = Math.floor(k / G.cols); ctx.fillRect(x0 + cxl * G.cpx * sx, y0 + cyl * G.cpx * sy, G.cpx * sx + 0.5, G.cpx * sy + 0.5); } }
     for (const o of w.map.objects) if (o.type === 'gate') { ctx.fillStyle = o.open() ? '#8fd3ff' : '#777'; ctx.fillRect(x0 + o.x * sx - 3, y0 + o.y * sy - 2, 6, 4); }
     for (const e of w.enemies) if (e.alive && e.v.rank === 'boss') { ctx.fillStyle = RANK.boss; ctx.fillRect(x0 + e.x * sx - 3, y0 + e.y * sy - 3, 6, 6); }
     ctx.fillStyle = '#4fc3f7'; ctx.fillRect(x0 + px * sx - 2, y0 + py * sy - 2, 4, 4);

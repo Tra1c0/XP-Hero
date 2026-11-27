@@ -3,6 +3,7 @@ import { buildBaseContent } from '../core/content/base.js';
 import { validateContent } from '../core/content/validate.js';
 import { Game } from '../core/game.js';
 import { Renderer } from './render.js';
+import { Renderer3D } from './render3d.js';
 import * as ui from './ui.js';
 import { makeNet } from './net.js';
 import { checkForUpdate } from './update.js';
@@ -23,13 +24,17 @@ const net = makeNet(() => game, ui);
 ui.init(game, net);
 window.__game = game; // Debug-/Testzugriff (kein Admin-Schlüssel, nur der lokale Spielstand)
 
-const cv = document.getElementById('cv'), R = new Renderer(cv);
+const cv = document.getElementById('cv');
+// 3D-Renderer (WebGL2); ohne WebGL2 oder mit ?r2d bleibt die 2D-Draufsicht als Rückfallebene.
+let R;
+try { if (new URLSearchParams(location.search).has('r2d')) throw new Error('2D erzwungen'); R = new Renderer3D(document.getElementById('gl'), cv); } catch (e) { console.warn('3D nicht verfügbar:', e.message); document.getElementById('gl').hidden = true; R = new Renderer(cv); }
+window.__renderer = R;
 addEventListener('resize', () => R.resize());
 
 // Eingabe: virtueller Stick (Pointer) und Tastatur. Manuelle Bewegung hat Vorrang vor Auto-Hunt.
 let stick = null;
 const keys = new Set();
-const setMove = (x, y) => { const p = game.world.p; if (p.auto && (x || y)) p.auto = false; if (!p.auto) { p.mx = x; p.my = y; } };
+const setMove = (x, y) => { const p = game.world.p; if (x || y) p.goal = null; if (p.auto && (x || y)) p.auto = false; if (!p.auto && !p.goal) { p.mx = x; p.my = y; } };
 cv.addEventListener('pointerdown', (e) => { stick = { id: e.pointerId, x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); });
 cv.addEventListener('pointermove', (e) => { if (!stick || e.pointerId !== stick.id) return; const dx = e.clientX - stick.x, dy = e.clientY - stick.y, d = Math.hypot(dx, dy); if (d > 6) { const k = Math.min(1, d / 60) / d; setMove(dx * k, dy * k); } });
 const up = (e) => { if (stick && e.pointerId === stick.id) { stick = null; setMove(0, 0); if (!game.world.p.auto) { game.world.p.mx = 0; game.world.p.my = 0; } } };

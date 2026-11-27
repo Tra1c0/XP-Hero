@@ -20,7 +20,7 @@ function segDist2(px, pz, [ax, az], [bx, bz]) {
 export function buildGrid(world) {
   const { cell, ppm, bounds: B } = world;
   const cols = Math.ceil((B.maxX - B.minX) / cell), rows = Math.ceil((B.maxZ - B.minZ) / cell), n = cols * rows;
-  const kind = new Uint8Array(n), zone = new Int16Array(n).fill(-1), gate = new Int16Array(n).fill(-1);
+  const kind = new Uint8Array(n), zone = new Int16Array(n).fill(-1), gate = new Int16Array(n).fill(-1), flat = new Uint8Array(n); // flat: blockiert, aber ebenerdig (Gebäude, Landmarken)
   const zoneIds = world.zones.map((z) => z.id), cpx = cell * ppm;
   const cx = (c) => B.minX + (c + 0.5) * cell, cz = (r) => B.maxZ - (r + 0.5) * cell; // Zeile 0 = Norden (oben)
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
@@ -39,7 +39,7 @@ export function buildGrid(world) {
   }
   for (const b of world.blockers || []) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const i = r * cols + c;
-    if (kind[i] === FLOOR && inShape(cx(c), cz(r), b)) kind[i] = b.kind === 'water' ? WATER : b.kind === 'lava' ? LAVA : WALL;
+    if (kind[i] === FLOOR && inShape(cx(c), cz(r), b)) { kind[i] = b.kind === 'water' ? WATER : b.kind === 'lava' ? LAVA : WALL; if (b.kind === 'solid') flat[i] = 1; }
   }
   // Tor-Korridore
   (world.gates || []).forEach((gt, k) => {
@@ -66,7 +66,7 @@ export function buildGrid(world) {
   }
   const gateOpen = new Uint8Array((world.gates || []).length);
   return {
-    world, cell, ppm, cpx, cols, rows, kind, zone, near, gate, gateOpen, zoneIds, w: cols * cpx, h: rows * cpx,
+    world, cell, ppm, cpx, cols, rows, kind, zone, near, gate, gateOpen, flat, zoneIds, w: cols * cpx, h: rows * cpx,
     // Umrechnung Meter <-> Simulationseinheiten (px). Simulation: x nach Osten, y nach Süden.
     toPx: (X, Z) => ({ x: (X - B.minX) * ppm, y: (B.maxZ - Z) * ppm }),
     toM: (x, y) => ({ X: B.minX + x / ppm, Z: B.maxZ - y / ppm }),
