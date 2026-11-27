@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 9sun3hbgbz).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1ln12kc6vdf).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -31,7 +31,8 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | rarities | 9 | E | E:9 | Seltenheitsnamen D; Multiplikatoren/Maxlevel eigen. |
 | weaponClasses | 6 | R | R:6 | 6 Klassen und S-Skill-Namen D; Reichweite/Takt/Passiva eigen. |
 | skills | 10 | E | E:10 | Skillnamen der S-Reihen D; Parameter eigen. |
-| weapons | 84 | R | R:84 | 84 Varianten, 12 Reihen, Namen und Waffen-Fertigkeiten ab Epic mit Gesamtfaktor (D). Auslösung der Fertigkeit nach jedem n-ten Angriff (combat.weaponSkillEvery) ist eigen, die Quellen nennen keinen Auslöser. Stats nach DPS-Rechner-Struktur (DPS Add + PerLevel*Level)*RarityMult; Zahlen, Merge-Anzahl, Evo-Kosten eigen. Transzendenz offen. |
+| typeBonus | 6 | D | D:6 | Bonus der Waffenart: gilt nur, wenn die Hauptwaffe zur Meisterschaft des aktiven Helden passt (Fan-Wiki). |
+| weapons | 84 | R | R:84 | 84 Varianten, 12 Reihen, Namen und Waffen-Fertigkeiten ab Epic mit Gesamtfaktor (D). Auslösung der Fertigkeit nach jedem n-ten Angriff (combat.weaponSkillEvery) ist eigen, die Quellen nennen keinen Auslöser. Schaden je Stufe linear zwischen Stufe-1- und Maximalwert, Maximalstufen und Stufen-Boni aus dem Fan-Wiki (D); Merge-Anzahl 3 (D), Evo-Kosten eigen. Transzendenz offen. |
 | smithy | 8 | D | D:8 | Kosten = Upgrade zur nächsten Stufe (R). Sichtbare Raten summieren sich ab Stufe 2 auf 60 %; der Rest (otherW) ist NICHT normiert, sondern ein eigener, gekennzeichneter Sonstiges-Ausgang (E). |
 | heroes | 26 | R | E:21 B:1 D:4 | 26 Helden, 8 Seltenheitsstufen, Waffenklasse je Platz nach Heldenübersicht der Vorlage (B). Freyja/The Skull/Hana/Vlad: Exotic ohne Evolutionszeilen (D). Namen, Werte und Figuren-Designs eigen. |
 | heroLevelCosts | 5 | R | R:5 | Stützstufen 1 und 10..130 je Tiergruppe (D-Struktur); Evolution-Coin-Werte eigen. |

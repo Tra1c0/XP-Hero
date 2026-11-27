@@ -77,13 +77,14 @@ export function computeStats(g, opt = {}) {
     if (d.pct) P(d.stat, v); else A(d.stat, v);
     if (d.unique) A(d.unique.stat, d.unique.v);
   }
-  // Waffenpassiva aller ausgerüsteten Slots (Haupt- und Nebenwaffen)
-  for (const uid of s.weapons.slots) {
+  // Bonus der Waffenart: nur Hauptwaffe und nur bei passender Helden-Meisterschaft. Stufen-Boni jeder ausgerüsteten Waffe ("nur Hauptslot" entsprechend).
+  const pctStat = (st, v) => (st === 'atk' || st === 'hp' ? P(st, v) : A(st, v));
+  if (mainCls && mainCls.id === h.mastery) for (const [st, v] of (c.by.typeBonus.get(mainCls.id) || { bonus: [] }).bonus) pctStat(st, v);
+  s.weapons.slots.forEach((uid, slot) => {
     const w = uid && s.weapons.list.find((x) => x.uid === uid);
-    if (!w) continue;
-    const d = c.get('weapons', w.def), cl = c.get('weaponClasses', d.cls);
-    if (cl.passive && cl.passive.v) A(cl.passive.stat, cl.passive.v * (1 + d.rarity * 0.25));
-  }
+    if (!w) return;
+    for (const [lv, mainOnly, st, v] of c.get('weapons', w.def).bonus || []) if (w.level >= lv && (!mainOnly || slot === 0)) pctStat(st, v);
+  });
   for (const p of c.t.perks) if (p.effect === 'stat' && s.flags[p.id]) A(p.stat, p.v);
   const pl = cfg.player, caps = cfg.statCaps;
   const out = {
@@ -101,6 +102,7 @@ export function computeStats(g, opt = {}) {
 }
 export function weaponDmg(g, w) {
   const d = g.c.get('weapons', w.def);
+  if (d.dmg) { const mx = g.c.get('rarities', d.rarity).maxLevel, a = (d.dmg[0] + d.dmg[1]) / 2, b = (d.dmg[2] + d.dmg[3]) / 2; return Math.round(a + ((b - a) * (Math.min(w.level, mx) - 1)) / Math.max(1, mx - 1)); }
   return Math.round((d.dpsAdd + d.perLevel * w.level) * g.c.get('rarities', d.rarity).mult);
 }
 export function refreshStats(g) { g.stats = computeStats(g); g.statsRev = (g.statsRev || 0) + 1; return g.stats; }

@@ -8,6 +8,7 @@ import { inPoly } from '../worldgrid.js';
 import { BESTIARY } from './bestiary_ref.js';
 import { ABILITY_REF } from './progression_ref.js';
 import { WEAPON_REF } from './weapon_ref.js';
+import { WEAPON_WIKI, TYPE_BONUS } from './wiki_ref.js';
 import { NPC_REF } from './npc_ref.js';
 
 export const SCHEMA = 1;
@@ -341,7 +342,7 @@ export function buildBaseContent(opt = {}) {
 
   // ------------------------------------------------------------------ Waffen
   T('rarities', 'E', 'Seltenheitsnamen D; Multiplikatoren/Maxlevel eigen.', RARITIES.map((name, idx) =>
-    ({ idx, name, mult: [1, 1.5, 2.2, 3.3, 5, 7.5, 11, 16, 24][idx], maxLevel: 10 + idx * 10, color: ['#bbb', '#6c6', '#59f', '#b6f', '#fb3', '#f73', '#f46', '#3dd', '#fff'][idx] })));
+    ({ idx, name, mult: [1, 1.5, 2.2, 3.3, 5, 7.5, 11, 16, 24][idx], maxLevel: [10, 20, 30, 50, 70, 90, 110, 130, 130][idx], color: ['#bbb', '#6c6', '#59f', '#b6f', '#fb3', '#f73', '#f46', '#3dd', '#fff'][idx] })));
   const CLS = [['dagger', 'Dolch', true, 60, 0.45, 1, 'flower_dance', 'critChance', 3], ['sword', 'Schwert', true, 75, 0.7, 3, 'crescent_blade', 'dmgPct', 5],
     ['blunt', 'Stumpfe Waffe', true, 70, 1.1, 5, 'soul_wave', 'bossDmgPct', 6], ['crossbow', 'Armbrust', false, 330, 0.9, 1, 'at_rocket', 'critDmg', 10],
     ['gun', 'Schusswaffe', false, 300, 0.5, 1, 'gravity_shot', 'atkSpeedPct', 4], ['staff', 'Zauberstab', false, 280, 1.3, 4, 'carpet_bombing', 'skillDmgPct', 8]];
@@ -366,12 +367,14 @@ export function buildBaseContent(opt = {}) {
     // Namen, Angriffe je Sekunde und Fertigkeit (Name + Gesamtfaktor, erst ab Epic) aus den Referenzdaten (D). Die S-Reihe behält ihre eigene Fertigkeit mit Abklingzeit.
     const refOf = (r) => ((WEAPON_REF[cls] || {})[series] || []).find((x) => x[1] === r);
     for (let r = from; r <= to; r++) weapons.push({ id: `w_${cls}_${series}_${r}`, cls, series, rarity: r, name: refOf(r) ? `${refOf(r)[0]}${series === 's' ? ` (${RARITIES[r]})` : ''}` : `${cname}${series === 's' ? ' S' : ''} (${RARITIES[r]})`,
+      ...(() => { const k = WEAPON_WIKI[`${cls}_${series}_${r}`]; return k ? { dmg: k.d, bonus: k.bonus, skMult: k.sk ? k.sk[1] : null, skName: k.sk ? k.sk[0] : null } : {}; })(), // Schaden Stufe 1/Max, Stufen-Boni, S-Fertigkeit (D, Fan-Wiki)
       aps: refOf(r) ? refOf(r)[2] : null, wskill: series === 'n' && refOf(r) && refOf(r)[3] ? { name: refOf(r)[3].replace(/([a-z])([A-Z])/g, '$1 $2'), mult: refOf(r)[4] } : null,
       dpsAdd: Math.round(4 * (1 + r) ** 2 * (series === 's' ? 1.5 : 1)), perLevel: Math.round(2 * (1 + r) ** 1.6 * (series === 's' ? 1.5 : 1)),
       next: r < to ? `w_${cls}_${series}_${r + 1}` : null, mergeCount: 3, evoCost: r >= 3 ? { weapon_scroll: 10 * (r - 2), gold: 5000 * 4 ** (r - 3) } : {},
       skill: series === 's' ? CLS.find((c) => c[0] === cls)[6] : null });
   }
-  T('weapons', 'R', '84 Varianten, 12 Reihen, Namen und Waffen-Fertigkeiten ab Epic mit Gesamtfaktor (D). Auslösung der Fertigkeit nach jedem n-ten Angriff (combat.weaponSkillEvery) ist eigen, die Quellen nennen keinen Auslöser. Stats nach DPS-Rechner-Struktur (DPS Add + PerLevel*Level)*RarityMult; Zahlen, Merge-Anzahl, Evo-Kosten eigen. Transzendenz offen.', weapons);
+  T('typeBonus', 'D', 'Bonus der Waffenart: gilt nur, wenn die Hauptwaffe zur Meisterschaft des aktiven Helden passt (Fan-Wiki).', Object.entries(TYPE_BONUS).map(([id, v]) => ({ id, bonus: v.bonus, heroes: v.heroes })));
+  T('weapons', 'R', '84 Varianten, 12 Reihen, Namen und Waffen-Fertigkeiten ab Epic mit Gesamtfaktor (D). Auslösung der Fertigkeit nach jedem n-ten Angriff (combat.weaponSkillEvery) ist eigen, die Quellen nennen keinen Auslöser. Schaden je Stufe linear zwischen Stufe-1- und Maximalwert, Maximalstufen und Stufen-Boni aus dem Fan-Wiki (D); Merge-Anzahl 3 (D), Evo-Kosten eigen. Transzendenz offen.', weapons);
   const SM = [[20, [[0, 100]], 0], [1300, [[0, 49], [1, 10], [2, 1]]], [20100, [[0, 44.75], [1, 12], [2, 3], [3, 0.25]], { orb_red: 10 }],
     [34500, [[0, 41.5], [1, 14], [2, 4], [3, 0.5]], { orb_red: 20 }], [134300, [[0, 39.25], [1, 15], [2, 5], [3, 0.75]], { orb_pink: 10 }],
     [288900, [[0, 37], [1, 16], [2, 6], [3, 1]], { orb_pink: 20, orb_red: 40 }], [765000, [[0, 33.5], [1, 18], [2, 7], [3, 1.5]], { orb_pink: 30, orb_red: 60 }],

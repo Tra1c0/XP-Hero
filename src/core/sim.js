@@ -151,7 +151,7 @@ export class World {
       if (!w) return;
       const d = g.c.get('weapons', w.def), cls = g.c.get('weaponClasses', d.cls), sub = slot > 0;
       out.push({ slot, cls, sub, dmg: (st.atk + weaponDmg(g, w)) * cls.basicMult * (sub ? cb.subDmgMult : 1),
-        interval: (cls.interval * (sub ? cb.subIntervalMult : 1)) / (1 + st.atkSpeedPct / 100), range: cls.range, skill: d.skill ? g.c.get('skills', d.skill) : null, wskill: d.wskill || null });
+        interval: (cls.interval * (sub ? cb.subIntervalMult : 1)) / (1 + st.atkSpeedPct / 100), range: cls.range, skill: d.skill ? (() => { const k = g.c.get('skills', d.skill); return d.skMult ? { ...k, name: d.skName || k.name, mult: d.skMult / (k.hits || 1) } : k; })() : null, wskill: d.wskill || null }); // S-Fertigkeit: Gesamtfaktor der Referenz auf die Treffer verteilt
     });
     if (!out.length) out.push({ slot: 0, cls: { id: 'fist', melee: true, range: 50, targets: 1, aoe: 0, proj: 0 }, sub: false, dmg: st.atk, interval: 0.8 / (1 + st.atkSpeedPct / 100), range: 50, skill: null });
     const h = g.c.get('heroes', st.heroId);
