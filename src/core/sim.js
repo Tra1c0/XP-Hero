@@ -61,7 +61,7 @@ export function arenaMap() { return { id: 'arena', kind: 'arena', w: 900, h: 120
 export function modeVariant(g, level, rank, hpMult = 1) {
   const st = mobStats(g.c.cfg, level, rank);
   return { id: `mode_${rank}_${level}`, monster: 'mode', name: rank === 'boss' ? 'Boss' : rank === 'elite' ? 'Elite' : 'Gegner', level, rank, ...st, hp: Math.round(st.hp * hpMult),
-    beh: rank === 'boss' ? 'boss' : level % 3 === 0 ? 'ranged' : 'melee', drops: [], xp: 0, gold: 0 };
+    beh: rank === 'boss' ? 'boss' : 'melee', drops: [], xp: 0, gold: 0 };
 }
 
 export class World {
@@ -363,14 +363,17 @@ export class World {
   stepEnemies(dt) {
     const g = this.g, p = this.p, sts = g.c.by.statuses, slowM = sts.get('slow').speedMult, burn = sts.get('burn');
     const G = this.G, far2 = (g.c.cfg.world.activeRadiusM * (this.map.world ? this.map.world.ppm : M)) ** 2;
+    // Die Basis ist Schutzzone: Gegner betreten sie nie und lassen vom Spieler ab, sobald er dort steht.
+    const safe = (x, y) => !this.mode && !!this.map.world && zoneAt(G, x, y) === 'base', pSafe = safe(p.x, p.y);
     const move = (e, tx, ty, sp) => {
       const d = Math.hypot(tx - e.x, ty - e.y); if (d < 2) return true;
       const k = Math.min(1, (sp * dt) / d), ox = e.x, oy = e.y;
       [e.x, e.y] = slide(G, e.x, e.y, e.x + (tx - e.x) * k, e.y + (ty - e.y) * k, Math.min(e.r, 18));
+      if (safe(e.x, e.y)) { e.x = ox; e.y = oy; }
       if (e.x === ox && e.y === oy) e.stuck = (e.stuck || 0) + dt; else e.stuck = 0;
       return d < 6;
     };
-    const away = (e, sp) => { const d = Math.hypot(p.x - e.x, p.y - e.y) || 1, k = (sp * dt) / d; [e.x, e.y] = slide(G, e.x, e.y, e.x - (p.x - e.x) * k, e.y - (p.y - e.y) * k, 14); };
+    const away = (e, sp) => { const d = Math.hypot(p.x - e.x, p.y - e.y) || 1, k = (sp * dt) / d, ox = e.x, oy = e.y; [e.x, e.y] = slide(G, e.x, e.y, e.x - (p.x - e.x) * k, e.y - (p.y - e.y) * k, 14); if (safe(e.x, e.y)) { e.x = ox; e.y = oy; } };
     // Alarm: wer den Spieler bemerkt, weckt ruhende Nachbarn im Umkreis (keine Kettenreaktion)
     const alert = (e) => {
       e.st = 'aggro'; e.t = 0.3;
@@ -378,7 +381,7 @@ export class World {
       if (r2) for (const o of this.enemies) if (o !== e && o.alive && (o.st === 'idle' || o.st === 'patrol') && o.beh.aggro > 0 && !o.beh.flee && dist2(o.x, o.y, e.x, e.y) < r2 && los(G, o.x, o.y, e.x, e.y)) { o.st = 'aggro'; o.t = 0.45; }
     };
     const near = [];
-    const sees = (e) => this.mode || los(G, e.x, e.y, p.x, p.y);
+    const sees = (e) => this.mode || (!pSafe && los(G, e.x, e.y, p.x, p.y));
     for (const e of this.enemies) {
       if (!e.alive) continue;
       // Ruhende Gegner außerhalb des aktiven Radius werden nicht simuliert (Zustand bleibt erhalten)
@@ -393,7 +396,7 @@ export class World {
       if (e.stunT > 0) { e.stunT -= dt; continue; }
       if (e.st === 'spawn') { if ((e.t -= dt) <= 0) e.st = 'idle'; continue; }
       if (b.id === 'node') continue;
-      const sp = b.speed * (e.slowT > 0 ? slowM : 1), d = Math.hypot(p.x - e.x, p.y - e.y), aggro = this.mode ? 9999 : b.aggro, leash = this.mode ? 99999 : b.leash;
+      const sp = (e.v.speed || b.speed) * (e.slowT > 0 ? slowM : 1), d = Math.hypot(p.x - e.x, p.y - e.y), aggro = this.mode ? 9999 : b.aggro, leash = this.mode ? 99999 : b.leash;
       switch (e.st) {
         case 'spawn': if ((e.t -= dt) <= 0) e.st = 'idle'; break;
         case 'idle':
@@ -410,7 +413,7 @@ export class World {
         case 'aggro': if ((e.t -= dt) <= 0) e.st = 'chase'; break;
         case 'chase':
           // Verfolgung endet bei Leine, Tod des Spielers oder wenn der Spieler hinter Wänden festhängt (keine Endlosschleife)
-          if (!p.alive || dist2(e.x, e.y, e.hx, e.hy) > leash * leash || e.stuck > 2.5) { e.st = 'return'; e.stuck = 0; break; }
+          if (!p.alive || pSafe || dist2(e.x, e.y, e.hx, e.hy) > leash * leash || e.stuck > 2.5) { e.st = 'return'; e.stuck = 0; break; }
           if (b.flee) { if (d > aggro * 1.6) { e.st = 'return'; break; } const k = (sp * dt) / (d || 1); [e.x, e.y] = slide(G, e.x, e.y, e.x - (p.x - e.x) * k, e.y - (p.y - e.y) * k, 14); break; }
           if (b.pattern && (e.pcd -= dt) <= 0) { const pt = g.c.get('bossPatterns', b.pattern); e.st = 'cast'; e.t = pt.windup; e.cx = p.x; e.cy = p.y; e.pcd = pt.period * (e.hp < (e.maxHp * pt.enrageHpPct) / 100 ? pt.enrageIntervalMult : 1); break; }
           near.push(e);
@@ -446,7 +449,9 @@ export class World {
       const a = near[i], c = near[j], dx = c.x - a.x, dy = c.y - a.y, min = (a.r + c.r) * 0.9, d2 = dx * dx + dy * dy;
       if (d2 >= min * min || a.st === 'attack' || c.st === 'attack') continue;
       const d = Math.sqrt(d2) || 1, k = Math.min(60 * dt, (min - d) / 2) / d, ux = d2 ? dx * k : k, uy = dy * k;
+      const ax = a.x, ay = a.y, bx = c.x, by = c.y;
       [a.x, a.y] = slide(G, a.x, a.y, a.x - ux, a.y - uy, 14); [c.x, c.y] = slide(G, c.x, c.y, c.x + ux, c.y + uy, 14);
+      if (safe(a.x, a.y)) { a.x = ax; a.y = ay; } if (safe(c.x, c.y)) { c.x = bx; c.y = by; }
     }
   }
 

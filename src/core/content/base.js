@@ -5,6 +5,7 @@
 // Zeilen können mit Feld `s` einen abweichenden Zeilenstatus tragen. Nichts hiervon ist Gameplay-Code.
 import { WORLD, BUILDINGS as W1_BUILDINGS, REF as W1 } from './world1.js';
 import { inPoly } from '../worldgrid.js';
+import { BESTIARY } from './bestiary_ref.js';
 import { NPC_REF } from './npc_ref.js';
 
 export const SCHEMA = 1;
@@ -52,7 +53,7 @@ export function buildBaseContent(opt = {}) {
   C('combat', { subIntervalMult: 2.2, subDmgMult: 0.6, dropDespawnSec: 90, respawnOfflineContinues: true, defaultRespawnSec: 30, bossRespawnSec: 3600, tick: 1 / 30 }, 'R',
     'Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt.');
   C('weaponLevelCost', { scrollPer5: 1, goldBase: 50 }, 'E', 'Scrolls = ceil(L/5)*(1+r); Gold = goldBase*L*(1+r)^2.');
-  C('craftCost', [3, 5, 8, 12, 18, 25, 35, 50], 'R', 'Kristalle je Schmiedevorgang pro Schmiedestufe: Währung nach Vorlage (B), Mengen eigen.');
+  C('craftCost', [5, 5, 5, 5, 5, 5, 5, 5], 'B', 'Schmieden kostet auf jeder Schmiedestufe 5 Kristalle (Vorlage).');
   C('weaponSlots', [{ slot: 1 }, { slot: 2, quest: true }, { slot: 3, level: 20, cost: { gold: 20000 } }, { slot: 4, level: 40, cost: { gold: 200000 } },
     { slot: 5, level: 70, cost: { gold: 1500000 } }, { slot: 6, level: 110, cost: { gold: 8000000 } }], '?', 'Slot 2 per Quest (D); Slots 3-6 eigene Kosten.');
   C('traits', { slots: 5, presets: 3, rerollCost: { attr_point: 10 }, lockSurcharge: 0.5 }, '?', 'Slotzahl, Rollkosten und Lockkosten eigen.');
@@ -98,7 +99,11 @@ export function buildBaseContent(opt = {}) {
     [2, 'Frozen Throne', 'Frost King'], [3, 'Downtown', 'Hobchief'], [3, 'Ruined Downtown', 'Magma Golem'], [3, 'Hanok Village', 'Skullwyrm'],
     [3, 'Jeju Island', 'Ant King'], [3, 'Amusement Park', 'Vampire Lord'], [3, 'The Dome', 'Abyss Lord'], [3, 'Dimensional Rift', 'Voidlord']];
   const GROUPS = [14, 14, 14, 14, 13, 13, 11, 10, 10, 10, 10, 10, 10, 9, 9, 8, 8, 8, 8, 8]; // 82/71/58 (D-Summen, Verteilung E)
-  const bossLevel = (s) => (s === 19 ? 390 : s === 20 ? 400 : Math.round(8 + (s - 1) * 20.125)); // 8 (D), 330 (D), 390 (D); Rest E
+  // Bestiary der Referenz (D): Level, Gold, Respawn, Drops, Tempo je Monster. HP/ATK bleiben auf der eigenen Kurve (E), weil die Spielerwerte eigen skaliert sind; Originalwerte stehen in v.ref.
+  const TYPE_RANK = { Normal: 'normal', Miniboss: 'elite', Elite: 'rare', Champion: 'boss', Event: 'special', Boss: 'elite' };
+  const refBoss = (nm) => BESTIARY.find((o) => o.n === nm && o.v.some((x) => x[4] === 'Champion'));
+  const bossLevel = (s) => refBoss(AREA[s - 1][2]).v[0][1];
+  const refCh = (s) => (s === 13 ? 12 : s === 20 ? 19 : s); // Frozen Throne / Dimensional Rift haben keine eigenen Symbol-Stages: Gegner der Vorstage (R)
   const BOSS_RESPAWN = { 10: 21600, 17: 21600, 13: 32400, 20: 32400 }; // SeaQueen/Ant King 6 h, Frost King/Voidlord 9 h (D)
   const CHEST_RESPAWN = { 7: 300, 8: 702, 9: 900, 10: 1302, 11: 1800, 12: 2100, 14: 300, 15: 702, 16: 900, 17: 1302, 18: 1800, 19: 2100 }; // D
   const W = 1600, H = 2600;
@@ -116,9 +121,7 @@ export function buildBaseContent(opt = {}) {
   // Kapitel 1: Spawnknoten, Monsternamen und Respawnzeiten aus den Szenendaten der Referenz (D); Werte je Variante eigen (E).
   const zoneOf = (X, Z) => (WORLD.zones.find((z) => inPoly(X, Z, z.poly)) || { id: null }).id;
   const slugTaken = new Set();
-  const BEH = { Spider: 'fast', 'Desert Spider': 'fast', 'Red Spider': 'fast', Wolf: 'fast', WareWolf: 'fast', Hellhound: 'fast', Bat: 'fast', Chicken: 'fast',
-    Witch: 'ranged', 'Dark Elf': 'ranged', Ghost: 'ranged', 'Cursed Phantom': 'ranged', 'Skull Imp Chief': 'ranged', Wildrose: 'ranged', 'Thorn Wildrose': 'ranged', 'Man Eater Flower': 'ranged',
-    'Treasure Goblin': 'flee', 'Gold Elephant': 'melee' };
+  const BEH = { 'Treasure Goblin': 'flee' }; // Fernkämpfer gibt es außer Bossen nicht (Vorgabe); Tempo je Monster kommt aus dem Bestiary
   const KEEP_ID = { 'Treasure Goblin': 'treasure_goblin', 'Goblin Warrior': 'goblin_warrior', 'Giant Chicken': 'giant_chicken', Cactus: 'cactus' };
   const S1_ID = { Mandragora: 'mandragora', Slime: 'slime', Mushroom: 'mushroom', Spider: 'spider', 'Slime King': 'slime_king' };
   function ch1Stage(s, id, lo, hi, loot, orb, bv) {
@@ -155,21 +158,24 @@ export function buildBaseContent(opt = {}) {
     chIdx = ch === prevCh ? chIdx + 1 : 1; prevCh = ch;
     const id = `a${ch}_${chIdx}`, hi = bossLevel(s), lo = s === 1 ? 1 : bossLevel(s - 1) + 1;
     const loot = `loot_c${ch}`, orb = ch === 1 ? orbFor[chIdx] : ['orb_red', 'orb_pink', 'orb_ice', 'orb_jungle', 'orb_hell'][i % 5];
-    const mk = [];
+    const mk = [], roster = [];
     if (s === 1 || ch !== 1) {
     if (s === 1) {
       mk.push(V('mandragora', 'Mandragora', 1, 'normal', { hp: 12, atk: 1, s: 'D' }), V('slime', 'Slime', 2, 'normal', { hp: 16, atk: 1, s: 'D' }),
-        V('mushroom', 'Mushroom', 4, 'normal', { hp: 17, atk: 2, s: 'D' }), V('spider', 'Spider', 5, 'normal', { hp: 57, atk: 4, s: 'D', beh: 'fast' }));
+        V('mushroom', 'Mushroom', 4, 'normal', { hp: 17, atk: 2, s: 'D' }), V('spider', 'Spider', 5, 'normal', { hp: 57, atk: 4, s: 'D' }));
     } else {
-      for (let k = 0; k < 4; k++) {
-        const lv = Math.round(lo + ((hi - 1 - lo) * k) / 3);
-        const nm = s === 2 && k === 0 ? 'Cactus' : `${name} ${'ABCD'[k]}`;
-        mk.push(V(s === 2 && k === 0 ? 'cactus' : `m_${id}_${k}`, nm, lv, 'normal', { beh: ['melee', 'ranged', 'fast', 'melee'][k] }));
+      for (const o of BESTIARY.filter((x) => x.ch === refCh(s) && x.v.length && !(x.v[0][4] === 'Champion' && AREA.some((a2) => a2[2] === x.n)))) {
+        if (roster.some((r) => r.o === o)) continue;
+        const [, lv, , , type] = o.v[0], rank = type === 'Champion' ? 'rare' : TYPE_RANK[type] || 'normal';
+        let vid = slug(o.n); if (variants.some((x) => x.id === vid)) vid += `_s${s}`; if (variants.some((x) => x.id === vid)) vid += '_2';
+        const v = V(vid, o.n, lv, rank, { monster: slug(o.n), beh: BEH[o.n] || 'melee', respawn: o.r, s: 'D' });
+        roster.push({ o, v });
+        if (rank === 'normal') mk.push(v);
       }
     }
     }
     for (const v of mk) v.drops.push({ item: loot, n: 1, count: 1, chance: 0.5 }, { item: orb, n: 1, count: 1, chance: 0.03 });
-    const elite = ch === 1 && s !== 1 ? null : s === 1 ? V('slime_king', 'Slime King', 3, 'elite', { hp: 63, atk: 6, s: 'D' }) : V(`e_${id}`, `${name} Elite`, Math.round((lo + hi) / 2), 'elite');
+    const elite = s === 1 ? V('slime_king', 'Slime King', 3, 'elite', { hp: 63, atk: 6, s: 'D' }) : null;
     if (elite) elite.drops.push({ item: loot, n: 2, count: 2, chance: 1 }, { item: 'weapon_scroll', n: 1, count: 1, chance: 0.3 }, { item: orb, n: 2, count: 1, chance: 0.25 });
     if (ch >= 2 && elite) elite.drops.push({ item: 'attr_point', n: 2, count: 1, chance: 0.2 });
     const bv = V(`boss_${id}`, boss, hi, 'boss', s === 1 ? { hp: 256, atk: 18, s: 'D' } : { s: [17, 19].includes(s) ? 'D' : 'E' });
@@ -184,18 +190,11 @@ export function buildBaseContent(opt = {}) {
       return;
     }
     // Spawn-Gruppen: 1 Boss, Spezialgruppen, Rest Elite/Normal
-    const specials = [];
-    if (s === 2) specials.push(V('treasure_goblin', 'Treasure Goblin', lo + 4, 'special', { beh: 'flee', respawn: 600, s: 'D' }),
-      V('goblin_warrior', 'Goblin Warrior', lo + 8, 'elite', { respawn: 900, s: 'D' }));
-    if (s === 3) specials.push(V('giant_chicken', 'Giant Chicken', hi - 4, 'elite', { respawn: 1800, s: 'B' }));
-    if (s === 10) specials.push(V('abyssal_kraken', 'Abyssal Kraken', 155, 'elite', { respawn: 3600, s: 'D',
-      drops: [{ item: 'gems', n: 5, count: 5, chance: 1 }, { item: 'bluestone', n: 22, count: 6, chance: 1 }] }));
-    if (s === 16) specials.push(V('treasure_mimic', 'Treasure Mimic', lo + 5, 'special', { respawn: 3000, s: 'D', drops: [{ item: 'gems', n: 5, count: 2, chance: 1, s: 'E' }] }));
-    for (const sp of specials) if (sp.id === 'treasure_goblin') sp.gold *= 20;
+    const specials = roster.filter((r) => r.v.rank !== 'normal').map((r) => r.v);
+    for (const sp of specials) sp.drops.push({ item: loot, n: 2, count: 2, chance: 1 }, { item: 'weapon_scroll', n: 1, count: 1, chance: 0.3 });
     const n = GROUPS[i] - 1, list = [];
     specials.forEach((sp) => list.push({ v: sp.id, count: 1, respawn: sp.respawn }));
-    list.push({ v: elite.id, count: 1, respawn: 180 });
-    while (list.length < n) { const k = (list.length) % 4; list.push({ v: mk[k].id, count: 5 + (list.length % 3) }); }
+    while (list.length < n) { const k = (list.length) % mk.length; list.push({ v: mk[k].id, count: 5 + (list.length % 3) }); }
     list.sort((a, b) => variants.find((x) => x.id === a.v).level - variants.find((x) => x.id === b.v).level);
     const rowsN = Math.ceil(n / 3);
     list.forEach((g, k) => groups.push({ id: `sg_${id}_${k}`, area: id, v: g.v, count: g.count, respawn: g.respawn || null,
@@ -224,6 +223,27 @@ export function buildBaseContent(opt = {}) {
   for (const a of areas) { ci = a.chapter === pc ? ci + 1 : 1; pc = a.chapter; a.minimap = a.chapter === 1 ? MM1[ci - 1] : [{ item: 'gems', n: ci === 7 ? 1000 : 200 }]; }
   T('areas', 'D', '20 Gebiete, 19 Gates; Kartenlayout/Koordinaten eigen (E).', areas);
   T('monsters', 'E', '206 Monster/246 Varianten im Original; hier dokumentierte Beispiele (D) + eigene Platzhalter.', monsters);
+  const DROP_OWN = new Set(['loot_c1', 'loot_c2', 'loot_c3', 'weapon_scroll', 'wood', 'stone']);
+  for (const v of variants) {
+    if (v.rank === 'node') continue;
+    const cand = BESTIARY.filter((o) => o.n.toLowerCase() === v.name.toLowerCase());
+    if (!cand.length) continue;
+    let best = null;
+    for (const o of cand) for (const x of o.v.length ? o.v : [null]) { const d = x ? Math.abs(x[1] - v.level) : 1e6; if (!best || d < best.d) best = { o, x, d }; }
+    const { o, x } = best;
+    if (x) {
+      const keep = v.s === 'D' && v.hp !== undefined && v.level === x[1] && v.hp === x[2];
+      v.level = x[1];
+      if (!keep) Object.assign(v, mobStats(config, v.level, v.rank));
+      if (x[3] === 0) v.atk = 0; // z. B. Bat: greift im Original nicht an
+      if (x[5]) v.speed = Math.round(x[5] * 130);
+      v.ref = { id: x[0], hp: x[2], atk: x[3], type: x[4] };
+    }
+    if (o.g) v.gold = o.g;
+    if (o.r && v.respawn === undefined) v.respawn = o.r;
+    v.drops = [...v.drops.filter((d) => DROP_OWN.has(d.item)), ...o.d.map(([item, n]) => ({ item, n, count: 1, chance: 1, s: 'D' }))];
+    v.s = 'D';
+  }
   for (const v of variants) if (v.drops.length) v.drops.push(v.rank === 'normal' ? { item: 'crystal', n: 1, count: 1, chance: 0.5 } : { item: 'crystal', n: v.rank === 'boss' ? 10 : 3, count: 1, chance: 1 });
   T('variants', 'E', 'Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops).', variants);
   T('spawnGroups', 'R', 'Kapitel 1: 124 platzierte Spawnknoten mit Monster, Position, Respawn und Patrol aus den Szenendaten (D). Kapitel 2/3: 71/58 Gruppen (D), Position eigen.', groups);
@@ -267,8 +287,8 @@ export function buildBaseContent(opt = {}) {
 
   // ------------------------------------------------------------------ Spielerlevel
   const lvRows = [];
-  for (let L = 1; L <= 400; L++) lvRows.push({ level: L, xp: Math.round(20 * L ** 1.8), atk: Math.round(3 * L ** 1.5694), hp: Math.round(100 * L ** 1.9032) });
-  T('playerLevels', 'E', 'XP-Schwellen unbekannt: EIGENE, austauschbare Kurve. ATK/HP an Tracker-L99 (4.055 / 627.721, interpoliert) verankert.', lvRows);
+  for (let L = 1; L <= 400; L++) lvRows.push({ level: L, xp: Math.round(45 * L ** 1.8), atk: Math.round(3 * L ** 1.5694), hp: Math.round(100 * L ** 1.9032) });
+  T('playerLevels', 'E', 'XP-Schwellen unbekannt: EIGENE, austauschbare Kurve (2,25-fach gestreckt: Leveln war zu schnell). ATK/HP an Tracker-L99 (4.055 / 627.721, interpoliert) verankert.', lvRows);
 
   // ------------------------------------------------------------------ Upgrade-Pfade
   const up = [];
@@ -522,7 +542,7 @@ export function buildBaseContent(opt = {}) {
   for (const a of areas) {
     const s = a.stage, ms = variants.filter((v) => v.rank === 'normal' && groups.some((g) => g.area === a.id && g.v === v.id));
     for (const [nm, obj, x] of feat[s] || []) { const { id, reward, ...rest } = x; Q(id || `q_${a.id}_f${quests.length}`, nm, obj, reward || G(50 * s * s), rest); }
-    if (s > 1) { Q(`q_${a.id}_k1`, `Besiege 10 ${ms[0].name}`, kill(ms[0].id, 10), G(60 * s * s)); Q(`q_${a.id}_k2`, `Besiege 10 ${ms[2].name}`, kill(ms[2].id, 10), G(80 * s * s)); }
+    if (s > 1) { Q(`q_${a.id}_k1`, `Besiege 10 ${ms[0].name}`, kill(ms[0].id, 10), G(60 * s * s)); const m2 = ms[Math.min(2, ms.length - 1)]; Q(`q_${a.id}_k2`, `Besiege 10 ${m2.name}`, kill(m2.id, 10), G(80 * s * s)); }
     Q(`q_${a.id}_boss`, `Besiege ${a.name}-Boss ${AREA[s - 1][2]}`, { cond: { cleared: a.id } }, [{ item: 'gold', n: 150 * s * s }, { item: 'weapon_scroll', n: 3 }, ...(s === 5 ? [] : [])],
       s === 5 ? { unlock: ['heroEvolution', 'heroCollection'], unlockOn: 'clear', s: 'D' } : {});
   }

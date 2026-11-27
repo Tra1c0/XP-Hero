@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 2atcmub02pf).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1ymm41ha3c4).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -13,8 +13,8 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 |---|---|---|---|---|
 | items | 32 | D | D:23 ?:1 E:6 B:2 | Währungen/Items laut Abschnitt 11; nicht alle 116 Originalitems bekannt. |
 | areas | 20 | D | D:20 | 20 Gebiete, 19 Gates; Kartenlayout/Koordinaten eigen (E). |
-| monsters | 138 | E | E:138 | 206 Monster/246 Varianten im Original; hier dokumentierte Beispiele (D) + eigene Platzhalter. |
-| variants | 141 | E | D:10 E:89 B:42 | Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops). |
+| monsters | 154 | E | E:154 | 206 Monster/246 Varianten im Original; hier dokumentierte Beispiele (D) + eigene Platzhalter. |
+| variants | 175 | E | D:173 E:2 | Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops). |
 | spawnGroups | 253 | R | D:128 R:115 E:10 | Kapitel 1: 124 platzierte Spawnknoten mit Monster, Position, Respawn und Patrol aus den Szenendaten (D). Kapitel 2/3: 71/58 Gruppen (D), Position eigen. |
 | resourceGroups | 7 | E | E:7 | Rohstoffstellen als angreifbare Knoten. |
 | behaviors | 6 | E | E:6 | Gegner-KI-Parameter je Typ; Original-KI unbekannt. |
@@ -26,7 +26,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | areaChests | 20 | R | R:20 | Je Gebiet eine einmalige Gebietstruhe (Kap. 1: 6 Stage-Truhen der Referenz, Position D neben dem Truhenspawner); Inhalt eigen. |
 | giftChestLevels | 400 | R | R:400 | Gold L1=12 und L400=1.983.356 (D); Zwischenwerte geometrisch interpoliert (E). Bonus: Gold x5 + 10 Gems (D). |
 | keyHouseSlots | 15 | D | D:15 | 15 Freischaltzeilen; Gem-Summe 5.570. |
-| playerLevels | 400 | E | E:400 | XP-Schwellen unbekannt: EIGENE, austauschbare Kurve. ATK/HP an Tracker-L99 (4.055 / 627.721, interpoliert) verankert. |
+| playerLevels | 400 | E | E:400 | XP-Schwellen unbekannt: EIGENE, austauschbare Kurve (2,25-fach gestreckt: Leveln war zu schnell). ATK/HP an Tracker-L99 (4.055 / 627.721, interpoliert) verankert. |
 | upgradeTracks | 44 | R | D:1 E:29 R:14 | Ability 10 / Special 11 (Sternstufen) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen. |
 | rarities | 9 | E | E:9 | Seltenheitsnamen D; Multiplikatoren/Maxlevel eigen. |
 | weaponClasses | 6 | R | R:6 | 6 Klassen und S-Skill-Namen D; Reichweite/Takt/Passiva eigen. |
@@ -49,7 +49,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | worldObjects | 2 | D | D:2 | Invasionsportale (Positionen der Referenz, dekorativ: Invasion läuft über das Menü) und Lagerfeuer. |
 | worlds | 1 | R | R:1 | Zusammenhängende Kapitel-1-Welt: Zonen, Tore, Hindernisse, Landmarken (Level-Design E um Referenzpunkte D). Meter, X=Ost, Z=Nord. |
 | unlocks | 7 | D | D:4 E:2 R:1 | Levelgebundene Freischaltungen (D); blessing/spin/special/extra/pvp eigen platziert. |
-| quests | 352 | R | R:66 D:269 ?:1 E:16 | Hauptquestkette (Original ca. 850 Einträge nicht erfasst): dokumentierte Unlock-Kopplungen (s=D) + eigene Gebietsquests. Dazu 268 NPC-Kettenquests (id nq_*, Ziel/Menge/Belohnung D, Abgabe beim Questgeber). |
+| quests | 352 | R | R:66 D:280 ?:1 E:5 | Hauptquestkette (Original ca. 850 Einträge nicht erfasst): dokumentierte Unlock-Kopplungen (s=D) + eigene Gebietsquests. Dazu 268 NPC-Kettenquests (id nq_*, Ziel/Menge/Belohnung D, Abgabe beim Questgeber). |
 | tracks | 12 | R | R:3 D:4 E:5 | Generische Claim-Tracks (Meilensteine, Missionen, Pässe, Events). Status je Track im Feld s. |
 | shop | 37 | R | D:4 E:7 R:25 ?:1 | Rein spielinterner Katalog. Royal-Perks (D) als erspielbare Einmal-Angebote; Preise eigen. EXP-Perk (Wert 1000, Einheit ungeklärt) nicht angewendet. |
 | perks | 5 | D | D:4 ?:1 | Royal-Lifetime-Perkwerte; Einheit von cargo/exp ungeklärt (cargo als flacher Wert angewendet = R, exp nicht angewendet). |
@@ -79,7 +79,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | statCaps | E | `{"critChance":100,"cooldownPct":70,"atkSpeedPct":400,"moveSpeedPct":150,"lifesteal":50,"multiHit":100,"trip…` | Obergrenzen; Kritchance <= 100. |
 | combat | R | `{"subIntervalMult":2.2,"subDmgMult":0.6,"dropDespawnSec":90,"respawnOfflineContinues":true,"defaultRespawnS…` | Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt. |
 | weaponLevelCost | E | `{"scrollPer5":1,"goldBase":50}` | Scrolls = ceil(L/5)*(1+r); Gold = goldBase*L*(1+r)^2. |
-| craftCost | R | `[3,5,8,12,18,25,35,50]` | Kristalle je Schmiedevorgang pro Schmiedestufe: Währung nach Vorlage (B), Mengen eigen. |
+| craftCost | B | `[5,5,5,5,5,5,5,5]` | Schmieden kostet auf jeder Schmiedestufe 5 Kristalle (Vorlage). |
 | weaponSlots | ? | `[{"slot":1},{"slot":2,"quest":true},{"slot":3,"level":20,"cost":{"gold":20000}},{"slot":4,"level":40,"cost"…` | Slot 2 per Quest (D); Slots 3-6 eigene Kosten. |
 | traits | ? | `{"slots":5,"presets":3,"rerollCost":{"attr_point":10},"lockSurcharge":0.5}` | Slotzahl, Rollkosten und Lockkosten eigen. |
 | runes | ? | `{"slots":6,"slotLevels":[1,60,90,120,160,200],"dismantleRefundPct":80,"milestoneEvery":10,"milestonePct":10}` | Slots und Refund eigen. |

@@ -38,9 +38,10 @@ const BUILD = {
   fish: () => [['box', -0.16, 0, 0, 0.2, 0.3, 0.3, 'D', 0], ['box', 0.16, 0, 0, 0.2, 0.3, 0.3, 'D', 0], ['sphere', 0, 0.2, 0, 0.8, 1.0, 0.75, 'M', 0], ['box', 0, 0.3, 0.3, 0.5, 0.5, 0.12, 'L', 0], ['box', 0, 1.0, -0.05, 0.08, 0.3, 0.5, 'A', 0],
     ['box', -0.48, 0.5, 0, 0.2, 0.1, 0.3, 'A', 0, 0.4], ['box', 0.48, 0.5, 0, 0.2, 0.1, 0.3, 'A', 0, -0.4], ['box', 0.5, 0.2, 0.3, 0.07, 1.2, 0.07, '#7a5236', 0], ...eyes(0.82, 0.33, 0.17, 0.14)],
 };
-const KIND = [[/slime/, 'slime'], [/mushroom/, 'shroom'], [/cactus/, 'cactus'], [/mandragora|flower|rose|treant|bloom|root/, 'plant'], [/spider|kraken|crab|scorp/, 'spider'], [/bat\b|bat_/, 'bat'], [/dragon/, 'dragon'],
-  [/wolf|hound|elephant|foot|cerber/, 'beast'], [/chicken/, 'bird'], [/witch|elf|chief|lord|anubis/, 'caster'], [/ghost|phantom/, 'ghost'], [/skeleton|skull|bone|scamp/, 'bones'], [/murloc/, 'fish'], [/golem|baal|king/, 'golem'], [/mimic/, 'chest'],
-  [/goblin|knight|devil|imp/, 'human']];
+const KIND = [[/slime/, 'slime'], [/mushroom/, 'shroom'], [/cactus/, 'cactus'], [/mandragora|flower|rose|treant|bloom|root|dryad|vine|grove|straw|blightdru/, 'plant'], [/spider|kraken|crab|scorp|octopus|tentacle|ant king|ironweaver|deepclaw/, 'spider'],
+  [/\bbat\b|bat_|raven|drone|gargoyle|voidgoyle/, 'bat'], [/dragon|wyrm|hydra|basilisk/, 'dragon'], [/wolf|hound|elephant|foot|cerber|bear|boar|beast|rat|unicorn|rider|fang/, 'beast'], [/chicken/, 'bird'],
+  [/witch|elf|chief|lord|anubis|priest|shaman|queen|banshee|master|druid/, 'caster'], [/ghost|phantom|wraith|specter|shade|reaper|elemental|revenant/, 'ghost'], [/skeleton|skull|bone|scamp|ghoul|walker/, 'bones'], [/murloc|mermaid/, 'fish'],
+  [/golem|baal|king|titan|colossus|volcanus|troll|tauren|champion/, 'golem'], [/mimic/, 'chest'], [/goblin|knight|devil|imp|guard|peasant|captain|capt|warrior|thief|rogue|fighter/, 'human']];
 const TONE = [[/frost|ice|frozen|snow/, ['#8fd3f5', '#4f8fc0', '#e8f6ff', '#bfe9ff']], [/hell|devil|red|blood|fire|baal/, ['#d84a3a', '#7a1f1f', '#ffb06a', '#ffd24a']], [/desert|sand|anubis/, ['#d9a85a', '#8a5a2b', '#f1d9a0', '#3fb7a8']],
   [/gold|treasure|greedy/, ['#f2c230', '#a8741a', '#fff0a8', '#ff5a7a']], [/dark|cursed|ghost|phantom|witch|bat/, ['#7d5bd0', '#3d2a6e', '#cdb8ff', '#7dffb0']], [/swamp|murloc|kraken/, ['#3fae9a', '#1f6a62', '#a8f0d8', '#ff8a4a']],
   [/goblin|cactus|treant|mandragora/, ['#6fbf4a', '#3a7a2e', '#c8f08a', '#e2443a']], [/mushroom|rose|flower/, ['#e2557a', '#8a2a4a', '#ffd0dc', '#ffe14a']], [/skeleton|bone|skull/, ['#8a93a8', '#4a5166', '#eef0f4', '#ff5a4a']],
