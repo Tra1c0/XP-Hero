@@ -17,8 +17,15 @@ export function buildingUpgradeCost(g, id) {
   if (!b || !d.tiers || b.level >= d.max) return null;
   return g.c.get(d.tiers, b.level).upgradeCost;
 }
+// Schmiede steigt erst nach genug Schmiedevorgängen auf
+export function buildingUpgradeNeed(g, id) {
+  const d = g.c.get('buildings', id), b = g.state.buildings[id], row = b && d.tiers ? g.c.get(d.tiers, b.level) : null, have = g.state.player.crafts || 0;
+  return row && row.needCrafts > have ? `Noch ${row.needCrafts - have} Mal schmieden` : null;
+}
 export function upgradeBuilding(g, id) {
   const cost = buildingUpgradeCost(g, id) || fail('max_level', 'Kein Upgrade verfügbar');
+  const need = buildingUpgradeNeed(g, id);
+  if (need) fail('locked', need);
   pay(g, cost, 'build:upgrade', id);
   g.state.buildings[id].level++;
   emit(g, `buildUp:${id}`);
@@ -72,6 +79,7 @@ export function unlockKeySlot(g, idx) {
   if (slots[idx].open) fail('already', 'Bereits freigeschaltet');
   if (!chapterReached(g, row.chapter)) fail('locked', `Kapitel ${row.chapter} noch nicht erreicht`);
   if (idx > 0 && rows[idx - 1].chapter === row.chapter && !slots[idx - 1].open) fail('locked', 'Vorherigen Slot zuerst freischalten');
+  if (row.chapter === 1 && ((g.state.buildings.chesthouse || {}).level || 0) < row.level) fail('locked', `Schlüsselhaus Stufe ${row.level} nötig`);
   pay(g, row.cost, 'keyhouse:slot', String(idx));
   slots[idx].open = true;
 }
@@ -87,7 +95,8 @@ export function pickupChest(g, spawnerId) {
   if (!chestSpawnerReady(g, spawnerId)) fail('not_ready', 'Truhe noch nicht wieder erschienen');
   const ch = g.c.get('areas', sp.area).chapter, idx = freeSlot(g, ch);
   if (idx < 0) fail('slots_full', 'Kein freier Key-House-Slot');
-  const type = g.c.get('chestTypes', pickWeighted(g.state.rng, 'loot', sp.pool).type);
+  const seq = (g.state.world.chestSeq ||= {}), n = seq[spawnerId] || 0, type = g.c.get('chestTypes', sp.order[n % sp.order.length]); // feste Reihenfolge je Spawner
+  seq[spawnerId] = n + 1;
   g.state.keyhouse.slots[idx].chest = { type: type.id, readyAt: g.now() + type.revealSec * 1000, from: spawnerId };
   g.state.world.chests[spawnerId] = g.now() + sp.respawn * 1000;
   emit(g, 'chest:pickup');
@@ -99,7 +108,7 @@ export function claimChest(g, idx) {
   if (g.now() < sl.chest.readyAt) fail('not_ready', 'Truhe noch nicht fällig');
   const type = g.c.get('chestTypes', sl.chest.type);
   sl.chest = null; // Slot zuerst freigeben: derselbe Claim kann nie zweimal auszahlen
-  const rows = type.mode === 'one' ? [pickWeighted(g.state.rng, 'loot', type.rows)] : type.rows.filter((r) => r.w > 0);
+  const rows = type.bundles.map((b) => { const r = pickWeighted(g.state.rng, 'loot', b); return r.rateTier ? { weaponPool: { series: 'n', rarity: pickWeighted(g.state.rng, 'loot', g.c.get('smithy', r.rateTier).rates).rarity } } : r; });
   const got = give(g, rows.filter(Boolean), `chest:${type.id}`);
   emit(g, 'chest:claim');
   return got;

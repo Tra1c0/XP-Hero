@@ -50,7 +50,7 @@ test('Jede Truhe, jeder Gift-Spawner, jedes Gebäude und jeder NPC ist zu Fuß e
   const w = game.world;
   for (let k = 1; k <= 6; k++) s().world.cleared[`a1_${k}`] = 1;
   game.tick(0.3);
-  give('gold', 100000); game.cmd('build', 'chesthouse'); give('wood', 30); for (let i = 0; i < 3; i++) game.cmd('unlockKeySlot', i);
+  give('gold', 100000); game.cmd('build', 'chesthouse'); give('wood', 80); give('stone', 10); give('orb_red', 6); game.cmd('upgradeBuilding', 'chesthouse'); game.cmd('upgradeBuilding', 'chesthouse'); for (let i = 0; i < 3; i++) game.cmd('unlockKeySlot', i);
   const targets = w.map.objects.filter((o) => ['chest', 'gift', 'areachest', 'building', 'npc'].includes(o.type));
   assert.ok(targets.length >= 17 + 6 + 6 + 7 + 3);
   const fail = [];

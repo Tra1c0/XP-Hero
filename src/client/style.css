@@ -227,3 +227,4 @@ input { background:var(--cream); color:var(--ink); border:3px solid var(--ink); 
 #joy[hidden] { display:none; } #joy i { position:absolute; left:50%; top:50%; width:36px; height:36px; margin:-18px 0 0 -18px; border-radius:50%; background:#fff6; border:2px solid #fffb; }
 
 .wlb { display:grid; gap:3px; } .wlbr { display:flex; gap:10px; align-items:baseline; opacity:.5; font-size:.78rem; } .wlbr.on { opacity:1; } .wlbr b { flex:0 0 46px; color:#a4502a; }
+.spup { display:flex; gap:8px; align-items:center; justify-content:center; margin:8px auto 0; } .spc { display:inline-flex; gap:3px; align-items:center; }

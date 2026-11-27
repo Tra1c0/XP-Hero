@@ -228,7 +228,7 @@ export class Game {
 const d = (fn) => (_, g, ...a) => fn(g, ...a);
 const atBase = (fn) => (_, g, ...a) => { if (!g.c.cfg.remoteBaseAccess && g.state.world.area !== 'base') fail('not_at_base', 'Nur in der Basis möglich'); return fn(g, ...a); };
 export const COMMANDS = {
-  buyUpgrade: d(prog.buyUpgrade),
+  buyUpgrade: d(prog.buyUpgrade), starUp: d(prog.starUp),
   equipWeapon: d(gear.equipWeapon), unequipWeapon: d(gear.unequipWeapon), toggleWeaponLock: d(gear.toggleWeaponLock), weaponLevelUp: d(gear.weaponLevelUp),
   mergeWeapon: d(gear.mergeWeapon), mergeAll: d(gear.mergeAll), unlockWeaponSlot: d(gear.unlockWeaponSlot), craft: d(gear.craft), openBox: d(gear.openBox),
   unlockHero: d(gear.unlockHero), setActiveHero: d(gear.setActiveHero), heroLevelUp: d(gear.heroLevelUp), heroStarUp: d(gear.heroStarUp), useSelectTicket: d(gear.useSelectTicket), setRaidTeam: d(gear.setRaidTeam),

@@ -31,8 +31,10 @@ export function unequipWeapon(g, slot) { g.state.weapons.slots[slot] = null; }
 export function toggleWeaponLock(g, uid) { const w = wInst(g, uid); w.lock = !w.lock; return w.lock; }
 
 export function weaponLevelCost(g, w, toLevel) {
-  const k = g.c.cfg.weaponLevelCost, r = wDef(g, w).rarity;
-  return { weapon_scroll: Math.ceil(toLevel / 5) * k.scrollPer5 * (1 + r), gold: k.goldBase * toLevel * (1 + r) ** 2 };
+  const rows = g.c.cfg.weaponLevelCost.gold, L = Math.max(1, toLevel - 1);
+  let a = rows[0], b = null;
+  for (const r of rows) { if (r[0] <= L) a = r; else { b = r; break; } }
+  return { weapon_scroll: 2 * L - 1, gold: !b || a[0] === L ? a[1] : Math.round(a[1] + ((b[1] - a[1]) * (L - a[0])) / (b[0] - a[0])) };
 }
 export function weaponLevelUp(g, uid, n = 1) {
   need(g, 'weaponVault');
@@ -109,9 +111,10 @@ export function craft(g, n = 1) {
   const rows = [...row.rates.map((r) => ({ w: r.w, rarity: r.rarity })), { w: row.otherW, other: true }], out = [];
   for (let k = 0; k < n; k++) {
     const r = pickWeighted(g.state.rng, 'craft', rows);
-    if (r.other) out.push(...give(g, row.other, 'craft:other', '', 'craft'));
+    if (r.other) out.push(...give(g, [pickWeighted(g.state.rng, 'craft', row.other)], 'craft:other', '', 'craft'));
     else out.push(...grant(g, resolve(g, [{ weaponPool: { series: 'n', rarity: r.rarity } }], 'craft'), 'craft'));
   }
+  g.state.player.crafts = (g.state.player.crafts || 0) + n;
   emit(g, 'craft', n);
   return out;
 }

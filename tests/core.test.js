@@ -38,7 +38,7 @@ test('Content: gültig, stabiler Fingerprint, Referenzsummen (T02/T05/T13)', () 
   assert.equal(sd.length, 71);
   assert.equal(sd.reduce((a, n) => a + sumGems(n.reward), 0), 4900);
   assert.equal(sd.filter((n) => sumGems(n.reward) === 100).length, 34);
-  assert.equal(T.keyHouseSlots.reduce((a, r) => a + (r.cost.gems || 0), 0), 5570);
+  assert.equal(T.keyHouseSlots.reduce((a, r) => a + (r.cost.orb_hell || 0), 0), 165); assert.deepEqual(T.keyHouseSlots[3].cost, { orb_red: 20 });
   assert.equal(tr('levelup').nodes.reduce((a, n) => a + n.reward.length, 0), 200, '200 Reward-Zeilen über 80 Meilensteine');
   assert.equal(T.giftChestLevels[0].gold, 12); assert.equal(T.giftChestLevels[399].gold, 1983356);
   assert.ok(T.keyHouseSlots.length === 15 && T.smithy.length === 8);
@@ -96,12 +96,13 @@ test('T05 Wallet/Ledger: jede Buchung registriert, keine negativen Stände, Roll
   assert.equal(s().inv.gems - before, 4400);
   for (const ch of [1, 2, 3]) game.cmd('claimAll', `chapterpass_${ch}`);
   assert.equal(s().inv.gems - before, 8400);
-  // Key House: Gem-Sink 5.570
-  s().unlocks.keyhouse = 1; give('wood', 20); give('gems', 6000);
-  const b2 = s().inv.gems;
-  for (let i = 0; i < 15; i++) game.cmd('unlockKeySlot', i);
-  assert.equal(b2 - s().inv.gems, 5570);
-  assert.equal(-s().totals.gems['keyhouse:slot'], 5570);
+  // Schlüsselhaus: Plätze kosten Holz und Orbs (Spieldaten), in Kapitel 1 an die Gebäudestufe gebunden
+  s().unlocks.keyhouse = 1; for (const i of ['wood', 'orb_red', 'orb_pink', 'orb_ice', 'orb_jungle', 'orb_hell']) give(i, 500);
+  s().buildings.chesthouse = { level: 1, prodAt: 0 }; game.cmd('unlockKeySlot', 0);
+  assert.equal(code(() => game.cmd('unlockKeySlot', 1)), 'locked');
+  s().buildings.chesthouse.level = 5;
+  for (let i = 1; i < 15; i++) game.cmd('unlockKeySlot', i);
+  assert.equal(-s().totals.orb_hell['keyhouse:slot'], 165); assert.equal(-s().totals.wood['keyhouse:slot'], 20);
 });
 
 test('T06 Shop: gesperrt, zu wenig Mittel, Limit/Doppelkauf, Tagesreset, Händlerrotation', () => {
@@ -189,7 +190,7 @@ test('T09 Waffen: Schmiede, Slots, Merge schützt ausgerüstete/gesperrte Waffen
   assert.equal(code(() => game.cmd('craft', 1)), 'locked');
   game.cmd('build', 'smithy');
   const made = game.cmd('craft', 50);
-  assert.equal(made.length, 50); assert.ok(made.every((m) => m.weapon), 'Stufe 1: 100 % Normal-Waffe');
+  assert.equal(made.length, 50); assert.ok(made.every((m) => m.weapon || m.item === 'weapon_scroll'), 'Stufe 1: Normal-Waffe oder Schriftrollen'); assert.ok(made.filter((m) => m.weapon).length > 20);
   assert.equal(s().counters.craft, 50);
   const def = 'w_sword_n_0';
   const ws = () => s().weapons.list.filter((w) => w.def === def);
@@ -299,6 +300,7 @@ test('T12 Upgrade-Pfade: Power-Stützzeilen, Mehrwährung, Max-Affordable, Cap, 
   assert.equal(code(() => game.cmd('buyUpgrade', spT[0].id, 1)), 'star_cap');
   for (let st = 1; st < spc.maxStar; st++) {
     for (const u of spT) game.try('buyUpgrade', u.id, 'max');
+    if (st === 1) { const g0 = game.state.inv.gold; game.cmd('starUp'); assert.equal(g0 - game.state.inv.gold, 35280, 'Aufstieg kostet Gold'); } else game.cmd('starUp');
     assert.equal(prog.spStar(game.g), st + 1, 'Sternaufstieg');
     if (st + 1 === 3) { // Bild der Vorlage: 3 Sterne, Massive Muskeln 9 % -> 9,6 % für 4 rote + 5 pinke Orbs, Fortschritt x/135
       assert.equal(prog.effAt(spT[0], 15) * spT[0].scale, 9); assert.equal(Math.round(prog.effAt(spT[0], 16) * spT[0].scale * 10) / 10, 9.6);

@@ -32,6 +32,57 @@ for r in load('WeaponData_'):
         (ps.get('key') or '') if ps.get('SkillCategory') == 'Weapon' else '', f(ps.get('CoolTime')), f(ps.get('TotalDPSMult')), f(ps.get('SkillRange')), i(ps.get('BulletCount'), 1)]
 CF = {r['key']: r['value'] for r in load('ConfigData') if r['key'] in ('Player_Init_AtkSpd', 'Enemy_WanderCycleTime', 'Enemy_DeadDisappear_WaitTime', 'SubWeapon_AttackRange', 'WeaponGachaCost', 'HomePortalCoolTimeSec', 'FirstChest_OpenTimeSec')}
 RAR = [[i(r['Rarity']), i(r['Grade']), i(r['MaxLevel']), i(r['WeaponDPSAdd']), f(r['WeaponDPSMult']), f(r['WeaponDPS_LevelUpAdd'])] for r in load('BalancingData_Rarity')]
+# Kosten als {item: menge}: Typnummern der Daten -> eigene Item-Schlüssel (1 = BlueStone, die Schmiede-Währung, heißt hier "crystal")
+IT = {0: 'gold', 1: 'crystal', 3: 'gems', 10: 'wood', 20: 'stone', 201: 'orb_red', 202: 'orb_pink', 203: 'orb_ice', 204: 'orb_jungle', 205: 'orb_hell', 301: 'weapon_scroll'}
+def cost(am, ty):
+    o = {}
+    for a, t in zip(str(am).split(','), str(ty).split(',')):
+        if a.strip() and int(a) > 0 and int(t) in IT: o[IT[int(t)]] = int(a)
+    return o
+BK = {'Bonfire': 'bonfire', 'ChestHouse': 'chesthouse', 'Smithy': 'smithy', 'Lumbermill': 'lumbermill', 'CostumeShop': 'costumeshop', 'Portal': 'portal', 'Quarry': 'quarry', 'SpecialUpgrade': 'special', 'Exchange': 'exchange',
+      'BossRaidCamp': 'raidcamp', 'ExtraUpgrade': 'extra', 'BuildingSoulUpgrade': 'soul', 'BuildingAstrology': 'astrology', 'Ladder_Stage3': 'ladder3', 'Ladder_Stage4': 'ladder4', 'Stair_Stage6': 'stair6', 'ChallengeTower': 'tower'}
+BUILD = {BK[r['key']]: cost(r['BuildCostAmount'], r['BuildCostType']) for r in load('BuildingData') if r['key'] in BK}
+SMITHY = [[i(r['RequireExp_Acc']), cost(r['UpgradeCostAmounts'], r['UpgradeCostTypes'])] for r in sorted(load('BuildingSmithyData'), key=lambda r: int(r['id']))]
+GR = collections.defaultdict(list) if 'collections' in globals() else None
+import collections
+GR = collections.defaultdict(list)
+for r in load('GachaRateData'):
+    if r['Grade'] == '1' and int(r['Rate']) > 0 and int(r['Group']) <= 8: GR[int(r['Group'])].append([int(r['Rarity']) - 1, int(r['Rate']) / 100])
+RG = collections.defaultdict(list)
+for r in load('RewardGroupData'): RG[r['Group']].append(r)
+# Schmiede je Stufe: Anteil Waffe / Schriftrollen 2-10 / Schriftrollen 11-20 (in Prozent)
+SMROLL = [[int(x['Rate']) for x in RG[str(1000 + k)]] for k in range(1, 9)]
+def bundles(gid):
+    b = collections.defaultdict(list)
+    for r in RG[gid]:
+        if int(r['Rate']) <= 0: continue
+        b[r['BundleGroup']].append([int(r['Rate']), 'w' if r['RewardType'] == '4' else IT[int(r['RewardParam'])], int(r['RewardParam']) if r['RewardType'] == '4' else 0, int(r['RewardCount_Min']), int(r['RewardCount_Max'])])
+    return [b[k] for k in sorted(b, key=int)]
+CHEST = [[r['id'], i(r['RevealTimeSec']), bundles(r['RewardGroupId'])] for r in load('ChestData_2')]
+CHESTSPAWN = {r['key']: [[int(x) for x in r['ChestRespawnOrder'].split(',')], i(r['RespawnCoolTimeSec'])] for r in load('ChestSpawnerData_2')}
+KEYHOUSE = [[i(r['Level']), i(r['UnlockCount']), cost(r['UpgradeCostAmounts'], r['UpgradeCostTypes'])] for r in load('BuildingChestStoreData') if r['BldgId'] == '2']
+KEYSLOT = [[i(r['chapter']), i(r['level']), cost(r['CostAmount'], r['CostType'])] for r in load('ChestSlotUnlockCostData_1')]
+SUBSLOT = [[i(r['RequireLevel']), cost(r['RequireCost'], r['RequireType']), i(r['RequireQuestId'])] for r in load('SubWeaponUnlockCostData')]
+WGOLD = [[int(r['id']), i(r['RequireAmount'])] for r in load('WeaponLevelUpGoldCostData')]
+WSCROLL = [i(r['RequireAmount']) for r in sorted(load('WeaponLevelUpScrollCostData'), key=lambda r: int(r['id']))]
+LVREW = collections.defaultdict(dict)
+for r in load('LevelUpRewardData_2'):
+    if int(r['reward_type']) in IT: LVREW[int(r['level'])][IT[int(r['reward_type'])]] = int(r['amount'])
+CFA = {r['key']: r['value'] for r in load('ConfigData')}
+ECON = {'craftCost': int(CFA['WeaponGachaCost']), 'chestPrice': [int(CFA['ChestShop_ChestPrice_Wooden']), int(CFA['ChestShop_ChestPrice_Silver'])], 'homePortalCd': int(CFA['HomePortalCoolTimeSec']), 'blessSec': int(CFA['BLESSING_BUFF_DURATION']),
+        'bless': [int(CFA['BLESSING_VAMPIRIC_RATE']), int(CFA['BLESSING_EXPANSION_RATE']), int(CFA['BLESSING_GROWTH_RATE'])]}
+J = lambda v: json.dumps(v, separators=(',', ':'))
+open(__file__.replace('tools/import_gamedata.py', 'src/core/content/econ_ref.js'), 'w').write(
+    '// GENERIERT von tools/import_gamedata.py – nicht von Hand ändern.\n// Quelle: Datentabellen des Spiels, Version 27.2.0. Nur Zahlen, Schlüssel und Regeln.\n'
+    '// BUILD[gebäude] = Baukosten\nexport const BUILD = ' + J(BUILD) + ';\n'
+    '// SMITHY[stufe-1] = [nötige Schmiedevorgänge insgesamt, Kosten zur nächsten Stufe]; SMITHY_RATES[stufe] = [[Seltenheit, Prozent], ...]; SMITHY_ROLL[stufe-1] = Prozent [Waffe, Rollen 2-10, Rollen 11-20]\n'
+    'export const SMITHY = ' + J(SMITHY) + ';\nexport const SMITHY_RATES = ' + J(GR) + ';\nexport const SMITHY_ROLL = ' + J(SMROLL) + ';\n'
+    '// CHEST = [[id, Öffnungszeit s, Bündel: je Bündel eine Ziehung aus [Gewicht, Item oder "w" (Waffe), Schmiede-Ratenstufe, min, max]], ...]; ids 1-3 Kapitel 1, 4-6 Kapitel 2, 7-9 Kapitel 3 (Holz, Selten, Legendär)\n'
+    'export const CHEST = ' + J(CHEST) + ';\n// CHESTSPAWN[Schlüssel] = [Reihenfolge der Truhen-ids, Respawn s]\nexport const CHESTSPAWN = ' + J(CHESTSPAWN) + ';\n'
+    '// KEYHOUSE = [[Stufe, offene Plätze, Kosten zur nächsten Stufe], ...]; KEYSLOT = [[Kapitel, Platz, Kosten], ...]\nexport const KEYHOUSE = ' + J(KEYHOUSE) + ';\nexport const KEYSLOT = ' + J(KEYSLOT) + ';\n'
+    '// SUBSLOT = [[Level, Kosten, Quest-id], ...] für Waffenplatz 2-6\nexport const SUBSLOT = ' + J(SUBSLOT) + ';\n'
+    '// WGOLD = [[Waffenstufe, Gold für den nächsten Schritt], ...] (Stützstufen); WSCROLL[stufe-1] = Schriftrollen für den nächsten Schritt\nexport const WGOLD = ' + J(WGOLD) + ';\nexport const WSCROLL = ' + J(WSCROLL) + ';\n'
+    '// LVREW[Level] = Belohnung beim Erreichen\nexport const LVREW = ' + J(LVREW) + ';\nexport const ECON = ' + J(ECON) + ';\n')
 open(__file__.replace('tools/import_gamedata.py', 'src/core/content/game_ref.js'), 'w').write(
     '// GENERIERT von tools/import_gamedata.py – nicht von Hand ändern.\n// Quelle: Datentabellen des Spiels, Version 27.2.0 (vom Nutzer bereitgestellte Spieldatei). Nur Zahlen, Schlüssel und Regeln.\n'
     '// ENEMY[id] = [Level, Leben, Angriff, Angriffe/s, Reichweite m, Lauftempo, Rückzugstempo, Sicht m, Aktion m, Kampfabstand m, Wutzeit s, Fluchtzeit s, Haltung Sicht, Haltung Aktion, Haltung Treffer,\n'

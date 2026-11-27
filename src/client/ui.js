@@ -164,9 +164,10 @@ P.hero = () => {
     const p = prog.spProgress(g), look = game.c.get('heroes', s.heroes.active).look, top = p.star >= p.maxStar;
     const card = (n, cls) => h('div', { cls: 'spcard ' + cls }, heroArt(look, 74), h('div', { cls: 'spstars' }, Array.from({ length: p.maxStar }, (_, k) => icon('starf', k < n ? '#ffd24a' : '#7a6a5c', 15))));
     return [h('div', { cls: 'sprow' }, card(p.star, 'now'), h('div', { cls: 'spmid' }, h('div', { cls: 'sparrow' }, top ? '★' : '››››'),
-      top ? h('div', { cls: 'ot' }, 'Höchste Sternstufe') : p.bonus.map((b) => h('div', { cls: 'ot' }, `+ ${{ atk: 'Kraft', cooldownPct: 'Fertigkeiten-Abklingzeit' }[b.stat] || sn(b.stat)} `, h('em', {}, `${b.pct ?? b.v}%`)))), top ? null : card(p.star + 1, 'next')),
+      top ? h('div', { cls: 'ot' }, 'Höchste Sternstufe') : p.bonus.map((b) => h('div', { cls: 'ot' }, `+ ${{ atk: 'Kraft', cooldownPct: 'Fertigkeiten-Abklingzeit', skillDmgPct: 'Fertigkeitsschaden', critDmg: 'Kritischer Schaden' }[b.stat] || sn(b.stat)} `, h('em', {}, `${b.pct ?? b.v}%`)))), top ? null : card(p.star + 1, 'next')),
     h('div', { cls: 'bar spbar' }, h('i', { style: `width:${Math.min(100, (100 * p.cur) / p.total)}%` }), h('span', { cls: 'ot' }, `${p.cur}/${p.total}`)),
-    h('p', { cls: 'sub center' }, top ? 'Alle Sternstufen erreicht' : 'Fülle alle Spezial-Upgrades für den nächsten Stern')];
+    top ? h('p', { cls: 'sub center' }, 'Alle Sternstufen erreicht') : p.ready ? h('button', { cls: 'btn spup ot', on: () => act('starUp') }, 'Aufsteigen ', ...Object.entries(p.cost).map(([c, v]) => h('span', { cls: 'spc' }, itemIcon(c, 16), fmt(v))))
+      : h('p', { cls: 'sub center' }, 'Fülle alle Spezial-Upgrades für den nächsten Stern')];
   };
   const cur = { ability: ['orb_pink', 'orb_red', 'gold'], special: ['orb_pink', 'orb_red', 'gold'], extra: ['orb_ice', 'orb_jungle'], soul: ['orb_hell'], blessing: ['exp'] }[f[0]];
   return [h('div', { cls: 'uphead' }, f[0] === 'special' ? special() : quest()), chips(...cur), ...upgradeRows(f[0]),
@@ -237,7 +238,7 @@ P.smithy = () => {
   if (!tier) return [h('p', { cls: 'center' }, t('Baue zuerst die Schmiede in der Basis.'))];
   return [chips('orb_red', 'orb_pink', 'gold'), sec(`Schmiede Stufe ${tier}/8`, h('p', { cls: 'sub' }, 'Raten: ' + sm.rates.map((r) => `${c.get('rarities', r.rarity).name} ${r.w}%`).join(' · ') + (sm.otherW ? ` · Sonstiges ${sm.otherW}% (eigener Wert)` : '')),
     row('Schmieden', costEl({ crystal: c.cfg.craftCost[tier - 1] }), btn('x1', () => reward('Geschmiedet', act('craft', 1)), false, 'pri'), btn('x10', () => reward('Geschmiedet', act('craft', 10)), false, 'pri')),
-    up ? row('Schmiede verbessern', costEl(up), btn('Upgrade', () => act('upgradeBuilding', 'smithy'), false, 'go')) : row('Endstufe erreicht', ''))];
+    up ? row('Schmiede verbessern', home.buildingUpgradeNeed(g, 'smithy') || costEl(up), btn('Upgrade', () => act('upgradeBuilding', 'smithy'), !!home.buildingUpgradeNeed(g, 'smithy'), 'go')) : row('Endstufe erreicht', ''))];
 };
 const KIND_COL = { currency: '#f7b24a', key: '#f58fb0', ticket: '#cfd8e3', material: '#cfd8e3', cargo: '#b7c7d9' };
 P.inv = () => {

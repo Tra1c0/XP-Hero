@@ -1,6 +1,6 @@
 // Stats-Pipeline, Account-XP/Level, Feature-Unlocks und tabellengetriebene Upgrade-Pfade.
 import { fail, interpRows, clamp } from './util.js';
-import { canAfford, pay, emit, missing } from './econ.js';
+import { canAfford, pay, emit, missing, add } from './econ.js';
 
 export const FAMILY_FEATURE = { ability: 'abilities', special: 'special', extra: 'extra', soul: 'soul', blessing: 'blessing', synergy: 'traits' };
 
@@ -37,7 +37,7 @@ export function computeStats(g, opt = {}) {
     const v = effAt(u, L) * u.scale;
     if (u.family === 'synergy') synLv[u.id] = v; else if (u.asPct) P(u.stat, v); else A(u.stat, v);
   }
-  for (const b of cfg.special.starBonus) B(b, spStar(g) - 1);
+  for (let k = 1; k < spStar(g); k++) for (const b of cfg.special.grades[k].bonus) B(b);
   const main = s.weapons.slots[0] && s.weapons.list.find((w) => w.uid === s.weapons.slots[0]);
   const mainCls = main ? c.get('weaponClasses', c.get('weapons', main.def).cls) : null;
   // Aktiver Held (nur dieser; Mehrheldenmodi übergeben heroId explizit)
@@ -121,7 +121,7 @@ export function gainXp(g, amount, source) {
   let ups = 0;
   if (p.level < max) {
     p.xp += n;
-    while (p.level < max && p.xp >= xpNeed(g, p.level)) { p.xp -= xpNeed(g, p.level); p.level++; ups++; }
+    while (p.level < max && p.xp >= xpNeed(g, p.level)) { p.xp -= xpNeed(g, p.level); p.level++; ups++; const lr = g.c.t.levelRewards.find((r) => r.level === p.level); if (lr) { for (const r of lr.reward) add(g, r.item, r.n, 'levelup', String(p.level)); if (g.events) g.events.push({ type: 'levelReward', level: p.level, reward: lr.reward }); } }
   } else if (cfg.capBehavior !== 'discard') p.xp += n;
   if (p.level >= max && cfg.capBehavior === 'discard') p.xp = 0;
   if (ups) {
@@ -169,7 +169,20 @@ export function spProgress(g) {
   const cf = g.c.cfg.special, star = spStar(g);
   let cur = 0, total = 0;
   for (const u of g.c.t.upgradeTracks) if (u.family === 'special') { const i = spInfo(g, u); if (!i.open) continue; cur += Math.max(0, Math.min(i.per, (g.state.upgrades[u.id] || 0) - i.base)); total += i.per; }
-  return { star, cur, total, maxStar: cf.maxStar, bonus: cf.starBonus };
+  const top = star >= cf.maxStar;
+  return { star, cur, total, maxStar: cf.maxStar, bonus: top ? [] : cf.grades[star].bonus, cost: top ? null : cf.grades[star - 1].cost, ready: !top && cur >= total };
+}
+// Sternaufstieg: alle offenen Spezial-Pfade der Stufe voll, dann gegen Gold und Orbs
+export function starUp(g) {
+  need(g, FAMILY_FEATURE.special);
+  const p = spProgress(g);
+  if (!p.cost) fail('max_level', 'Höchste Sternstufe');
+  if (!p.ready) fail('star_cap', 'Erst alle Spezial-Upgrades dieser Sternstufe abschließen');
+  if (!canAfford(g, p.cost)) fail('insufficient');
+  pay(g, p.cost, 'upgrade:special', 'star');
+  g.state.player.spStar = p.star + 1; emit(g, 'specialStar');
+  if (g.events) g.events.push({ type: 'specialStar', star: p.star + 1 });
+  return { star: p.star + 1 };
 }
 export const stepCost = (g, def, L) => costAt(def, L);
 // Vorschau für n Stufen ('max' = so viele wie bezahlbar). Kauft nie teilweise mehr als bezahlbar.
@@ -194,8 +207,8 @@ export function buyUpgrade(g, id, n = 1) {
   const def = upDef(g, id);
   need(g, FAMILY_FEATURE[def.family]);
   const pv = upgradePreview(g, id, n);
-  if (pv.locked) fail('locked', `Erst ab ${def.minStar} Sternen`);
   if (pv.from >= def.max) fail('max_level', 'Maximalstufe erreicht');
+  if (pv.locked) fail('locked', `Erst ab ${def.minStar} Sternen`);
   if (pv.from >= pv.lim) fail('star_cap', 'Erst alle Spezial-Upgrades dieser Sternstufe abschließen');
   if (pv.to === pv.from) fail('insufficient', 'Nicht genug Ressourcen');
   if (!canAfford(g, pv.cost)) fail('insufficient');
@@ -203,9 +216,5 @@ export function buyUpgrade(g, id, n = 1) {
   g.state.upgrades[id] = pv.to;
   emit(g, `upgrade:${id}`, pv.to - pv.from);
   emit(g, `upgrade:${def.family}`, pv.to - pv.from);
-  if (def.family === 'special') {
-    const p = spProgress(g);
-    if (p.cur >= p.total && p.star < p.maxStar) { g.state.player.spStar = p.star + 1; emit(g, 'specialStar'); if (g.events) g.events.push({ type: 'specialStar', star: p.star + 1 }); }
-  }
   return pv;
 }

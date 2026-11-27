@@ -21,7 +21,7 @@ const spend = () => {
     const pick = side || main;
     if (gold - (pick[1].next.gold || 0) < hold || !game.try('buyUpgrade', pick[0], 1).ok) break;
   }
-  for (const u of c.t.upgradeTracks) if (u.family !== 'ability' && u.family !== 'synergy') game.try('buyUpgrade', u.id, 'max');
+  for (const u of c.t.upgradeTracks) if (u.family !== 'ability' && u.family !== 'synergy') game.try('buyUpgrade', u.id, 'max'); game.try('starUp');
   while (game.try('craft', 1).ok);
   game.try('mergeAll');
   const ws = s().weapons, best = [...ws.list].sort((a, b) => prog.weaponDmg(g, b) - prog.weaponDmg(g, a));
@@ -32,6 +32,7 @@ const spend = () => {
   if (sec0 % 600 === 0) for (const sku of c.t.shop) if (!Object.keys(sku.price).length) game.try('buy', sku.id, 1);
   // Schlüsselhaus: erste Plätze freischalten, sobald es steht (nur in der Basis möglich)
   if (s().unlocks.keyhouse && !(s().keyhouse.slots || []).some((sl) => sl.open)) { if (s().world.area !== 'base') game.try('returnHome'); for (let i = 0; i < 3; i++) game.try('unlockKeySlot', i); }
+  if (s().buildings.chesthouse) { game.try('upgradeBuilding', 'chesthouse'); for (let i = 0; i < 5; i++) game.try('unlockKeySlot', i); }
   // fällige Truhen im Schlüsselhaus abholen (nur in der Basis möglich)
   (s().keyhouse.slots || []).forEach((sl, i) => { if (sl && sl.chest && g.now() >= sl.chest.readyAt) { if (s().world.area !== 'base') game.try('returnHome'); game.try('claimChest', i); } });
 };

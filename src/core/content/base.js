@@ -7,6 +7,7 @@ import { WORLD, BUILDINGS as W1_BUILDINGS, BASE as W1_BASE, REF as W1, zoneOf as
 import { inPoly } from '../worldgrid.js';
 import { BESTIARY } from './bestiary_ref.js';
 import { ABILITY_REF, BLESS_REF } from './progression_ref.js';
+import { BUILD, SMITHY, SMITHY_RATES, SMITHY_ROLL, CHEST, CHESTSPAWN, KEYHOUSE, KEYSLOT, SUBSLOT, WGOLD, LVREW } from './econ_ref.js';
 import { WEAPON_REF } from './weapon_ref.js';
 import { WEAPON_WIKI, TYPE_BONUS, UPGRADE_WIKI } from './wiki_ref.js';
 import { ENEMY as G_ENEMY, LEVEL_XP, KILL_XP_LIMIT, PLAYER_LV, WEAPON as G_WEAPON, CONFIG as G_CONFIG } from './game_ref.js';
@@ -58,10 +59,9 @@ export function buildBaseContent(opt = {}) {
   C('statCaps', { critChance: 100, cooldownPct: 70, atkSpeedPct: 400, moveSpeedPct: 150, lifesteal: 50, multiHit: 100, tripleHit: 100 }, 'E', 'Obergrenzen; Kritchance <= 100.');
   C('combat', { weaponSkillRadius: 110, subRangeM: Number(G_CONFIG.SubWeapon_AttackRange), fistAps: Number(G_CONFIG.Player_Init_AtkSpd), enemyLeashM: 8, enemySpeedCap: 300, subIntervalMult: 2.2, subDmgMult: 0.6, dropDespawnSec: 90, respawnOfflineContinues: true, defaultRespawnSec: 30, bossRespawnSec: 3600, tick: 1 / 30 }, 'R',
     'Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt.');
-  C('weaponLevelCost', { scrollPer5: 1, goldBase: 50 }, 'E', 'Scrolls = ceil(L/5)*(1+r); Gold = goldBase*L*(1+r)^2.');
+  C('weaponLevelCost', { gold: WGOLD }, 'D', 'Waffenstufe: Gold nach Stützstufen (dazwischen linear), Schriftrollen 2 x Stufe - 1; unabhängig von der Seltenheit (Spieldaten).');
   C('craftCost', [5, 5, 5, 5, 5, 5, 5, 5], 'B', 'Schmieden kostet auf jeder Schmiedestufe 5 Kristalle (Vorlage).');
-  C('weaponSlots', [{ slot: 1 }, { slot: 2, quest: true }, { slot: 3, level: 20, cost: { gold: 20000 } }, { slot: 4, level: 40, cost: { gold: 200000 } },
-    { slot: 5, level: 70, cost: { gold: 1500000 } }, { slot: 6, level: 110, cost: { gold: 8000000 } }], '?', 'Slot 2 per Quest (D); Slots 3-6 eigene Kosten.');
+  C('weaponSlots', [{ slot: 1 }, ...SUBSLOT.map(([level, cost, quest], k) => ({ slot: k + 2, level, cost, ...(quest ? { quest: true } : {}) }))], 'D', 'Waffenplätze 2-6: Level und Kosten aus den Spieldaten; Platz 2 schaltet die Questkette frei.');
   C('traits', { slots: 5, presets: 3, rerollCost: { attr_point: 10 }, lockSurcharge: 0.5 }, '?', 'Slotzahl, Rollkosten und Lockkosten eigen.');
   C('runes', { slots: 6, slotLevels: [1, 60, 90, 120, 160, 200], dismantleRefundPct: 80, milestoneEvery: 10, milestonePct: 10 }, '?', 'Slots und Refund eigen.');
   C('heroes', { starter: 'h_01', levelPct: 2, selectTicketPieces: 50, raidTeam: 3 }, 'E', 'Heldenlevel: +levelPct% ATK/HP je Level über 1.');
@@ -158,7 +158,7 @@ export function buildBaseContent(opt = {}) {
         roam: n[1] === 'Bat', pos: [n[2], n[3]], r: cw.spawnSpreadM, s: 'D' });
     });
     const sc = W1.stageChests.find((c) => c[0] === s);
-    chestSpawners.push({ id: `cs_${id}`, area: id, pos: [sc[1], sc[2]], respawn: sc[3], pool: [{ type: 'wooden', w: 80 }, { type: 'rare', w: 20 }], s: 'D' });
+    chestSpawners.push({ id: `cs_${id}`, area: id, pos: [sc[1], sc[2]], respawn: sc[3], order: CHESTSPAWN[`Chest_Stage${s}`][0].map((n) => `c${n}`), s: 'D' });
   }
   AREA.forEach(([ch, name, boss], i) => {
     const s = i + 1;
@@ -211,8 +211,7 @@ export function buildBaseContent(opt = {}) {
     // Rohstoffstellen (E): Bäume in Kap. 1.1-1.3, Felsen ab 1.3
     if (s <= 3) resGroups.push({ id: `rg_${id}_tree`, area: id, v: 'node_tree', count: 4, respawn: 60, x: 180, y: H - 700, r: 110 });
     if (s >= 3 && s <= 6) resGroups.push({ id: `rg_${id}_rock`, area: id, v: 'node_rock', count: 4, respawn: 90, x: W - 180, y: H - 900, r: 110 });
-    chestSpawners.push({ id: `cs_${id}`, area: id, x: W - 220, y: 1300, respawn: CHEST_RESPAWN[s] || 600, pool: [{ type: 'wooden', w: 80 }, { type: 'rare', w: 20 }],
-      s: CHEST_RESPAWN[s] ? 'D' : 'E' });
+    chestSpawners.push({ id: `cs_${id}`, area: id, x: W - 220, y: 1300, ...(() => { const r = CHESTSPAWN[`Chest_Stage${s}`] || CHESTSPAWN.Chest_Stage19; return { respawn: r[1], order: r[0].map((n) => `c${n}`) }; })(), s: CHESTSPAWN[`Chest_Stage${s}`] ? 'D' : 'R' });
     const ng = ch === 1 ? (giftLeftCh1 >= 3 && chIdx < 6 ? 3 : giftLeftCh1) : 2;
     if (ch === 1) giftLeftCh1 -= ng;
     for (let k = 0; k < ng; k++) giftSpawners.push({ id: `gs_${id}_${k}`, area: id, x: 220 + k * 560, y: 900 + k * 420, respawn: 900, s: 'E' });
@@ -284,22 +283,19 @@ export function buildBaseContent(opt = {}) {
   ]);
   T('chestSpawners', 'R', 'Kapitel 1: Position + Respawn aus Szenendaten (D); Stage 7-12/14-19 Respawn dokumentiert; Rest eigen.', chestSpawners);
   T('giftSpawners', 'R', 'Kapitel 1: 17 Gift-Chest-Spawner mit Position und Respawn 300 s aus Szenendaten (D); Kap. 2/3 eigen.', giftSpawners);
-  T('chestTypes', 'D', 'Reveal-Timer und Pool-Zeilen dokumentiert; Gewichte und Goldmenge eigen. Auswahlmodus one = R.', [
-    { id: 'wooden', name: 'Wooden Chest', revealSec: 600, mode: 'one', rows: [
-      { w: 1, item: 'gold', min: 200, max: 600, s: 'E' }, { w: 1, item: 'bluestone', min: 2, max: 4 },
-      { w: 1, item: 'weapon_scroll', min: 2, max: 10 }, { w: 1, item: 'orb_red', min: 6, max: 12 }] },
-    { id: 'rare', name: 'Rare Chest', revealSec: 1800, mode: 'one', rows: [
-      { w: 1, item: 'exp', min: 1, max: 1 }, { w: 1, item: 'bluestone', min: 5, max: 10 },
-      { w: 1, item: 'weapon_scroll', min: 2, max: 10 }, { w: 1, item: 'orb_red', min: 14, max: 28 }] },
-  ]);
+  // Truhen aus den Spieldaten (D): Öffnungszeit und Bündel – je Bündel eine Ziehung. "w" = Waffe mit den Raten der genannten Schmiedestufe.
+  const CHN = ['Holztruhe', 'Seltene Truhe', 'Legendäre Truhe'];
+  T('chestTypes', 'D', 'Öffnungszeit 120/300/900 s und Inhalte je Bündel aus den Spieldaten; 1-3 Kapitel 1, 4-6 Kapitel 2, 7-9 Kapitel 3.',
+    CHEST.map(([id, revealSec, bundles]) => ({ id: `c${id}`, name: CHN[(id - 1) % 3], grade: (id - 1) % 3, revealSec,
+      bundles: bundles.map((b) => b.map(([w, item, tier, min, max]) => (item === 'w' ? { w, rateTier: tier } : { w, item, min, max }))) })));
   T('areaChests', 'R', 'Je Gebiet eine einmalige Gebietstruhe (Kap. 1: 6 Stage-Truhen der Referenz, Position D neben dem Truhenspawner); Inhalt eigen.',
     areas.map((a) => ({ id: `ac_${a.id}`, area: a.id, x: 240, y: 520, ...(a.chapter === 1 ? (() => { const c = W1.stageChests.find((r) => r[0] === a.stage); return { pos: [c[1] + 2.5, c[2] + 1.5] }; })() : {}), reward: [{ item: 'gold', n: 100 * a.stage * a.stage }, { item: 'exp', n: 2 + a.stage }, { item: 'weapon_scroll', n: 5 }] })));
   const giftGold = (L) => Math.round(12 * (1983356 / 12) ** ((L - 1) / 399));
   T('giftChestLevels', 'R', 'Gold L1=12 und L400=1.983.356 (D); Zwischenwerte geometrisch interpoliert (E). Bonus: Gold x5 + 10 Gems (D).',
     Array.from({ length: 400 }, (_, k) => ({ level: k + 1, gold: giftGold(k + 1), bonusGems: 10, bonusMult: 5 })));
-  const KH = [[1, { wood: 0 }], [1, { wood: 10 }], [1, { wood: 10 }], [1, { gems: 360 }], [1, { gems: 550 }], [2, { gems: 100 }], [2, { gems: 200 }], [2, { gems: 400 }],
-    [2, { gems: 600 }], [2, { gems: 800 }], [3, { gems: 120 }], [3, { gems: 240 }], [3, { gems: 480 }], [3, { gems: 720 }], [3, { gems: 1000 }]];
-  T('keyHouseSlots', 'D', '15 Freischaltzeilen; Gem-Summe 5.570.', KH.map(([chapter, cost], k) => ({ id: k, chapter, cost })));
+  T('keyHouseSlots', 'D', '15 Plätze (5 je Kapitel): Kosten aus den Spieldaten; in Kapitel 1 braucht Platz n das Schlüsselhaus auf Stufe n.', KEYSLOT.map(([chapter, level, cost], k) => ({ id: k, chapter, level, cost })));
+  T('keyhouseTiers', 'D', 'Ausbau des Schlüsselhauses (Kapitel 1): Kosten zur nächsten Stufe.', KEYHOUSE.map(([tier, slots, c]) => ({ tier, slots, upgradeCost: Object.keys(c).length ? c : null })));
+  T('levelRewards', 'D', 'Belohnung beim Erreichen eines Levels (alle 5 Level) aus den Spieldaten.', Object.entries(LVREW).map(([level, r]) => ({ level: +level, reward: Object.entries(r).map(([item, n]) => ({ item, n })) })));
 
   // ------------------------------------------------------------------ Spielerlevel
   const lvRows = [];
@@ -339,7 +335,10 @@ export function buildBaseContent(opt = {}) {
     ['leech', 'Lebensraub', 'lifesteal', 'Wandle Schaden in HP um'], ['step', 'Schnellschritt', 'moveSpeedPct', 'Zusätzliche Bewegungsgeschwindigkeit erhöhen'], ['heal', 'Schnelle Heilung', 'regen', 'HP-Regeneration verbessern'],
     ['luck', 'Glücksschlag', 'critChance', 'Erhöhe die kritische Trefferchance'], ['double', 'Doppelter Abzug', 'multiHit', 'Chance auf Doppelangriff erhöhen'], ['skill', 'Schadensfähigkeit', 'skillDmgPct', 'Fähigkeitsschaden erhöhen'],
     ['triple', 'Dreifache Klinge', 'tripleHit', 'Chance für Dreifachangriff erhöhen'], ['cool', 'Abklingzeit', 'cooldownPct', 'Abklingzeit der Fertigkeiten verringern']];
-  C('special', { maxStar: 4, starBonus: [{ stat: 'atk', pct: 5 }, { stat: 'cooldownPct', v: 5 }] }, 'R', 'Vier Sternstufen (D). Bonus je Sternaufstieg +5 % Kraft / +5 % Abklingzeit nach einem Bild der Vorlage (B, dort für 3 -> 4 Sterne); für die übrigen Aufstiege übernommen.');
+  const A5 = { stat: 'atk', pct: 5 };
+  C('special', { maxStar: 5, grades: [{ cost: { gold: 35280, orb_red: 10 }, bonus: [] }, { cost: { gold: 455400, orb_red: 20 }, bonus: [A5] }, { cost: { gold: 1205450, orb_pink: 30 }, bonus: [A5, { stat: 'skillDmgPct', v: 5 }] },
+    { cost: { gold: 3530350, orb_pink: 40 }, bonus: [A5, { stat: 'cooldownPct', v: 5 }] }, { cost: null, bonus: [A5, { stat: 'critDmg', v: 10 }] }] }, 'D',
+    'Sternstufen 1-5 aus den Spieldaten (D): Aufstiegskosten und Bonus je Stufe. Dass sich die Boni addieren, ist abgeleitet (R).');
   UPGRADE_WIKI.special.forEach(([, rows], k) => WK(`sp_${SPC[k][0]}`, 'special', SPC[k][1], rows, SPC[k][2], SPC[k][3]));
   const EXS = ['atk', 'cargo', 'hp', 'regen', 'critChance', 'skillDmgPct', 'lifesteal', 'cooldownPct'], SOS = ['atk', 'critDmg', 'hp', 'regen', 'cargo', 'dmgPct', 'skillDmgPct', 'meleePct', 'rangedPct'];
   UPGRADE_WIKI.extra.forEach(([nm, rows], k) => WK(`ex_${k}`, 'extra', nm, rows, EXS[k], sname(EXS[k])));
@@ -389,13 +388,9 @@ export function buildBaseContent(opt = {}) {
   }
   T('typeBonus', 'D', 'Bonus der Waffenart: gilt nur, wenn die Hauptwaffe zur Meisterschaft des aktiven Helden passt (Fan-Wiki).', Object.entries(TYPE_BONUS).map(([id, v]) => ({ id, bonus: v.bonus, heroes: v.heroes })));
   T('weapons', 'R', '84 Varianten, 12 Reihen, Namen und Waffen-Fertigkeiten ab Epic mit Gesamtfaktor (D). Fertigkeit löst nach ihrer Abklingzeit aus (D). Schaden je Stufe linear zwischen Stufe-1- und Maximalwert, Maximalstufen und Stufen-Boni aus dem Fan-Wiki (D); Merge-Anzahl 3 (D), Evo-Kosten eigen. Transzendenz offen.', weapons);
-  const SM = [[20, [[0, 100]], 0], [1300, [[0, 49], [1, 10], [2, 1]]], [20100, [[0, 44.75], [1, 12], [2, 3], [3, 0.25]], { orb_red: 10 }],
-    [34500, [[0, 41.5], [1, 14], [2, 4], [3, 0.5]], { orb_red: 20 }], [134300, [[0, 39.25], [1, 15], [2, 5], [3, 0.75]], { orb_pink: 10 }],
-    [288900, [[0, 37], [1, 16], [2, 6], [3, 1]], { orb_pink: 20, orb_red: 40 }], [765000, [[0, 33.5], [1, 18], [2, 7], [3, 1.5]], { orb_pink: 30, orb_red: 60 }],
-    [null, [[0, 30], [1, 20], [2, 8], [3, 2]]]];
-  T('smithy', 'D', 'Kosten = Upgrade zur nächsten Stufe (R). Sichtbare Raten summieren sich ab Stufe 2 auf 60 %; der Rest (otherW) ist NICHT normiert, sondern ein eigener, gekennzeichneter Sonstiges-Ausgang (E).',
-    SM.map(([gold, rates, extra], k) => ({ tier: k + 1, upgradeCost: gold == null ? null : { gold, ...(extra || {}) }, rates: rates.map(([rarity, w]) => ({ rarity, w })),
-      otherW: k === 0 ? 0 : 40, other: [{ item: 'weapon_scroll', min: 1, max: 3 }] })));
+  T('smithy', 'D', 'Schmiede je Stufe aus den Spieldaten: Raten der Waffen (zusammen 60 %), sonst Schriftrollen (2-10 oder 11-20), nötige Schmiedevorgänge und Kosten für die nächste Stufe.',
+    SMITHY.map(([crafts, c], k) => ({ tier: k + 1, needCrafts: (SMITHY[k + 1] || [0])[0], upgradeCost: Object.keys(c).length ? c : null, rates: SMITHY_RATES[k + 1].map(([rarity, w]) => ({ rarity, w })),
+      otherW: SMITHY_ROLL[k][1] + SMITHY_ROLL[k][2], other: [{ w: SMITHY_ROLL[k][1], item: 'weapon_scroll', min: 2, max: 10 }, { w: SMITHY_ROLL[k][2], item: 'weapon_scroll', min: 11, max: 20 }].filter((r) => r.w > 0) })));
 
   // ------------------------------------------------------------------ Helden
   // 26 Helden in 8 Seltenheitsstufen; Verteilung (4/4/3/3/2/2/4/4) und Waffenklasse je Platz nach der Heldenübersicht der Vorlage (B).
@@ -475,15 +470,15 @@ export function buildBaseContent(opt = {}) {
   T('gachaBoxes', 'R', '26 Boxdefinitionen im Original; hier 12 belegbare (inkl. 8 Runentruhen, Special Hero Chest). Gem-Preise eigen, kein universeller 10er-Preis.', boxes);
 
   // ------------------------------------------------------------------ Basis
-  T('buildings', 'D', '26 Gebäudedefinitionen im Original; hier die 7 dokumentierten Einstiegskosten (Gold D, Materialmengen E).', [
-    { id: 'bonfire', name: 'Lagerfeuer', x: 800, y: 760, cost: { gold: 3 }, unlock: ['abilities'], max: 1 },
-    { id: 'smithy', name: 'Schmiede', x: 500, y: 700, cost: { gold: 70 }, unlock: [], max: 8, tiers: 'smithy' },
-    { id: 'chesthouse', name: 'Schlüsselhaus', x: 1100, y: 700, cost: { gold: 330 }, unlock: ['keyhouse'], max: 1 },
-    { id: 'lumbermill', name: 'Sägewerk', x: 380, y: 420, cost: { gold: 600, wood: 6 }, unlock: [], max: 1, produce: { item: 'wood', perHour: 30, cap: 60 } },
-    { id: 'quarry', name: 'Steinbruch', x: 1220, y: 420, cost: { gold: 1613, wood: 15 }, unlock: [], max: 1, produce: { item: 'stone', perHour: 20, cap: 40 } },
-    { id: 'costumeshop', name: 'Kostümladen', x: 620, y: 300, cost: { gold: 3954, wood: 20, stone: 10, orb_red: 5 }, unlock: [], max: 1 },
-    { id: 'portal', name: 'Portal', x: 980, y: 300, cost: { gold: 5170 }, unlock: ['portal'], max: 1 },
-    { id: 'raidcamp', name: 'Raid-Lager', x: 700, y: 500, cost: { gold: 2590 }, unlock: [], max: 1, s: 'D', note: 'Gebäude aus Ryans Questkette, Kosten 2.590 Gold (D, BossRaidCamp).' },
+  T('buildings', 'D', 'Baukosten aus den Spieldaten (D).', [
+    { id: 'bonfire', name: 'Lagerfeuer', x: 800, y: 760, cost: BUILD.bonfire, unlock: ['abilities'], max: 1 },
+    { id: 'smithy', name: 'Schmiede', x: 500, y: 700, cost: BUILD.smithy, unlock: [], max: 8, tiers: 'smithy' },
+    { id: 'chesthouse', name: 'Schlüsselhaus', x: 1100, y: 700, cost: BUILD.chesthouse, unlock: ['keyhouse'], max: 5, tiers: 'keyhouseTiers' },
+    { id: 'lumbermill', name: 'Sägewerk', x: 380, y: 420, cost: BUILD.lumbermill, unlock: [], max: 1, produce: { item: 'wood', perHour: 30, cap: 60 } },
+    { id: 'quarry', name: 'Steinbruch', x: 1220, y: 420, cost: BUILD.quarry, unlock: [], max: 1, produce: { item: 'stone', perHour: 20, cap: 40 } },
+    { id: 'costumeshop', name: 'Kostümladen', x: 620, y: 300, cost: BUILD.costumeshop, unlock: [], max: 1 },
+    { id: 'portal', name: 'Portal', x: 980, y: 300, cost: BUILD.portal, unlock: ['portal'], max: 1 },
+    { id: 'raidcamp', name: 'Raid-Lager', x: 700, y: 500, cost: BUILD.raidcamp, unlock: [], max: 1, s: 'D', note: 'Gebäude aus Ryans Questkette, Kosten 2.590 Gold (D, BossRaidCamp).' },
   ].map((b) => ({ ...b, pos: W1_BUILDINGS[b.id] })));
   // Figuren und Standorte nach NpcData der Referenz (D). Dialogtexte sind EIGENE Texte; nur die Szenenstruktur (Anzahl, Freischaltquest) folgt der Referenz.
   const SC = (id, after, ...lines) => ({ id, after, lines });
