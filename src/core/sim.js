@@ -282,6 +282,15 @@ export class World {
     }
   }
 
+  // Lohnt der Bosskampf? Grobe Rechnung: Zeit, bis der Boss fällt (Leben / eigener Schaden je Sekunde), gegen Zeit, bis die Figur fällt
+  // (eigenes Leben / Boss-Schaden je Sekunde inkl. Regeneration). Die Auto-Jagd greift erst an, wenn der Boss mit Sicherheitsabstand zuerst fällt.
+  bossReady(e) {
+    const st = this.g.stats, cfg = this.g.c.cfg, load = this.loadout();
+    let dps = 0;
+    for (const l of load) dps += (l.dmg * (1 + st.dmgPct / 100) * (1 + ((st.critChance / 100) * (st.critDmg - 100)) / 100)) / l.interval;
+    const taken = e.v.atk / (e.beh.interval + e.beh.windup) - (st.regen + (st.hp * cfg.player.regenPct) / 100);
+    return taken <= 0 || e.v.hp / Math.max(1, dps) < (st.hp / taken) * cfg.world.autoBossSafety;
+  }
   // ---- Auto-Hunt: Zielwahl, Annäherung, Stuck-Erkennung, volles Cargo, Wiederaufnahme
   autoHunt(dt, load) {
     const p = this.p, g = this.g, bossOk = this.mode || g.state.settings.autoBoss;
@@ -303,7 +312,7 @@ export class World {
       focus = p.focus;
     }
     if (focus) {
-      const want = (e) => e.gid && e.group && this.areaOpen(e.group.area) && (focus.monsters.includes(e.v.monster) || (e.v.rank === 'boss' && focus.bosses.includes(e.group.area) && (bossOk || g.state.player.level >= e.v.level - g.c.cfg.world.autoBossLevelGap)));
+      const want = (e) => e.gid && e.group && this.areaOpen(e.group.area) && (focus.monsters.includes(e.v.monster) || (e.v.rank === 'boss' && focus.bosses.includes(e.group.area) && (bossOk || this.bossReady(e))));
       if (!p.tgt || !p.tgt.alive || !want(p.tgt)) {
         let best = null, bd = Infinity, home = null, hd = Infinity;
         for (const e of this.enemies) { if (!want(e)) continue; const d = dist2(p.x, p.y, e.alive ? e.x : e.hx, e.alive ? e.y : e.hy); if (e.alive && p.skip[e.gid + ':' + e.slot] > this.t) continue; if (e.alive) { if (d < bd) { bd = d; best = e; } } else if (d < hd) { hd = d; home = e; } }

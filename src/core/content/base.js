@@ -77,7 +77,7 @@ export function buildBaseContent(opt = {}) {
     streakBonusPct: 10, streakMax: 5 }, 'E', 'Async-PvP gegen gekennzeichnete Bots/Snapshots.');
   C('spin', { unlockConfigRaw: '1,3', spinCost: { spin_ticket: 1 } }, '?', 'Unlock-Config 1,3: Bedeutung ungeklärt, nicht angewendet.');
   C('orbAlias', { crimson: null, azure: null, soul: null }, '?', 'Interne Orb-Namen nicht zugeordnet; betroffene Reward-Zeilen sind deaktiviert.');
-  C('world', { normalPerNode: 1, rareRespawnMinSec: 900, spawnSpreadM: 2.5, activeRadiusM: 40, autoBossLevelGap: 3 }, 'E', 'Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius.');
+  C('world', { normalPerNode: 1, rareRespawnMinSec: 900, spawnSpreadM: 2.5, activeRadiusM: 40, autoBossSafety: 0.7 }, 'E', 'Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius.');
   C('ledgerKeep', 400, 'E'); C('saveSlots', 2, 'E');
 
   // ------------------------------------------------------------------ Items (Auszug der 116 Definitionen)
