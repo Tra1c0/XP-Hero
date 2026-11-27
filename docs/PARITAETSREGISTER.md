@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint e1l53kg7pt).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1yv8yrog9xv).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren

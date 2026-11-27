@@ -21,7 +21,7 @@ function buildWorldMap(g, W) {
   const c = g.c, inW = (a) => W.areas.includes(a);
   const solid = c.t.buildings.filter((b) => b.pos).map((b) => ({ kind: 'solid', c: b.pos, r: b.id === 'bonfire' ? 0.6 : 1.6, building: b.id }));
   const G = buildGrid({ ...W, blockers: [...(W.blockers || []), ...solid] }), ppm = W.ppm;
-  const at = (pos, zone, roam) => { const q = G.toPx(pos[0], pos[1]); return snap(G, q.x, q.y, 40, roam || !zone ? -1 : G.zoneIds.indexOf(zone)) || q; };
+  const at = (pos, zone, roam) => { const q = G.toPx(pos[0], pos[1]); return snap(G, q.x, q.y, roam ? 80 : 40, !zone ? -1 : G.zoneIds.indexOf(zone)) || snap(G, q.x, q.y, 40, -1) || q; };
   const objects = [];
   const add = (type, row, r, extra = {}) => { const q = at(row.pos, null); objects.push({ ...row, type, x: q.x, y: q.y, r: r * ppm, ...extra }); };
   // Gebäude: Das Trittfeld liegt vor dem Gebäude (zur Kamera hin). Wer es betritt, öffnet das Gebäude – kein Knopf nötig.
@@ -103,14 +103,21 @@ export class World {
       this.enemies.push(e);
     }
   }
+  // Leben: fest oder – bei Gegnern mit Faktor (Fledermaus, Schatzgoblin) – das Vielfache des aktuellen Schadens pro Sekunde der Figur, mindestens der feste Wert
+  dynHp(v) {
+    if (!v.hpDps) return v.hp;
+    let dps = 0; try { for (const l of this.loadout()) dps += l.dmg / Math.max(0.1, l.interval); } catch { dps = 0; }
+    return Math.max(v.hp, Math.round(dps * v.hpDps));
+  }
   makeEnemy(v, x, y) {
     let beh = this.g.c.get('behaviors', v.beh);
     // Verhalten aus den Spieldaten (falls vorhanden): Sicht- und Aktionsweite, Takt, Reichweite, Tempo, Rudel, Rückzugsradius
     const ai = v.ai, cb = this.g.c.cfg.combat;
     if (ai && beh.id !== 'node') beh = { ...beh, aggro: (ai.s === 3 ? ai.sight : ai.a === 3 ? ai.action : 0) * M, leash: cb.enemyLeashM * M, speed: Math.min(cb.enemySpeedCap, (ai.move / 10) * M), range: Math.max(30, ai.range * M - 20),
       interval: Math.max(0.2, 1 / (ai.aps || 0.8) - beh.windup), assist: ai.flock > 1 ? 4 * M : 0, flock: ai.flock, passive: !(ai.s === 3 || ai.a === 3), onHit: ai.d };
-    return { v, beh, x, y, px: x, py: y, hx: x, hy: y, hp: v.hp, maxHp: v.hp, st: 'spawn', t: 0.4, cd: 0, alive: true, slowT: 0, stunT: 0, burnT: 0, burnN: 0, burnAcc: 0,
-      pcd: beh.pattern ? this.g.c.get('bossPatterns', beh.pattern).period : 0, tx: x, ty: y, cx: 0, cy: 0, ang: (this.eSeq = (this.eSeq || 0) + 1) * 2.399, r: v.rank === 'boss' ? 34 : v.rank === 'elite' ? 24 : 16 };
+    const hp0 = this.dynHp(v);
+    return { v, beh, x, y, px: x, py: y, hx: x, hy: y, hp: hp0, maxHp: hp0, st: 'spawn', t: 0.4, cd: 0, alive: true, slowT: 0, stunT: 0, burnT: 0, burnN: 0, burnAcc: 0,
+      pcd: beh.pattern ? this.g.c.get('bossPatterns', beh.pattern).period : 0, tx: x, ty: y, cx: 0, cy: 0, ang: (this.eSeq = (this.eSeq || 0) + 1) * 2.399, r: v.scale ? 16 * v.scale : v.rank === 'boss' ? 34 : v.rank === 'elite' ? 24 : 16 };
   }
   // Gebiet freigeschaltet? (Basis und Greenhaven immer; sonst Boss-Erstsieg des Vorgängers). Gesperrte Gebiete spawnen nichts.
   areaOpen(areaId) {
@@ -196,6 +203,8 @@ export class World {
       if (arr) for (let i = 0; i < arr.length; i++) { const e = arr[i]; if (e.alive && dist2(x, y, e.x, e.y) <= (r + e.r) * (r + e.r)) fn(e); }
     }
   }
+  // Angriffsziel: der nächste Gegner in Reichweite; Bäume und Steine nur, wenn kein Gegner in Reichweite ist
+  target(x, y, r) { return this.nearest(x, y, r, (e) => e.v.rank !== 'node' && e.st !== 'spawn') || this.nearest(x, y, r); }
   nearest(x, y, r, pred) {
     let best = null, bd = Infinity;
     this.query(x, y, r, (e) => { if (pred && !pred(e)) return; const d = dist2(x, y, e.x, e.y); if (d < bd) { bd = d; best = e; } });
@@ -279,12 +288,13 @@ export class World {
     const p = this.p, st = this.g.stats, kind = l.cls.melee ? 'melee' : 'ranged';
     if (!bonus) (p.wfire ||= {})[l.slot] = { t: this.t, a: Math.atan2(tgt.x - p.x, tgt.y - p.y) }; // für die Schlag-Animation
     if (l.cls.melee) {
-      let n = 0;
-      this.query(p.x, p.y, l.range, (e) => { if (n < l.cls.targets) { n++; this.hit(e, l.dmg, kind); } });
+      // erst das anvisierte Ziel, dann weitere in Reichweite; Bäume/Steine nur, wenn das Ziel selbst einer ist
+      let n = 1; const node = tgt.v.rank === 'node'; this.hit(tgt, l.dmg, kind);
+      this.query(p.x, p.y, l.range, (e) => { if (e !== tgt && n < l.cls.targets && (node || e.v.rank !== 'node')) { n++; this.hit(e, l.dmg, kind); } });
       this.fx.push({ x: p.x, y: p.y, r: l.range, t: 0.12, k: 0 });
     } else {
       const d = Math.hypot(tgt.x - p.x, tgt.y - p.y) || 1;
-      if (this.proj.length < 200) this.proj.push({ x: p.x, y: p.y, vx: ((tgt.x - p.x) / d) * l.cls.proj, vy: ((tgt.y - p.y) / d) * l.cls.proj, life: (l.range * 1.3) / l.cls.proj, dmg: l.dmg, aoe: l.cls.aoe, hostile: false });
+      if (this.proj.length < 200) this.proj.push({ x: p.x, y: p.y, vx: ((tgt.x - p.x) / d) * l.cls.proj, vy: ((tgt.y - p.y) / d) * l.cls.proj, life: (l.range * 1.3) / l.cls.proj, dmg: l.dmg, aoe: l.cls.aoe, hostile: false, node: tgt.v.rank === 'node' });
     }
     if (!bonus && st.tripleHit > 0 && rnd(this.g.state.rng, 'world') * 100 < st.tripleHit) { this.fire(l, tgt, true); this.fire(l, tgt, true); }
     else if (!bonus && st.multiHit > 0 && rnd(this.g.state.rng, 'world') * 100 < st.multiHit) this.fire(l, tgt, true);
@@ -398,7 +408,8 @@ export class World {
         p.wcd[l.slot] -= dt * slowP;
         if (l.wskill && p.wsc && p.wsc[l.slot] > 0) p.wsc[l.slot] -= dt;
         if (p.wcd[l.slot] <= 0) {
-          let tgt = l.slot === 0 && p.cur && p.cur.alive && dist2(p.x, p.y, p.cur.x, p.cur.y) <= (l.range + p.cur.r) ** 2 ? p.cur : this.nearest(p.x, p.y, l.range);
+          let tgt = l.slot === 0 && p.cur && p.cur.alive && dist2(p.x, p.y, p.cur.x, p.cur.y) <= (l.range + p.cur.r) ** 2 ? p.cur : null;
+          if (!tgt || tgt.v.rank === 'node') tgt = this.target(p.x, p.y, l.range) || tgt;
           if (tgt) {
             if (l.slot === 0) p.cur = tgt;
             this.fire(l, tgt); p.wcd[l.slot] = l.interval;
@@ -423,8 +434,8 @@ export class World {
       b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
       let done = b.life <= 0;
       if (!done && b.hostile) { if (p.alive && dist2(b.x, b.y, p.x, p.y) < (p.r + 8) ** 2) { this.hurt(b.dmg); done = true; } } else if (!done) {
-        const e = this.nearest(b.x, b.y, 8);
-        if (e) { if (b.aoe) { this.query(b.x, b.y, b.aoe, (x) => this.hit(x, b.dmg, 'ranged')); this.fx.push({ x: b.x, y: b.y, r: b.aoe, t: 0.15, k: 1 }); } else this.hit(e, b.dmg, 'ranged'); done = true; }
+        const e = this.nearest(b.x, b.y, 8, (x) => b.node || x.v.rank !== 'node'); // Geschosse fliegen an Bäumen und Steinen vorbei, außer sie sind das Ziel
+        if (e) { if (b.aoe) { this.query(b.x, b.y, b.aoe, (x) => { if (b.node || x.v.rank !== 'node') this.hit(x, b.dmg, 'ranged'); }); this.fx.push({ x: b.x, y: b.y, r: b.aoe, t: 0.15, k: 1 }); } else this.hit(e, b.dmg, 'ranged'); done = true; }
       }
       if (done) { this.proj[i] = this.proj[this.proj.length - 1]; this.proj.pop(); }
     }
@@ -449,6 +460,7 @@ export class World {
         const now = g.now(), rs = g.state.world.respawn;
         this.updateGates();
         for (const e of this.enemies) if (!e.alive && e.gid && now >= ((rs[e.gid] || [])[e.slot] || 0) && this.areaOpen(e.group.area)) {
+          e.maxHp = this.dynHp(e.v);
           Object.assign(e, { x: e.hx, y: e.hy, px: e.hx, py: e.hy, hp: e.maxHp, alive: true, st: 'spawn', t: 0.5, cd: 0, slowT: 0, stunT: 0, burnT: 0, burnN: 0 });
         }
         this.interact();
@@ -465,6 +477,8 @@ export class World {
     p.scd[key] = sk.cd * (1 - this.g.stats.cooldownPct / 100);
   }
 
+  // Gegner verlassen ihr Gebiet nicht (Kapitelwelt): der Schritt wird zurückgenommen, wenn er in ein anderes Gebiet führt
+  strays(e) { if (this.mode || !this.map.world || !e.group) return false; const z = zoneAt(this.G, e.x, e.y); return !!z && z !== e.group.area; }
   stepEnemies(dt) {
     const g = this.g, p = this.p, sts = g.c.by.statuses, slowM = sts.get('slow').speedMult, burn = sts.get('burn');
     const G = this.G, far2 = (g.c.cfg.world.activeRadiusM * (this.map.world ? this.map.world.ppm : M)) ** 2;
@@ -474,11 +488,11 @@ export class World {
       const d = Math.hypot(tx - e.x, ty - e.y); if (d < 2) return true;
       const k = Math.min(1, (sp * dt) / d), ox = e.x, oy = e.y;
       [e.x, e.y] = slide(G, e.x, e.y, e.x + (tx - e.x) * k, e.y + (ty - e.y) * k, Math.min(e.r, 18));
-      if (safe(e.x, e.y)) { e.x = ox; e.y = oy; }
+      if (safe(e.x, e.y) || this.strays(e)) { e.x = ox; e.y = oy; }
       if (e.x === ox && e.y === oy) e.stuck = (e.stuck || 0) + dt; else e.stuck = 0;
       return d < 6;
     };
-    const away = (e, sp) => { const d = Math.hypot(p.x - e.x, p.y - e.y) || 1, k = (sp * dt) / d, ox = e.x, oy = e.y; [e.x, e.y] = slide(G, e.x, e.y, e.x - (p.x - e.x) * k, e.y - (p.y - e.y) * k, 14); if (safe(e.x, e.y)) { e.x = ox; e.y = oy; } };
+    const away = (e, sp) => { const d = Math.hypot(p.x - e.x, p.y - e.y) || 1, k = (sp * dt) / d, ox = e.x, oy = e.y; [e.x, e.y] = slide(G, e.x, e.y, e.x - (p.x - e.x) * k, e.y - (p.y - e.y) * k, 14); if (safe(e.x, e.y) || this.strays(e)) { e.x = ox; e.y = oy; } };
     // Alarm: wer den Spieler bemerkt, weckt ruhende Nachbarn im Umkreis (keine Kettenreaktion)
     const alert = (e) => {
       e.st = 'aggro'; e.t = 0.3;

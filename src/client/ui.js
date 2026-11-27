@@ -243,7 +243,8 @@ P.weapons = () => {
       h('div', { cls: 'mid' }, h('div', { cls: 'power ot' }, icon('burst', '#ff8a2a', 24), fmt(game.stats.atk + mainDmg)), heroArt(c.get('heroes', s.heroes.active).look, 128), h('div', { cls: 'pedestal' }),
         btn('Held', () => open('heroes'), false, 'sm')),
       h('div', { cls: 'col' }, slot(3), slot(4), slot(5))),
-    ns && !ns.quest ? row(`Slot ${ns.slot} freischalten`, h('span', {}, `Level ${ns.level} · `, costEl(ns.cost)), btn('Freischalten', () => act('unlockWeaponSlot'), false, 'go')) : null,
+    ns ? (() => { const needLv = s.player.level < (ns.level || 0), needQ = ns.quest && !has('slot2'), ok = !needLv && !needQ && econ.canAfford(g, ns.cost);
+      return row(`Waffenplatz ${ns.slot} freischalten`, h('span', {}, needQ ? 'Wird in der Hauptquest freigegeben · ' : '', needLv ? `ab Level ${ns.level} · ` : '', costEl(ns.cost)), btn('Freischalten', () => act('unlockWeaponSlot'), needLv || needQ, ok ? 'go' : '')); })() : null,
     h('div', { cls: 'wbar' }, h('span', { cls: betterWeapon() ? 'badge thumbb' : '', style: 'position:relative' }, btn('Ausrüsten', autoEquip, !ws.list.length, 'pri')), h('b', { cls: 'ot' }, 'Waffe'),
       h('span', { cls: anyMerge() ? 'badge' : '', style: 'position:relative' }, btn('Verbinden', () => open('fusion'), !ws.list.length, 'blue'))),
     list.length ? h('div', { cls: 'grid5' }, cap('w', list.map((w) => h('button', { cls: 'tile' + (ws.slots.includes(w.uid) ? ' eq' : ''), style: `background:${rarCol(w)}`, on: () => weaponSheet(w) }, wIcon(w, 40), h('span', { cls: 'lvt ot' }, `Lv.${w.level}`),

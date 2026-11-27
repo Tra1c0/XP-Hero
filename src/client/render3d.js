@@ -451,7 +451,7 @@ export class Renderer3D {
       if (!vis(ex, ez)) continue;
       const v = e.v, rk = v.rank;
       if (rk === 'node') { expand(v.id === 'node_tree' ? (e.group && TREE[e.group.area]) || 'tree_round2' : e.group && e.group.area === 'a1_4' ? 'ore' : 'rock_grey', ex, 0, ez, (e.gid ? e.gid.length * 1.7 + e.hx : 0) % 6.28, v.id === 'node_tree' ? 0.95 : 0.7, out); continue; }
-      const s0 = rk === 'boss' ? 2.1 : rk === 'rare' ? 1.6 : rk === 'elite' ? 1.3 : 1, s = s0 * (e.st === 'attack' ? 1.12 : e.st === 'spawn' ? 0.6 : 1);
+      const s0 = v.scale || (rk === 'boss' ? 2.1 : rk === 'rare' ? 1.6 : rk === 'elite' ? 1.3 : 1), s = s0 * (e.st === 'attack' ? 1.12 : e.st === 'spawn' ? 0.6 : 1);
       // Blickrichtung: im Kampf zum Spieler, sonst in Laufrichtung (bleibt stehen, wenn der Gegner steht)
       const fight = e.st === 'chase' || e.st === 'attack' || e.st === 'cool' || e.st === 'aggro' || e.st === 'cast', mv = Math.abs(e.x - e.px) + Math.abs(e.y - e.py) > 0.05;
       if (fight && !e.beh.flee) e.face = Math.atan2(p.x - e.x, p.y - e.y); else if (mv) e.face = Math.atan2(e.x - e.px, e.y - e.py); else if (e.face === undefined) e.face = (e.ang || 0) % 6.283;

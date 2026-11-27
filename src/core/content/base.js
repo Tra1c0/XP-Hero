@@ -225,8 +225,8 @@ export function buildBaseContent(opt = {}) {
   V('node_tree', 'Baum', 1, 'node', { hp: 20, drops: [{ item: 'wood', n: 1, count: 2, chance: 1 }] });
   V('node_rock', 'Fels', 1, 'node', { hp: 60, drops: [{ item: 'stone', n: 1, count: 2, chance: 1 }] });
   // Minimap-Belohnungen (D): einmalig je Gebiet
-  const MM1 = [[{ item: 'bluestone', n: 20 }], [{ item: 'key_warrior', n: 5 }], [{ item: 'key_special_hero', n: 5 }], [{ item: 'key_special_hero', n: 5 }],
-    [{ item: 'key_stier', n: 5 }], [{ item: 'key_stier', n: 5 }]];
+  // Kapitel 1 aus den Spieldaten (D): 100 Gems, 10 rote Orbs, Epic-Schwert, 2 und 3 Krieger-Schlüssel, Legendary-Keule
+  const MM1 = [[{ item: 'gems', n: 100 }], [{ item: 'orb_red', n: 10 }], [{ weapon: 'w_sword_n_3' }], [{ item: 'key_warrior', n: 2 }], [{ item: 'key_warrior', n: 3 }], [{ weapon: 'w_blunt_n_4' }]];
   let ci = 0, pc = 0;
   for (const a of areas) { ci = a.chapter === pc ? ci + 1 : 1; pc = a.chapter; a.minimap = a.chapter === 1 ? MM1[ci - 1] : [{ item: 'gems', n: ci === 7 ? 1000 : 200 }]; }
   T('areas', 'D', '20 Gebiete, 19 Gates; Kartenlayout/Koordinaten eigen (E).', areas);
@@ -251,17 +251,21 @@ export function buildBaseContent(opt = {}) {
     v.drops = [...v.drops.filter((d) => DROP_OWN.has(d.item)), ...o.d.map(([item, n]) => ({ item, n, count: 1, chance: 1, s: 'D' }))];
     v.s = 'D';
   }
+  // Goldelefant (D): riesig, greift nie an und wehrt sich nicht, lässt Gold in 15 Stücken und 5 rote Orbs fallen; steht nur in Ebonhollow.
+  { const v = variants.find((x) => x.id === 'gold_elephant'), e = G_ENEMY['3021'];
+    if (v && e) { v.ref = { id: 3021, hp: e[1], atk: e[2], type: 'Event' }; v.level = e[0]; v.hp = e[1]; v.atk = e[2]; v.beh = 'melee'; v.scale = 2.4; v.s = 'D';
+      v.drops = [{ item: 'orb_red', n: 1, count: e[32] || 5, chance: 1, s: 'D' }]; v.noExtraDrop = true; } }
   // Spieldaten je Gegner (D): XP, Gold, Angriffstakt, Reichweiten, Lauftempo und Haltung. ai.s/a/d = Haltung bei Sicht / in Aktionsweite / bei Treffer:
   // 0 ignorieren, 1 weiterwandern, 2 bewachen, 3 kämpfen, 4 fliehen (Zuordnung der Zahlen zu den Namen aus den Daten erschlossen, R).
   for (const v of variants) {
     const e = v.ref && G_ENEMY[v.ref.id];
     if (!e) continue;
-    v.xp = e[18]; v.gold = e[19];
+    v.xp = e[18]; v.gold = e[19]; if (e[28] > 0) v.hpDps = e[28]; if (e[29] > 1) v.goldPieces = e[29];
     v.ai = { aps: e[3], range: e[4], move: e[5], retreat: e[6], sight: e[7], action: e[8], angry: e[10], fleeT: e[11], s: e[12], a: e[13], d: e[14], flock: e[15], size: e[23], knock: e[25] };
     if (v.beh === 'flee' && e[14] !== 4) v.beh = 'melee';
     if (e[14] === 4) v.beh = 'flee';
   }
-  for (const v of variants) if (v.drops.length) v.drops.push(v.rank === 'normal' ? { item: 'crystal', n: 1, count: 1, chance: 0.5 } : { item: 'crystal', n: v.rank === 'boss' ? 10 : 3, count: 1, chance: 1 });
+  for (const v of variants) if (v.drops.length && !v.noExtraDrop) v.drops.push(v.rank === 'normal' ? { item: 'crystal', n: 1, count: 1, chance: 0.5 } : { item: 'crystal', n: v.rank === 'boss' ? 10 : 3, count: 1, chance: 1 });
   T('variants', 'E', 'Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops).', variants);
   T('spawnGroups', 'R', 'Kapitel 1: 124 platzierte Spawnknoten mit Monster, Position, Respawn und Patrol aus den Szenendaten (D). Kapitel 2/3: 71/58 Gruppen (D), Position eigen.', groups);
   T('resourceGroups', 'E', 'Rohstoffstellen als angreifbare Knoten.', resGroups);
@@ -463,8 +467,8 @@ export function buildBaseContent(opt = {}) {
   T('rateGroups', 'R', 'Rate-Gruppe 4001 = 65/30/4/1 (D); übrige Gewichte eigen.', rate);
   const boxes = [
     { id: 'novice', name: 'Novizen-Truhe', costs: [{ key_novice: 1 }, { gems: 30 }], multi: [1, 10], per: 1, rate: 'rg_novice', unlock: { unlock: 'shop' }, s: 'R', note: 'Inhalt D; Gem-Preis eigen.' },
-    { id: 'expert', name: 'Experten-Truhe', costs: [{ key_expert: 1 }, { gems: 60 }], multi: [1, 10], per: 1, rate: 'rg_expert', unlock: { unlock: 'shop' }, s: 'R', note: 'Inhalt D; Gem-Preis eigen.' },
-    { id: 'warrior', name: 'Warrior Chest', costs: [{ key_warrior: 1 }, { gems: 100 }], multi: [1, 10], per: 1, rate: 'rg_warrior', unlock: { unlock: 'shop' } },
+    { id: 'expert', name: 'Experten-Truhe', costs: [{ key_expert: 1 }, { gems: 60 }], multi: [1, 10], per: 1, rate: 'rg_expert', unlock: { questDone: 'mq_57' }, s: 'R', note: 'Inhalt D; Gem-Preis eigen.' },
+    { id: 'warrior', name: 'Warrior Chest', costs: [{ key_warrior: 1 }, { gems: 100 }], multi: [1, 10], per: 1, rate: 'rg_warrior', unlock: { questDone: 'mq_67' }, s: 'R', note: 'Inhalt D. Freischaltung mit der Hauptquest, die den ersten Krieger-Schlüssel vergibt (Reihenfolge D, Kopplung eigen).' },
     { id: 'stier', name: 'S-Tier Chest', costs: [{ key_stier: 1 }, { gems: 300 }], multi: [1, 10], per: 1, rate: 'rg_stier', unlock: { unlock: 'sTierChest' } },
     { id: 'hero', name: 'Hero Chest (Featured)', costs: [{ gems: 150 }], multi: [1, 10], per: 1, rate: 'rg_hero', pity: { n: 50, rate: 'rg_hero_pity' }, unlock: { unlock: 'heroShop' }, s: '?' },
     { id: 'special_hero', name: 'Special Hero Chest', costs: [{ key_special_hero: 1 }], multi: [1, 10], per: 1, rate: 'rg_special_hero', unlock: { unlock: 'heroShop' },
@@ -682,7 +686,7 @@ export function buildBaseContent(opt = {}) {
   const sdNodes = sd.map(([name, cond], k) => ({ id: `m${k}`, name, day: (k % 7) + 1, cond: { all: [{ day: (k % 7) + 1 }, cond] },
     reward: [k < 34 ? { item: 'gems', n: 100 } : k < 64 ? { item: 'gems', n: 50 } : { item: 'gold', n: 5000 }, { points: 'pts:7day', n: 10 }] }));
   [100, 250, 400, 550, 710].forEach((p, k) => sdNodes.push({ id: `p${p}`, name: `${p} Punkte`, milestone: true, cond: { counter: 'pts:7day', gte: p },
-    reward: [[{ item: 'key_warrior', n: 5 }], [{ item: 'evo_coin', n: 100 }], [{ item: 'key_stier', n: 3 }], [{ item: 'key_special_hero', n: 5 }], [{ item: 'hero_select_ticket', n: 1 }]][k] }));
+    reward: [[{ item: 'key_expert', n: 3 }], [{ item: 'evo_coin', n: 100 }], [{ item: 'key_stier', n: 3 }], [{ item: 'key_special_hero', n: 5 }], [{ item: 'hero_select_ticket', n: 1 }]][k] }));
   tracks.push({ id: 'sevenDay', name: 'New User 7-Day Event', kind: 'event', unlock: { unlock: 'sevenDay' }, baseline: true, durationDays: 14, s: 'R',
     note: '71 Missionen, 4.900 Gems gesamt, 34 x 100 (D). Einzelaufgaben, Tage, Punkte, Meilensteinrewards eigen.', nodes: sdNodes });
   const dm = [['kill:any', 100, 'Besiege 100 Gegner'], ['craft', 3, 'Schmiede 3x'], ['upgrade:ability', 5, '5 Ability-Upgrades'], ['chest:claim', 1, 'Hole 1 Truhe ab'],
@@ -695,11 +699,11 @@ export function buildBaseContent(opt = {}) {
       .map(([c, n, name], k) => ({ id: `w${k}`, name, cond: { counter: c, gte: n, scope: 'weekly' }, reward: [{ item: 'evo_coin', n: 30 }, { item: 'spin_ticket', n: 1 }, { points: 'pts:bp', n: 100 }] })) });
   tracks.push({ id: 'login', name: 'Login-Belohnungen', kind: 'login', reset: 'cycle', s: 'E',
     nodes: [1, 2, 3, 4, 5, 6, 7].map((d) => ({ id: `d${d}`, name: `Tag ${d}`, cond: { counter: 'login', gte: d, scope: 'track' },
-      reward: d === 7 ? [{ item: 'key_warrior', n: 3 }, { item: 'spin_ticket', n: 2 }] : [{ item: 'gold', n: 500 * d }, { item: 'weapon_scroll', n: d }] })) });
+      reward: d === 7 ? [{ item: 'key_expert', n: 2 }, { item: 'spin_ticket', n: 2 }] : [{ item: 'gold', n: 500 * d }, { item: 'weapon_scroll', n: d }] })) });
   tracks.push({ id: 'battlepass', name: 'Battle Pass (freie Reihe)', kind: 'pass', unlock: { unlock: 'battlePass' }, baseline: true, seasonDays: 28, s: 'E',
     note: 'Kauf-Track entfernt; Inhalte/Stufen eigen.',
     nodes: Array.from({ length: 30 }, (_, k) => ({ id: `bp${k + 1}`, name: `Stufe ${k + 1}`, cond: { counter: 'pts:bp', gte: (k + 1) * 100, scope: 'track' },
-      reward: [[{ item: 'weapon_scroll', n: 5 }], [{ item: 'evo_coin', n: 20 }], [{ item: 'bluestone', n: 5 }], [{ item: 'key_warrior', n: 1 }], [{ item: 'exp', n: 2 }]][k % 5] })) });
+      reward: [[{ item: 'weapon_scroll', n: 5 }], [{ item: 'evo_coin', n: 20 }], [{ item: 'bluestone', n: 5 }], [{ item: k < 20 ? 'key_novice' : k < 40 ? 'key_expert' : 'key_warrior', n: 1 }], [{ item: 'exp', n: 2 }]][k % 5] })) });
   tracks.push({ id: 'carnival', name: 'Carnival', kind: 'event', unlock: { unlock: 'carnival' }, baseline: true, durationDays: 7, s: 'E',
     nodes: [200, 500, 1000, 2000].map((n) => ({ id: `c${n}`, name: `${n} Gegner`, cond: { counter: 'kill:any', gte: n, scope: 'track' }, reward: [{ item: 'key_stier', n: 1 }, { item: 'gold', n: n * 20 }] })) });
   tracks.push({ id: 'invasionpass', name: 'Invasion-Pass-Missionen', kind: 'pass', unlock: { unlock: 'invasion' }, reset: 'weekly', s: 'R', note: 'Missionstypen D (Wins, Streak, Rest-HP, Auto-Battle); Werte eigen.',
@@ -722,9 +726,9 @@ export function buildBaseContent(opt = {}) {
   S('mat_scroll', 'materials', '10 Weapon Scrolls', { gold: 5000 }, [{ item: 'weapon_scroll', n: 10 }], { limit: 5, reset: 'daily' });
   S('mat_evo', 'materials', '50 Evolution Coins', { gems: 100 }, [{ item: 'evo_coin', n: 50 }], { limit: 3, reset: 'daily', unlock: { unlock: 'heroes' } });
   S('mat_attr', 'materials', '50 Attribute Points', { gems: 100 }, [{ item: 'attr_point', n: 50 }], { limit: 3, reset: 'daily', unlock: { unlock: 'traits' } });
-  S('mat_keyw', 'materials', 'Warrior Chest Key', { gems: 90 }, [{ item: 'key_warrior', n: 1 }], { limit: 10, reset: 'daily' });
+  S('mat_keyw', 'materials', 'Warrior Chest Key', { gems: 90 }, [{ item: 'key_warrior', n: 1 }], { limit: 10, reset: 'daily', unlock: { cleared: 'a1_3' } });
   areas.forEach((a) => S(`stagepack_${a.id}`, 'stage_packs', `Stage Pack ${a.name}`, { gold: 500 * a.stage ** 3 },
-    [{ item: 'weapon_scroll', n: 10 + 2 * a.stage }, { item: 'evo_coin', n: 10 * a.stage }, { item: 'key_warrior', n: 2 }], { limit: 1, unlock: { cleared: a.id }, s: 'R',
+    [{ item: 'weapon_scroll', n: 10 + 2 * a.stage }, { item: 'evo_coin', n: 10 * a.stage }, a.chapter === 1 && a.stage <= 2 ? { item: 'key_novice', n: 2 } : a.chapter === 1 && a.stage <= 4 ? { item: 'key_expert', n: 2 } : { item: 'key_warrior', n: 1 }], { limit: 1, unlock: { cleared: a.id }, s: 'R',
       note: '20 Stage Packs passend zur Gebietsfreischaltung (D); als erspielbares Gold-Angebot, Inhalt/Preis eigen. Kein Kaufpopup.' }));
   S('chapterpack_1', 'chapter_packs', 'Chapter Pack 1 (nach Baal)', { gems: 800 }, [{ item: 'key_stier', n: 10 }, { item: 'evo_coin', n: 300 }, { item: 'hero_select_ticket', n: 1 }], { limit: 1, unlock: { cleared: 'a1_6' }, s: 'R' });
   S('chapterpack_2', 'chapter_packs', 'Chapter Pack 2 (nach Frost King)', { gems: 1600 }, [{ item: 'key_stier', n: 20 }, { item: 'evo_coin', n: 1000 }, { item: 'hero_select_ticket', n: 2 }], { limit: 1, unlock: { cleared: 'a2_7' }, s: 'R' });
@@ -772,7 +776,7 @@ export function buildBaseContent(opt = {}) {
       { w: 0, alias: 'crimson', min: 3, max: 33, s: '?' }, { w: 0, alias: 'azure', min: 4, max: 11, s: '?' }, { w: 0, alias: 'soul', min: 3, max: 11, s: '?' }] }]);
   T('spinSegments', 'E', '7 Segmentdefinitionen (D-Zählung, 192 Originalzeilen nicht erfasst); Bedingungen und Rewardzeilen eigen.', [0, 2, 5, 8, 11, 14, 17].map((minStage, k) =>
     ({ id: `seg${k + 1}`, minStage, rows: [{ w: 30, item: 'gold', min: 500 * 4 ** k, max: 1500 * 4 ** k }, { w: 20, item: 'weapon_scroll', min: 2, max: 6 + k }, { w: 15, item: 'orb_red', min: 3, max: 8 + k },
-      { w: 12, item: 'evo_coin', min: 5 + 5 * k, max: 15 + 10 * k }, { w: 10, item: 'bluestone', min: 2, max: 5 + k }, { w: 8, item: 'gems', min: 10, max: 20 }, { w: 4, item: 'key_warrior', min: 1, max: 2 }, { w: 1, item: 'gems', min: 100, max: 100 }] })));
+      { w: 12, item: 'evo_coin', min: 5 + 5 * k, max: 15 + 10 * k }, { w: 10, item: 'bluestone', min: 2, max: 5 + k }, { w: 8, item: 'gems', min: 10, max: 20 }, { w: 4, item: k < 2 ? 'key_novice' : k < 4 ? 'key_expert' : 'key_warrior', min: 1, max: k < 4 ? 2 : 1 }, { w: 1, item: 'gems', min: 100, max: 100 }] })));
 
   // ------------------------------------------------------------------ Modi
   T('towerFloors', 'R', '250 Etagen (D); Etage 151 = 35 Gems (D). Gegner, Wellen, übrige Rewards eigen (Gems = 5 + floor(Etage/5)).',

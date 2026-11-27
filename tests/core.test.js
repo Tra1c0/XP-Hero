@@ -31,8 +31,8 @@ test('Content: gültig, stabiler Fingerprint, Referenzsummen (T02/T05/T13)', () 
   assert.equal(T.towerFloors.length, 250);
   assert.equal(sumGems(T.towerFloors[150].first), 35, 'Etage 151 = 35 Gems');
   const tr = (id) => T.tracks.find((t) => t.id === id);
-  assert.equal(tr('minimap').nodes.reduce((a, n) => a + sumGems(n.reward), 0), 4400);
-  assert.equal(tr('minimap').nodes.filter((n) => sumGems(n.reward) > 0).length, 14);
+  assert.equal(tr('minimap').nodes.reduce((a, n) => a + sumGems(n.reward), 0), 4500);
+  assert.equal(tr('minimap').nodes.filter((n) => sumGems(n.reward) > 0).length, 15);
   assert.equal([1, 2, 3].reduce((a, ch) => a + tr(`chapterpass_${ch}`).nodes.reduce((b, n) => b + sumGems(n.reward), 0), 0), 4000);
   const sd = tr('sevenDay').nodes.filter((n) => !n.milestone);
   assert.equal(sd.length, 71);
@@ -90,12 +90,12 @@ test('T05 Wallet/Ledger: jede Buchung registriert, keine negativen Stände, Roll
   for (const a of pack.tables.areas) s().world.cleared[a.id] = 1;
   const before = s().inv.gems;
   game.cmd('claimAll', 'minimap');
-  assert.equal(s().inv.gems - before, 4400);
-  assert.equal(s().totals.gems['track:minimap'], 4400);
+  assert.equal(s().inv.gems - before, 4500);
+  assert.equal(s().totals.gems['track:minimap'], 4500);
   game.cmd('claimAll', 'minimap');
-  assert.equal(s().inv.gems - before, 4400);
+  assert.equal(s().inv.gems - before, 4500);
   for (const ch of [1, 2, 3]) game.cmd('claimAll', `chapterpass_${ch}`);
-  assert.equal(s().inv.gems - before, 8400);
+  assert.equal(s().inv.gems - before, 8500);
   // Schlüsselhaus: Plätze kosten Holz und Orbs (Spieldaten), in Kapitel 1 an die Gebäudestufe gebunden
   s().unlocks.keyhouse = 1; for (const i of ['wood', 'orb_red', 'orb_pink', 'orb_ice', 'orb_jungle', 'orb_hell']) give(i, 500);
   s().buildings.chesthouse = { level: 1, prodAt: 0 }; game.cmd('unlockKeySlot', 0);
@@ -108,7 +108,7 @@ test('T05 Wallet/Ledger: jede Buchung registriert, keine negativen Stände, Roll
 test('T06 Shop: gesperrt, zu wenig Mittel, Limit/Doppelkauf, Tagesreset, Händlerrotation', () => {
   const { game, s, give, unlock, clock } = mk();
   assert.equal(code(() => game.cmd('buy', 'gem_9002')), 'locked');
-  unlock('shop');
+  unlock('shop'); s().world.cleared.a1_3 = 1;
   assert.equal(sumGems(game.cmd('buy', 'gem_9002')), 15);
   assert.equal(code(() => game.cmd('buy', 'gem_9002')), 'sold_out', 'Doppeltap zahlt nicht doppelt');
   game.cmd('buy', 'gem_9003'); game.cmd('buy', 'gem_9004');
@@ -154,13 +154,13 @@ test('T07 Truhen: volle Slots, Spawner-Respawn vs. Reveal, Neustart, Claim genau
 
 test('T08 Gacha: Kosten atomar, Pity, Meilensteine, deterministische Seeds, Raten 4001', () => {
   const a = mk({ seed: 7 }), b = mk({ seed: 7 });
-  for (const x of [a, b]) { x.unlock('shop', 'heroShop', 'runes'); x.give('key_special_hero', 500); x.give('gems', 500000); }
+  for (const x of [a, b]) { x.unlock('shop', 'heroShop', 'runes'); x.give('key_special_hero', 500); x.give('gems', 500000); x.s().quests.done.mq_67 = 1; }
   assert.equal(code(() => a.game.cmd('openBox', 'warrior', 3)), 'bad_amount');
   const r1 = a.game.cmd('openBox', 'warrior', 10), r2 = b.game.cmd('openBox', 'warrior', 10);
   assert.deepEqual(r1, r2, 'gleicher Seed -> gleiche Ergebnisse');
   assert.equal(r1.length, 10); assert.equal(a.s().weapons.list.length, 11, 'zehn gezogene plus Startschwert');
   assert.equal(a.s().inv.gems, 500000 - 1000);
-  const poor = mk(); poor.unlock('shop'); poor.give('gems', 950);
+  const poor = mk(); poor.unlock('shop'); poor.s().quests.done.mq_67 = 1; poor.give('gems', 950);
   assert.equal(code(() => poor.game.cmd('openBox', 'warrior', 10)), 'insufficient');
   assert.equal(poor.s().inv.gems, 950); assert.equal(poor.s().weapons.list.length, 1);
   // Special Hero Chest: Meilensteine 70/150/300, danach 340/380/420 ...
@@ -515,4 +515,28 @@ test('Heldenmodelle: jede Heldin/jeder Held hat ein lesbares Modell mit Skelett 
     assert.ok(dev < 1e-3, `${h.id}: Ruhelage weicht ab (${dev})`); assert.ok(r.point('HandSocket.R'), `${h.id}: Handpunkt`);
     const a = new HeroAnim(r); for (let k = 0; k < 90; k++) { const out = a.update({ dt: 1 / 30, alive: k < 70, speed: k > 20 && k < 40 ? 5 : 0, fireT: k > 5 && k < 60 ? Math.floor(k / 12) : undefined, hurtT: k > 62 ? 1 : undefined, cls: h.mastery, interval: 0.45 }); assert.ok(out.every(Number.isFinite), `${h.id}: Pose endlich`); }
   }
+});
+
+test('Kampf und Gebiete: Gegner vor Rohstoffen als Ziel, Geschosse fliegen an Bäumen vorbei, Gegner bleiben im eigenen Gebiet, Goldelefant friedlich', async () => {
+  const { zoneAt } = await import('../src/core/worldgrid.js');
+  const { game, clock, s, give, unlock } = mk(); const w = game.world, G = w.G;
+  // jeder Gegner (auch kreisende Fledermäuse) steht in seinem Gebiet
+  for (const e of w.enemies) if (e.group && e.v.rank !== 'node') assert.equal(zoneAt(G, e.hx, e.hy), e.group.area, `${e.v.name} steht im falschen Gebiet`);
+  // Ziel: Gegner in Reichweite schlägt den näheren Baum
+  const m = w.enemies.find((x) => x.alive && x.v.id === 'mandragora'), tree = w.enemies.find((x) => x.alive && x.v.id === 'node_tree');
+  for (const x of w.enemies) if (x !== m && x !== tree) x.alive = false;
+  m.st = 'idle'; tree.st = 'idle'; w.p.x = m.x - 60; w.p.y = m.y; tree.x = w.p.x + 20; tree.y = w.p.y; w.rebuild && w.rebuild();
+  for (let k = 0; k < 3; k++) { game.tick(1 / 30); clock.t += 33; w.p.x = m.x - 60; w.p.y = m.y; tree.x = w.p.x + 20; tree.y = w.p.y; }
+  assert.equal(w.target(w.p.x, w.p.y, 2 * 40), m, 'Gegner hat Vorrang vor dem näheren Baum');
+  m.alive = false; game.tick(1 / 30); assert.equal(w.target(w.p.x, w.p.y, 2 * 40), tree, 'ohne Gegner ist der Baum das Ziel');
+  // Goldelefant: greift nicht an, wehrt sich nicht, lässt rote Orbs fallen
+  const el = game.c.get('variants', 'gold_elephant');
+  assert.equal(el.atk, 0); assert.equal(el.hp, 14954); assert.equal(el.xp, 27200); assert.equal(el.gold, 2044); assert.deepEqual(el.drops.map((d) => [d.item, d.count]), [['orb_red', 5]]);
+  const E = w.makeEnemy(el, w.p.x + 50, w.p.y); assert.ok(E.beh.passive && E.beh.aggro === 0); E.st = 'idle'; E.group = { area: 'a1_3' }; w.hit(E, 5, 'melee'); assert.notEqual(E.st, 'chase', 'bleibt friedlich, auch wenn er getroffen wird');
+  // Fledermaus und Schatzgoblin: Leben wächst mit dem Schaden der Figur
+  const bat = game.c.get('variants', 'bat'); assert.ok(bat.hpDps > 0); assert.ok(w.dynHp(bat) >= bat.hp); const lo = w.loadout; w.loadout = () => [{ dmg: 1e6, interval: 1 }]; assert.equal(w.dynHp(bat), 1e6 * bat.hpDps, 'Leben folgt dem Schaden'); w.loadout = lo;
+  // Waffenplatz 2: nach der Freigabe gegen 5 Stein ab Level 5
+  s().player.level = 5; assert.equal(code(() => game.cmd('unlockWeaponSlot')), 'locked'); unlock('slot2', 'weaponVault'); give('stone', 5); game.cmd('unlockWeaponSlot'); assert.equal(s().weapons.unlocked, 2); assert.equal(s().inv.stone, 0);
+  // Krieger-Truhe erst nach der Hauptquest, die den ersten Schlüssel vergibt
+  unlock('shop'); give('key_warrior', 1); assert.equal(code(() => game.cmd('openBox', 'warrior', 1)), 'locked'); s().quests.done.mq_67 = 1; assert.equal(game.cmd('openBox', 'warrior', 1).length, 1);
 });

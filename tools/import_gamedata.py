@@ -14,7 +14,8 @@ E = {}
 for r in load('EnemyData_1'):
     E[r['id']] = [i(r['Level']), i(r['MaxHp']), i(r['AttackPower']), f(r['AttackSpeed']), f(r['AttackRange']), f(r['MoveSpeed']), f(r['RetreatSpeed']), f(r['SightRange']), f(r['ActionRange']), f(r['BattleDistance']),
                   f(r['AngryTime']), f(r['FleeTime']), i(r['SightAttitude']), i(r['ActionAttitude']), i(r['DamagedAttitude']), i(r['FlockCount'], 1), i(r['EnemyType']), i(r['Rarity']), i(r['DropAccountExpAmount']), i(r['DropGoldAmount']),
-                  i(r['DropItemType'], -1), i(r['DropItemAmount']), i(r['DropItemPieceCount']), i(r['UnitSize']), f(r.get('OverrideScale'), 1), f(r.get('knockBackApply')), r.get('SkillList') or '', r.get('key') or '']
+                  i(r['DropItemType'], -1), i(r['DropItemAmount']), i(r['DropItemPieceCount']), i(r['UnitSize']), f(r.get('OverrideScale'), 1), f(r.get('knockBackApply')), r.get('SkillList') or '', r.get('key') or '',
+                  f(r.get('MaxHp_DPSMult')), i(r.get('DropGoldPieceCount'), 1), i(r.get('DropItemType2'), -1), i(r.get('DropItemAmount2')), i(r.get('DropItemPieceCount2'))]
 SP = {r['key']: [i(r['EnemyDataId']), f(r['RespawnCoolTime']), f(r['RetreatRange']), 1 if r['IsPatrol'] == 'TRUE' else 0] for r in load('EnemySpawnGroupData_1')}
 XP = [0] + [i(r['RequireExp']) for r in sorted(load('LevelUpData_Exp'), key=lambda r: int(r['id']))]
 lim = []; 
@@ -97,7 +98,8 @@ open(__file__.replace('tools/import_gamedata.py', 'src/core/content/econ_ref.js'
 open(__file__.replace('tools/import_gamedata.py', 'src/core/content/game_ref.js'), 'w').write(
     '// GENERIERT von tools/import_gamedata.py – nicht von Hand ändern.\n// Quelle: Datentabellen des Spiels, Version 27.2.0 (vom Nutzer bereitgestellte Spieldatei). Nur Zahlen, Schlüssel und Regeln.\n'
     '// ENEMY[id] = [Level, Leben, Angriff, Angriffe/s, Reichweite m, Lauftempo, Rückzugstempo, Sicht m, Aktion m, Kampfabstand m, Wutzeit s, Fluchtzeit s, Haltung Sicht, Haltung Aktion, Haltung Treffer,\n'
-    '//             Rudel, Typ, Seltenheit, XP, Gold, Drop-Typ, Drop-Menge, Drop-Stücke, Größe, Skalierung, Rückstoß, Fertigkeiten, Schlüssel]\n'
+    '//             Rudel, Typ, Seltenheit, XP, Gold, Drop-Typ, Drop-Menge, Drop-Stücke, Größe, Skalierung, Rückstoß, Fertigkeiten, Schlüssel,\n'
+    '//             Leben als Vielfaches des Spieler-Schadens pro Sekunde (0 = festes Leben), Goldstücke, zweiter Drop: Typ, Menge, Stücke]\n'
     'export const ENEMY = ' + json.dumps(E, separators=(',', ':')) + ';\n'
     '// SPAWN[Schlüssel] = [Gegner-id, Respawn s, Rückzugsradius m, Patrouille]\nexport const SPAWN = ' + json.dumps(SP, separators=(',', ':')) + ';\n'
     '// LEVEL_XP[L] = XP von Level L-1 auf L (Index 1 = 0). KILL_XP_LIMIT = [[ab Level, höchstens XP je Kill], ...]\nexport const LEVEL_XP = ' + json.dumps(XP, separators=(',', ':')) + ';\nexport const KILL_XP_LIMIT = ' + json.dumps(lim) + ';\n'
