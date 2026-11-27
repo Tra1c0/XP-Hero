@@ -690,9 +690,10 @@ export function hud() {
   if (hud.qkey !== key) {
     hud.qkey = key;
     $('quests').replaceChildren(...show.map(({ q, state, obj }) => {
-      const o = obj[0], kind = q.obj[0].counter || '';
-      return h('button', { cls: 'qcard' + (state === 'satisfied' ? ' ready' : ''), on: () => (state === 'satisfied' && !q.giver ? reward('Quest', act('claimQuest', q.id)) : walkTo(q)) },
-        h('span', { cls: 'tx ot' }, h('b', {}, q.name), h('div', { cls: 'bar' }, h('i', { style: `width:${Math.min(100, (100 * o.cur) / o.need)}%` }), h('span', {}, state === 'satisfied' ? (q.giver ? 'abgeben' : 'Abholen!') : `${fmt(o.cur)}/${fmt(o.need)}`))),
+      // Abgabe beim Auftraggeber gibt es nur, wenn die Einstellung quests.npcTurnIn an ist (Standard: aus) – sonst holt ein Tipp auf die Karte die Belohnung ab
+      const o = obj[0], kind = q.obj[0].counter || '', turnIn = !!q.giver && game.c.cfg.quests.npcTurnIn;
+      return h('button', { cls: 'qcard' + (state === 'satisfied' ? ' ready' : ''), on: () => (state === 'satisfied' && !turnIn ? reward('Quest', act('claimQuest', q.id)) : walkTo(q)) },
+        h('span', { cls: 'tx ot' }, h('b', {}, q.name), h('div', { cls: 'bar' }, h('i', { style: `width:${Math.min(100, (100 * o.cur) / o.need)}%` }), h('span', {}, state === 'satisfied' ? (turnIn ? 'abgeben' : 'Abholen!') : `${fmt(o.cur)}/${fmt(o.need)}`))),
         h('span', { cls: 'qi' }, icon(kind.startsWith('raid') || kind === 'kill:bossAny' || (q.obj[0].cond && q.obj[0].cond.cleared) ? 'skull' : kind.startsWith('chest') ? 'chest' : kind.startsWith('talk') ? 'talk' : kind.startsWith('kill') ? 'sword' : q.obj[0].cond && q.obj[0].cond.building ? 'home' : 'star', null, 28)));
     }));
   }
