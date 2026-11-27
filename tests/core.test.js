@@ -473,3 +473,16 @@ test('Spieldaten: XP je Gegner und je Level, Grundwerte, friedliche Startgegner 
   assert.ok(e.st === 'idle' || e.st === 'patrol', 'Mandragora bleibt friedlich, obwohl die Figur daneben steht'); assert.equal(w.p.hp, hp0);
   e.hp = e.maxHp = 1e6; w.hit(e, 1, 'melee'); assert.equal(e.st, 'chase', 'nach einem Treffer wehrt sie sich');
 });
+
+test('Alte Spielstände: verwaiste Truhen, Gegenstände, Quests und Gebäude werden beim Laden bereinigt statt die Schleife anzuhalten', () => {
+  const a = mk(); const s = a.s();
+  s.unlocks.keyhouse = 1; s.keyhouse.slots[0] = { open: true, chest: { type: 'wooden', readyAt: 0, from: 'cs_a1_1' } }; s.keyhouse.slots[1] = { open: true, chest: { type: 'gibt_es_nicht', readyAt: 0 } };
+  s.inv.foo_alt = 3; s.inv['piece:h_99'] = 2; s.cargo.alt_x = 1; s.cargo.wood = 2; s.buildings.altbau = { level: 1 }; s.upgrades.alt_up = 4; s.quests.active.q_001 = { at: 1 }; s.quests.done.q_002 = 1; s.player.spStar = 9;
+  const b = mk({ state: JSON.parse(JSON.stringify(s)) });
+  const t = b.s();
+  assert.equal(t.keyhouse.slots[0].chest.type, 'c1'); assert.equal(t.keyhouse.slots[1].chest, null);
+  assert.ok(!('foo_alt' in t.inv) && !('piece:h_99' in t.inv) && !('alt_x' in t.cargo)); assert.equal((t.cargo.wood || 0) + (t.inv.wood || 0), 2, 'bekannte Fracht bleibt');
+  assert.ok(!t.buildings.altbau && !('alt_up' in t.upgrades) && !t.quests.active.q_001 && !t.quests.done.q_002); assert.equal(t.player.spStar, 5);
+  for (let k = 0; k < 60; k++) { b.game.tick(1 / 30); b.clock.t += 33; }
+  assert.ok(b.game.cmd('claimChest', 0).length >= 1, 'alte Truhe lässt sich öffnen');
+});

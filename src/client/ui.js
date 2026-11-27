@@ -26,7 +26,7 @@ const btn = (label, on, disabled = false, cls = '') => h('button', { on, disable
 const row = (title, sub, ...right) => h('div', { cls: 'row' }, h('div', { cls: 'grow' }, h('div', { cls: 'ti' }, title), sub ? h('div', { cls: 'sub' }, sub) : null), ...right);
 const sec = (title, ...kids) => h('section', {}, h('h3', {}, t(title)), ...kids);
 export function itemName(id) {
-  if (id.startsWith('piece:')) return `${game.c.get('heroes', id.slice(6)).name}-Scherben`;
+  if (id.startsWith('piece:')) return `${game.c.by.heroes.get(id.slice(6))?.name || 'Helden'}-Scherben`;
   return game.c.by.items.get(id)?.name || id;
 }
 export const fmtCost = (c) => { const e = Object.entries(c || {}).filter(([, n]) => n > 0); return e.length ? e.map(([i, n]) => `${fmt(n)} ${itemName(i)}`).join(' + ') : t('gratis'); };

@@ -48,7 +48,7 @@ export function collectProduction(g, id) {
 // ---- Cargo (physische Beute, getrennt vom Inventar)
 export function cargoUsed(g) {
   let n = 0;
-  for (const [i, v] of Object.entries(g.state.cargo)) n += v * (g.c.get('items', i).cargo || 1);
+  for (const [i, v] of Object.entries(g.state.cargo)) n += v * ((g.c.by.items.get(i) || {}).cargo || 1);
   return n;
 }
 export const cargoFree = (g) => Math.max(0, g.stats.cargo - cargoUsed(g));
@@ -62,8 +62,8 @@ export function deliver(g) {
   if (g.state.world.area !== 'base') fail('not_at_base', 'Abgabe nur in der Basis');
   const out = [];
   for (const [i, n] of Object.entries(g.state.cargo)) {
-    if (n <= 0) continue;
-    const d = g.c.get('items', i);
+    const d = g.c.by.items.get(i);
+    if (n <= 0 || !d) continue; // unbekannte Fracht (alter Spielstand) verfällt, statt die Heimkehr zu blockieren
     if (d.sell > 0) { const gold = Math.floor(n * d.sell * (1 + g.stats.goldPct / 100) * g.c.cfg.rewardFactor.gold); add(g, 'gold', gold, 'cargo:sell', i); out.push({ item: 'gold', n: gold }); } else { add(g, i, n, 'cargo:deliver'); out.push({ item: i, n }); }
   }
   g.state.cargo = {};

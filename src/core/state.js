@@ -48,6 +48,21 @@ export function migrate(s, c) {
   s.weapons.slots = s.weapons.slots.map((u) => (u && s.weapons.list.some((w) => w.uid === u) ? u : null));
   s.runes.list = s.runes.list.filter((r) => c.has('runes', r.def));
   if (!c.has('heroes', s.heroes.active)) s.heroes.active = c.cfg.heroes.starter;
+  // Truhen alter Fassungen (wooden/rare) auf die heutigen Typen umstellen; unbekannte Typen leeren den Platz.
+  const CHEST_OLD = { wooden: 'c1', rare: 'c2', legendary: 'c3' };
+  for (const sl of s.keyhouse.slots) if (sl && sl.chest) { const t = CHEST_OLD[sl.chest.type] || sl.chest.type; if (c.has('chestTypes', t)) sl.chest.type = t; else sl.chest = null; }
+  // Unbekannte Gegenstände (Inventar, Fracht) entfernen. Heldenteile nur, wenn es den Helden noch gibt.
+  const known = (id) => (id.startsWith('piece:') ? c.has('heroes', id.slice(6)) : c.has('items', id));
+  for (const bag of [s.inv, s.cargo]) for (const id of Object.keys(bag || {})) if (!known(id) || !Number.isFinite(bag[id])) delete bag[id];
+  // Verwaiste Einträge in Helden, Gebäuden, Upgrades und Quests entfernen; Stufen auf das heutige Maximum begrenzen.
+  for (const id of Object.keys(s.heroes.owned)) if (!c.has('heroes', id)) delete s.heroes.owned[id];
+  if (!s.heroes.owned[s.heroes.active]) s.heroes.owned[s.heroes.active] = { level: 1, star: 1 };
+  s.heroes.raidTeam = (s.heroes.raidTeam || []).filter((id) => s.heroes.owned[id]);
+  for (const id of Object.keys(s.buildings)) { if (!c.has('buildings', id)) delete s.buildings[id]; else { const d = c.get('buildings', id); s.buildings[id].level = Math.max(1, Math.min(d.max || 1, s.buildings[id].level || 1)); } }
+  for (const id of Object.keys(s.upgrades)) if (!c.has('upgradeTracks', id)) delete s.upgrades[id];
+  for (const k of ['active', 'done']) for (const id of Object.keys((s.quests && s.quests[k]) || {})) if (!c.has('quests', id)) delete s.quests[k][id];
+  if (s.player.spStar) s.player.spStar = Math.max(1, Math.min(c.cfg.special.maxStar, s.player.spStar));
+  if (s.unlocks.slot2 && s.weapons.unlocked < 2 && s.weapons.slots[1]) s.weapons.unlocked = 2; // früher gratis freigeschalteter zweiter Platz bleibt erhalten
   if (s.world.area !== 'base' && !c.has('areas', s.world.area)) s.world.area = 'base';
   return s;
 }
