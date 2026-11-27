@@ -135,7 +135,7 @@ export function validateContent(pack) {
   for (const w of T.worlds || []) {
     if (!w.bounds || !(w.cell > 0) || !(w.ppm > 0) || !Array.isArray(w.zones)) { E(`world ${w.id}: bounds/cell/ppm/zones fehlen`); continue; }
     const zids = new Set();
-    for (const z of w.zones) { zids.add(z.id); if (!Array.isArray(z.poly) || z.poly.length < 3) E(`world ${w.id}: Zone ${z.id} braucht ein Polygon`); if (z.id !== 'base' && !ids.areas.has(z.id)) E(`world ${w.id}: Zone ${z.id} ist kein Gebiet`); }
+    for (const z of w.zones) { zids.add(z.id); if (!w.map && (!Array.isArray(z.poly) || z.poly.length < 3)) E(`world ${w.id}: Zone ${z.id} braucht ein Polygon`); if (z.id !== 'base' && !ids.areas.has(z.id)) E(`world ${w.id}: Zone ${z.id} ist kein Gebiet`); }
     for (const gt of w.gates || []) { if (!zids.has(gt.from) || !zids.has(gt.to)) E(`world ${w.id}: Tor ${gt.id} verbindet unbekannte Zonen`); if (gt.needs && !ids.areas.has(gt.needs)) E(`world ${w.id}: Tor ${gt.id} needs ${gt.needs} unbekannt`); if (!(gt.w > 0)) E(`world ${w.id}: Tor ${gt.id} Breite`); }
     let G;
     try { G = buildGrid(w); } catch (e) { E(`world ${w.id}: Raster nicht baubar (${e.message})`); continue; }

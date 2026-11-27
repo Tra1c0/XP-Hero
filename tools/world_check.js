@@ -18,13 +18,13 @@ const pts = [
 ];
 G.gateOpen.fill(1);
 const all = reach(G, ...Object.values(P(...WORLD.entries.base)));
-let moved = 0;
+let moved = 0; const notes = [];
 for (const p of pts) {
   const { x, y } = P(p.X, p.Z), s = snap(G, x, y, 40, p.want ? G.zoneIds.indexOf(p.want) : -1);
   if (!s) { issues.push(`${p.k}: kein begehbarer Punkt in der Nähe`); continue; }
   const d = Math.hypot(s.x - x, s.y - y) / G.ppm, z = zoneAt(G, s.x, s.y);
   if (d > 0.01) moved++;
-  if (d > 4) issues.push(`${p.k} (${p.X},${p.Z}): ${d.toFixed(1)} m verschoben`);
+  if (d > 4) notes.push(`${p.k} (${p.X},${p.Z}): ${d.toFixed(1)} m an den Kartenrand verschoben`);
   if (p.exact && d > 0.01) issues.push(`${p.k}: nicht begehbar`);
   if (p.want && z !== p.want) issues.push(`${p.k} (${p.X},${p.Z}) liegt in ${z}, erwartet ${p.want}`);
   if (!all[cellAt(G, s.x, s.y)]) issues.push(`${p.k}: nicht erreichbar`);
@@ -33,6 +33,8 @@ for (const p of pts) {
 const cleared = [];
 for (let step = 0; step <= 6; step++) {
   WORLD.gates.forEach((gt, k) => { G.gateOpen[k] = !gt.needs || cleared.includes(gt.needs) ? 1 : 0; });
+  // Kartenwelt: ein Gebiet ist offen, wenn der Boss des Vorgängers besiegt ist
+  if (WORLD.map) WORLD.zones.forEach((z, k) => { const n = Number(z.id.slice(3)); G.zoneOpen[k] = z.id === 'base' || n === 1 || cleared.includes(`a1_${n - 1}`) ? 1 : 0; });
   const R = reach(G, ...Object.values(P(...WORLD.entries.base))), zs = new Set();
   for (let i = 0; i < R.length; i++) if (R[i]) zs.add(G.zoneIds[G.zone[i]]);
   const want = new Set(['base', 'a1_1', ...cleared.map((a) => `a1_${Number(a.slice(3)) + 1}`)].filter((a) => WORLD.areas.includes(a)));
@@ -42,6 +44,7 @@ for (let step = 0; step <= 6; step++) {
 let floor = 0;
 for (let i = 0; i < G.kind.length; i++) if (G.kind[i] === 1) floor++;
 console.log(`Raster ${G.cols}x${G.rows} (${G.cell} m), begehbar ${floor * G.cell * G.cell} m², verschobene Punkte ${moved}/${pts.length}`);
+if (notes.length) console.log('Hinweise (Referenzpunkte außerhalb des Kartenbodens):\n- ' + notes.join('\n- '));
 console.log(issues.length ? 'PROBLEME:\n- ' + issues.join('\n- ') : 'OK: alle Punkte begehbar, in richtiger Zone, erreichbar; Tor-Kette korrekt.');
 if (process.argv[2]) {
   const S = 4, W = G.cols * S, H = G.rows * S, raw = Buffer.alloc((W * 3 + 1) * H);

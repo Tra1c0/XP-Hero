@@ -23,13 +23,20 @@ export function buildGrid(world) {
   const kind = new Uint8Array(n), zone = new Int16Array(n).fill(-1), gate = new Int16Array(n).fill(-1), flat = new Uint8Array(n); // flat: blockiert, aber ebenerdig (Gebäude, Landmarken)
   const zoneIds = world.zones.map((z) => z.id), cpx = cell * ppm;
   const cx = (c) => B.minX + (c + 0.5) * cell, cz = (r) => B.maxZ - (r + 0.5) * cell; // Zeile 0 = Norden (oben)
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+  // Kartenraster (world.map): Boden, Wasser, Fels, Gebiet und Farbton je Zelle direkt aus den Daten; sonst Zonen als Polygone.
+  const M = world.map, tint = M ? new Uint8Array(n) : null, out = M ? new Uint8Array(n) : null, B36 = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  if (M) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const i = r * cols + c, ch = (M.z[r] || '')[c] || '.';
+    tint[i] = B36.indexOf((M.t[r] || '')[c] || '0');
+    if (ch === '.') out[i] = 1; else if (ch >= '0' && ch <= '9') { kind[i] = FLOOR; zone[i] = Number(ch); } else if (ch >= 'a' && ch <= 'g') { kind[i] = WATER; zone[i] = ch.charCodeAt(0) - 97; }
+  }
+  else for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const x = cx(c), z = cz(r), i = r * cols + c;
     for (let k = 0; k < world.zones.length; k++) if (inPoly(x, z, world.zones[k].poly)) { zone[i] = k; kind[i] = FLOOR; break; }
   }
   // Grenzwälle zwischen direkt aneinanderstoßenden Zonen (Tore öffnen sie gezielt wieder)
   const z0 = zone.slice();
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+  if (!M) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const i = r * cols + c;
     if (z0[i] < 0) continue;
     for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
@@ -65,8 +72,9 @@ export function buildGrid(world) {
     }
   }
   const gateOpen = new Uint8Array((world.gates || []).length);
+  const zoneOpen = new Uint8Array(world.zones.length).fill(1); // gesperrte Gebiete (Boss des Vorgängers lebt noch) sind nicht begehbar
   return {
-    world, cell, ppm, cpx, cols, rows, kind, zone, near, gate, gateOpen, flat, zoneIds, w: cols * cpx, h: rows * cpx,
+    world, cell, ppm, cpx, cols, rows, kind, zone, near, gate, gateOpen, zoneOpen, tint, out, pal: M ? M.pal : null, flat, zoneIds, w: cols * cpx, h: rows * cpx,
     // Umrechnung Meter <-> Simulationseinheiten (px). Simulation: x nach Osten, y nach Süden.
     toPx: (X, Z) => ({ x: (X - B.minX) * ppm, y: (B.maxZ - Z) * ppm }),
     toM: (x, y) => ({ X: B.minX + x / ppm, Z: B.maxZ - y / ppm }),
@@ -74,7 +82,7 @@ export function buildGrid(world) {
 }
 
 export const cellAt = (G, x, y) => { const c = Math.floor(x / G.cpx), r = Math.floor(y / G.cpx); return c < 0 || r < 0 || c >= G.cols || r >= G.rows ? -1 : r * G.cols + c; };
-export const walkIdx = (G, i) => i >= 0 && G.kind[i] === FLOOR && (G.gate[i] < 0 || G.gateOpen[G.gate[i]] === 1);
+export const walkIdx = (G, i) => i >= 0 && G.kind[i] === FLOOR && (G.gate[i] < 0 || G.gateOpen[G.gate[i]] === 1) && G.zoneOpen[G.zone[i]] === 1;
 export const walkable = (G, x, y) => walkIdx(G, cellAt(G, x, y));
 export const zoneAt = (G, x, y) => { const i = cellAt(G, x, y); return i < 0 ? null : G.zoneIds[G.zone[i] >= 0 ? G.zone[i] : G.near[i]] ?? null; };
 

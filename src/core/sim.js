@@ -107,6 +107,7 @@ export class World {
   updateGates() {
     const W = this.map.world;
     if (W) (W.gates || []).forEach((gt, k) => { this.G.gateOpen[k] = !gt.needs || this.g.state.world.cleared[gt.needs] ? 1 : 0; });
+    if (W && W.map) W.zones.forEach((z, k) => { this.G.zoneOpen[k] = this.areaOpen(z.id) ? 1 : 0; });
   }
   // Wegpunkte bis (x, y) berechnen und folgen (Auto-Hunt, Bots, Zielführung). Liefert verbleibende Distanz.
   follow(x, y, dt, stopAt = 0) {

@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint jaahrhkroh).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1rwkv6o34hi).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -47,7 +47,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | buildings | 8 | D | D:7 B:1 | 26 Gebäudedefinitionen im Original; hier die 7 dokumentierten Einstiegskosten (Gold D, Materialmengen E). |
 | npcs | 29 | R | E:2 D:26 R:1 | 8 Figuren, 27 Standorte, Szenen-Freischaltung nach Referenz (D-Struktur); alle Dialogtexte und Älteste/Schmied sind eigen. |
 | worldObjects | 2 | D | D:2 | Invasionsportale (Positionen der Referenz, dekorativ: Invasion läuft über das Menü) und Lagerfeuer. |
-| worlds | 1 | R | R:1 | Zusammenhängende Kapitel-1-Welt: Zonen, Tore, Hindernisse, Landmarken (Level-Design E um Referenzpunkte D). Meter, X=Ost, Z=Nord. |
+| worlds | 1 | B | B:1 | Zusammenhängende Kapitel-1-Welt: Gelände, Gebietsgrenzen, Fels, Wasser und Farbtöne als Raster aus der Originalkarte (B); Referenzpunkte D; Bauplätze der Basis E. Meter, X=Ost, Z=Nord. |
 | unlocks | 7 | D | D:4 E:2 R:1 | Levelgebundene Freischaltungen (D); blessing/spin/special/extra/pvp eigen platziert. |
 | quests | 352 | R | R:66 D:280 ?:1 E:5 | Hauptquestkette (Original ca. 850 Einträge nicht erfasst): dokumentierte Unlock-Kopplungen (s=D) + eigene Gebietsquests. Dazu 268 NPC-Kettenquests (id nq_*, Ziel/Menge/Belohnung D, Abgabe beim Questgeber). |
 | tracks | 12 | R | R:3 D:4 E:5 | Generische Claim-Tracks (Meilensteine, Missionen, Pässe, Events). Status je Track im Feld s. |

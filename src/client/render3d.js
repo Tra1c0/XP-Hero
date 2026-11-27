@@ -118,11 +118,11 @@ export class Renderer3D {
     const H = new Float32Array(n);
     for (let i = 0; i < n; i++) {
       const k = G.kind[i], r = (i / G.cols) | 0, c = i % G.cols;
-      H[i] = k === WALL || k === FLOOR ? 0 : -0.35; // flaches Gelände wie in der Vorlage; Grenzen entstehen durch Felsränder, nicht durch Blöcke
+      H[i] = k === WALL || k === FLOOR ? 0 : G.tint ? -0.06 : -0.35; // flaches Gelände wie in der Vorlage; Grenzen entstehen durch Felsränder, nicht durch Blöcke
     }
     // Laufwege: echte Pfade (Pfadsuche, alle Tore offen) von der Basis zu jedem Gebietseinstieg und zu den Stage-Truhen
     const path = new Uint8Array(n);
-    if (W.entries) {
+    if (W.entries && !G.tint) { // Kartenwelt: keine aufgemalten Laufwege, die Bodenfarben kommen aus der Karte
       const saved = G.gateOpen.slice(); G.gateOpen.fill(1);
       const P = (p) => G.toPx(p[0], p[1]), start = P(W.entries.base || Object.values(W.entries)[0]);
       const goals = [...Object.values(W.entries).map(P), ...map.objects.filter((o) => o.type === 'chest' || o.type === 'building' || o.type === 'gatebar').map((o) => ({ x: o.x, y: o.y }))];
@@ -139,7 +139,11 @@ export class Renderer3D {
     for (let r = 0; r < G.rows; r++) for (let c = 0; c < G.cols; c++) {
       const i = r * G.cols + c, k = G.kind[i], P2 = pal(i);
       let base;
-      if (k === FLOOR || G.flat[i]) {
+      if (G.tint) {
+        // Farbton der Originalkarte je Zelle; außerhalb der Karte dunkler Grund, Fels leicht abgedunkelt (die Brocken darüber tragen die volle Farbe)
+        const tc = col(G.pal[G.tint[i]] || '#888888'), nz = 0.97 + vnoise(c, r, 5) * 0.06;
+        base = G.out[i] ? [0.11, 0.12, 0.15] : k === WALL && !G.flat[i] ? [tc[0] * 0.78, tc[1] * 0.78, tc[2] * 0.78] : k !== FLOOR ? [tc[0] * 0.55 + 0.14, tc[1] * 0.55 + 0.3, tc[2] * 0.55 + 0.36] : [tc[0] * nz, tc[1] * nz, tc[2] * nz];
+      } else if (k === FLOOR || G.flat[i]) {
         base = col(P2.floor[0]).slice();
         const nz = vnoise(c, r, 7), pc = col(P2.patch || P2.floor[1]), pm = Math.max(0, Math.min(1, (nz - 0.5) * 3)) * 0.75;
         base = [base[0] + (pc[0] - base[0]) * pm, base[1] + (pc[1] - base[1]) * pm, base[2] + (pc[2] - base[2]) * pm];
@@ -156,12 +160,12 @@ export class Renderer3D {
     const quad = (a, b, c2, d, nrm, cl) => { const cs4 = Array.isArray(cl[0]) ? cl : [cl, cl, cl, cl], P4 = [a, b, c2, d]; for (const k of [0, 1, 2, 0, 2, 3]) { const p = P4[k], q = cs4[k]; V.push(p[0], p[1], p[2], nrm[0], nrm[1], nrm[2], q[0], q[1], q[2], q[3] || 0); } };
     for (let r = 0; r < G.rows; r++) for (let c = 0; c < G.cols; c++) {
       const i = r * G.cols + c, k = G.kind[i], x0 = B.minX + c * cs, x1 = x0 + cs, z0 = r * cs - B.maxZ, z1 = z0 + cs, y = H[i];
-      if (k === FLOOR || k === WALL) {
+      if (k === FLOOR || k === WALL || G.tint) {
         // große, kaum sichtbare Bodenkacheln (4 m) wie in der Vorlage
         const tile = 1 + ((((c >> 1) + (r >> 1)) & 1) ? 0.022 : -0.022), t = (q) => [q[0] * tile, q[1] * tile, q[2] * tile, 0];
         quad([x0, y, z0], [x0, y, z1], [x1, y, z1], [x1, y, z0], [0, 1, 0], [t(corner(c, r)), t(corner(c, r + 1)), t(corner(c + 1, r + 1)), t(corner(c + 1, r))]);
       } else quad([x0, y, z0], [x0, y, z1], [x1, y, z1], [x1, y, z0], [0, 1, 0], [CC[i * 3], CC[i * 3 + 1], CC[i * 3 + 2], 0]);
-      if (k === FLOOR || k === WALL) continue;
+      if (k === FLOOR || k === WALL || G.tint) continue;
       const side = col('#3a4a5a');
       for (const [dr, dc, nrm] of [[-1, 0, [0, 0, -1]], [1, 0, [0, 0, 1]], [0, -1, [-1, 0, 0]], [0, 1, [1, 0, 0]]]) {
         const rr = r + dr, cc = c + dc; if (rr < 0 || cc < 0 || rr >= G.rows || cc >= G.cols) continue;
@@ -200,7 +204,16 @@ export class Renderer3D {
     }
     for (let r = 0; r < G.rows; r++) for (let c = 0; c < G.cols; c++) {
       const i = r * G.cols + c, k = G.kind[i], rule = SCATTER[zoneBiome(i)] || SCATTER.arena, h1 = hash(c + 11, r + 5);
-      if (k === WALL && !G.flat[i] && dist[i] === 1) {
+      if (G.tint && k === WALL && !G.flat[i]) {
+        // Kartenwelt: jede Felszelle trägt klobige Brocken in der Felsfarbe der Karte (breite Felsgürtel wie im Original); außerhalb der Karte nichts
+        if (G.out[i]) continue;
+        const rc = col(G.pal[G.tint[i]] || '#777777'), x = B.minX + (c + 0.5) * cs, z = r * cs - B.maxZ + cs * 0.5, big = dist[i] > 1 ? 1.25 : 1;
+        for (let q2 = 0; q2 < 2; q2++) {
+          const j = hash(c * 3 + q2, r * 5 + q2), s2 = (1.7 + hash(c + q2 * 7, r * 3) * 1.2) * big, sh = 0.86 + hash(c * 11 + q2, r) * 0.24;
+          parts.push([q2 ? 'rock2' : 'rock', x + (j - 0.5) * cs * 0.9, -0.3, z + (hash(c, r * 7 + q2) - 0.5) * cs * 0.9, j * 6.28, s2, s2 * (0.6 + 0.25 * big * hash(r, c + q2)), s2 * 0.9, [rc[0] * sh, rc[1] * sh, rc[2] * sh], 0]);
+        }
+        if (dist[i] <= 2 && h1 < rule.edgeD * 0.3 && rule.edge.length) expand(pick(rule.edge, hash(c * 5, r * 3)), x + (hash(c * 7, r) - 0.5) * cs, 0.7, z + (hash(c, r * 13) - 0.5) * cs, hash(c * 2, r * 2) * 6.28, 0.9, parts);
+      } else if (k === WALL && !G.flat[i] && dist[i] === 1) {
         // Felsrand: klobige, runde Brocken entlang jeder Grenze (verdeckt die Rasterkante, bildet die natürliche Begrenzung)
         const rc = col(pal(i).side), x = B.minX + (c + 0.5) * cs, z = r * cs - B.maxZ + cs * 0.5;
         for (let q2 = 0; q2 < 2; q2++) {
@@ -219,7 +232,7 @@ export class Renderer3D {
         expand(name, x, 0, z, hash(c * 2, r * 2) * 6.28, 0.8 + hash(c, r) * 0.4, parts);
       }
     }
-    sc = { tv, tn: V.length / 10, inst: this.upload(this.pack(parts), gl.STATIC_DRAW), shadow: this.upload(this.pack(shadows), gl.STATIC_DRAW), sky: col((BIOMES[W.zones[0].biome] || BIOMES.arena).sky),
+    sc = { tv, tn: V.length / 10, inst: this.upload(this.pack(parts), gl.STATIC_DRAW), shadow: this.upload(this.pack(shadows), gl.STATIC_DRAW), sky: G.tint ? [0.11, 0.12, 0.15] : col((BIOMES[W.zones[0].biome] || BIOMES.arena).sky),
       minimap: null, mmT: 0, parts: parts.length, verts: V.length / 10 };
     this.scenes.set(map, sc);
     return sc;
@@ -248,6 +261,21 @@ export class Renderer3D {
         out.push(['cyl8', x + px, 0, z + pz, 0, 0.7, 2.6, 0.7, '#6e7178', 0], ['cyl8', x - px, 0, z - pz, 0, 0.7, 2.6, 0.7, '#6e7178', 0], ['sphere', x + px, 2.5, z + pz, 0, 0.5, 0.5, 0.5, o.open() ? '#7dff9a' : '#ff4a6a', 1], ['sphere', x - px, 2.5, z - pz, 0, 0.5, 0.5, 0.5, o.open() ? '#7dff9a' : '#ff4a6a', 1]);
         if (!o.open()) out.push(['box', x, 0, z, ang + Math.PI / 2, gt.w, 2.0, 0.35, '#8a3cff', 0.75]);
       } else if (o.type === 'gate') expand('portal', x, 0, z, 0, 1.1, out);
+    }
+    // Barriere: Grenzzellen gesperrter Gebiete, die an offenes Gelände stoßen (nur im Sichtfeld)
+    this.lockAt = null;
+    if (G.tint) {
+      const pc = Math.floor(w.p.x / G.cpx), pr = Math.floor(w.p.y / G.cpx); let bd = 1e9;
+      for (let r = Math.max(1, pr - 14); r < Math.min(G.rows - 1, pr + 9); r++) for (let c = Math.max(1, pc - 5); c < Math.min(G.cols - 1, pc + 6); c++) {
+        const i = r * G.cols + c, zi = G.zone[i];
+        if (G.kind[i] !== FLOOR || zi < 0 || G.zoneOpen[zi]) continue;
+        let edge = false;
+        for (const j of [i - 1, i + 1, i - G.cols, i + G.cols]) if (G.kind[j] === FLOOR && G.zone[j] >= 0 && G.zoneOpen[G.zone[j]]) edge = true;
+        if (!edge) continue;
+        const bx = B.minX + (c + 0.5) * G.cell, bz = (r + 0.5) * G.cell - B.maxZ;
+        out.push(['cyl6', bx, 0, bz, 0, 0.45, 2.3, 0.45, '#6e7178', 0], ['sphere', bx, 2.2, bz, 0, 0.6, 0.6, 0.6, '#ff4a6a', 1]); fx.push(['disc', bx, 0.05, bz, 0, G.cell * 1.3, 1, G.cell * 1.3, '#b060ff', 1]);
+        const d = (c - pc) ** 2 + (r - pr) ** 2; if (d < bd) { bd = d; this.lockAt = { x: bx, z: bz, zone: G.zoneIds[zi] }; }
+      }
     }
     // Spieler (Platzhalter-Figur)
     const p = w.p, [px, pz] = lerp(p), face = Math.atan2(p.x - p.px || 0.0001, p.y - p.py || 1) || 0;
@@ -368,6 +396,7 @@ export class Renderer3D {
       if (!w.mode) { for (const o of w.map.objects) if (o.type === 'npc') this.npcSt[o.id] = npcStatus(game.g, o); const q = currentQuests(game.g)[0]; this.goal = q ? game.questGoal(q.q) : null; } else this.goal = null;
     }
     const label = (txt, x, y, z, color = '#fff') => { const [sx, sy] = this.project(x, y, z); if (sx < -50 || sx > this.w + 50 || sy < 0 || sy > this.h) return; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.65)'; ctx.strokeText(txt, sx, sy); ctx.fillStyle = color; ctx.fillText(txt, sx, sy); };
+    if (this.lockAt) { const ar = game.c.by.areas.get(this.lockAt.zone), pv = ar && game.c.by.areas.get(ar.prev); label(`🔒 ${pv ? game.c.get('variants', pv.boss).name + ' besiegen' : ''}`, this.lockAt.x, 2.4, this.lockAt.z, '#ffb3c6'); }
     for (const o of w.map.objects) {
       const x = X(o.x), z = Z(o.y), d = Math.hypot(x - px, z - pz);
       if (d > 13) continue;

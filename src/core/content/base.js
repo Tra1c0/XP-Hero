@@ -3,7 +3,7 @@
 //  B = beobachtete Mechanik, Details eigen   R = Rekonstruktion/Interpretation
 //  E = EIGENER Wert (Original unbekannt, bewusst konfigurierbar)   ? = offen/zu verifizieren
 // Zeilen können mit Feld `s` einen abweichenden Zeilenstatus tragen. Nichts hiervon ist Gameplay-Code.
-import { WORLD, BUILDINGS as W1_BUILDINGS, REF as W1 } from './world1.js';
+import { WORLD, BUILDINGS as W1_BUILDINGS, REF as W1, zoneOf as zoneOfMap, nearestFloor, onFloor } from './world1.js';
 import { inPoly } from '../worldgrid.js';
 import { BESTIARY } from './bestiary_ref.js';
 import { ABILITY_REF } from './progression_ref.js';
@@ -29,7 +29,9 @@ export function mobStats(cfg, level, rank = 'normal') {
 export function buildBaseContent(opt = {}) {
   const MP = !!opt.multiplayer;
   const tables = {}, meta = {}, config = {}, configMeta = {};
-  const T = (name, status, note, rows) => { tables[name] = rows; meta[name] = { status, note }; return rows; };
+  // Kapitel-1-Positionen außerhalb des Kartenbodens (Referenzpunkte vor Raid-Räumen, kreisende Fledermäuse) rücken auf den nächsten Boden ihres Gebiets; refPos behält das Original.
+  const place = (row) => { if (row && Array.isArray(row.pos) && (row.area == null || row.area === 'base' || String(row.area).startsWith('a1_')) && !onFloor(row.pos[0], row.pos[1])) { row.refPos = row.pos; row.pos = nearestFloor(row.pos[0], row.pos[1], row.home || row.area); if (row.area == null && 'area' in row) row.area = zoneOfMap(row.pos[0], row.pos[1]); } return row; };
+  const T = (name, status, note, rows) => { if (Array.isArray(rows)) rows.forEach(place); tables[name] = rows; meta[name] = { status, note }; return rows; };
   const C = (key, v, status, note = '') => { config[key] = v; configMeta[key] = { status, note }; };
 
   // ------------------------------------------------------------------ Konfiguration
@@ -120,7 +122,7 @@ export function buildBaseContent(opt = {}) {
   const orbFor = { 1: 'orb_red', 2: 'orb_red', 3: 'orb_pink', 4: 'orb_ice', 5: 'orb_jungle', 6: 'orb_hell' };
   let chIdx = 0, prevCh = 0, giftLeftCh1 = 17;
   // Kapitel 1: Spawnknoten, Monsternamen und Respawnzeiten aus den Szenendaten der Referenz (D); Werte je Variante eigen (E).
-  const zoneOf = (X, Z) => (WORLD.zones.find((z) => inPoly(X, Z, z.poly)) || { id: null }).id;
+  const zoneOf = zoneOfMap;
   const slugTaken = new Set();
   const BEH = { 'Treasure Goblin': 'flee' }; // Fernkämpfer gibt es außer Bossen nicht (Vorgabe); Tempo je Monster kommt aus dem Bestiary
   const KEEP_ID = { 'Treasure Goblin': 'treasure_goblin', 'Goblin Warrior': 'goblin_warrior', 'Giant Chicken': 'giant_chicken', Cactus: 'cactus' };
@@ -497,7 +499,7 @@ export function buildBaseContent(opt = {}) {
     ...W1.invasion.map(([X, Z], k) => ({ id: `inv_${k}`, type: 'invportal', area: zoneOf(X, Z), pos: [X, Z] })),
     ...W1.campfires.map(([nm, X, Z], k) => ({ id: `fire_${k}`, type: 'campfire', ref: nm, area: zoneOf(X, Z), pos: [X, Z] })),
   ]);
-  T('worlds', 'R', 'Zusammenhängende Kapitel-1-Welt: Zonen, Tore, Hindernisse, Landmarken (Level-Design E um Referenzpunkte D). Meter, X=Ost, Z=Nord.', [WORLD]);
+  T('worlds', 'B', 'Zusammenhängende Kapitel-1-Welt: Gelände, Gebietsgrenzen, Fels, Wasser und Farbtöne als Raster aus der Originalkarte (B); Referenzpunkte D; Bauplätze der Basis E. Meter, X=Ost, Z=Nord.', [{ ...WORLD, entries: { ...WORLD.entries } }]);
   T('unlocks', 'D', 'Levelgebundene Freischaltungen (D); blessing/spin/special/extra/pvp eigen platziert.', [
     { feature: 'battlePass', level: 10 }, { feature: 'sevenDay', level: 14 }, { feature: 'carnival', level: 17 }, { feature: 'liveEvent', level: 24 },
     { feature: 'spin', level: 8, s: 'E' }, { feature: 'blessing', level: 20, s: 'E' }, { feature: 'randomReward', level: 8, s: 'R' },

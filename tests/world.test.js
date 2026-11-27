@@ -77,3 +77,17 @@ test('Weltpositionen sind über Content/Backend änderbar und werden validiert',
   p.tables.worlds[0].entries.a1_3 = [200, 200];
   assert.match(validateContent(p).join(), /Einstieg a1_3 nicht begehbar/);
 });
+
+test('Kartenwelt: Gelände aus der Originalkarte, Gebiete öffnen sich in Kampagnenreihenfolge, gesperrte Gebiete sind dicht', async () => {
+  const { WORLD } = await import('../src/core/content/world1.js');
+  const { buildGrid, reach } = await import('../src/core/worldgrid.js');
+  const G = buildGrid(WORLD), start = G.toPx(...WORLD.entries.base);
+  assert.ok(WORLD.map && G.tint && WORLD.gates.length === 0, 'Raster statt Polygone, keine Tor-Korridore');
+  for (let step = 0; step <= 6; step++) {
+    WORLD.zones.forEach((z, k) => { const n = Number(z.id.slice(3)); G.zoneOpen[k] = z.id === 'base' || n <= step + 1 ? 1 : 0; });
+    const R = reach(G, start.x, start.y), zs = new Set();
+    for (let i = 0; i < R.length; i++) if (R[i]) zs.add(G.zoneIds[G.zone[i]]);
+    assert.deepEqual([...zs].sort(), ['base', ...[1, 2, 3, 4, 5, 6].filter((n) => n <= step + 1).map((n) => `a1_${n}`)].sort(), `nach ${step} Bossen`);
+  }
+  for (const [a, p] of Object.entries(WORLD.entries)) { const q = G.toPx(p[0], p[1]); assert.equal(G.zoneIds[G.zone[Math.floor(q.y / G.cpx) * G.cols + Math.floor(q.x / G.cpx)]], a, `Einstieg ${a} liegt im eigenen Gebiet`); }
+});
