@@ -79,15 +79,17 @@ export class Game {
         return true;
       },
       cargoFull: () => home.cargoFree(g) <= 0,
-      // Ziel der Auto-Jagd laut erster offener Quest mit Kampfziel: bestimmte Monsterart oder Gebietsboss. null = keine Vorgabe.
+      // Ziele der Auto-Jagd laut allen offenen Quests mit Kampfziel: Monsterarten und Gebietsbosse. null = keine Vorgabe.
       questFocus: () => {
+        const monsters = [], bosses = [];
         for (const { q, state } of meta.currentQuests(g)) {
           if (state !== 'active') continue;
           const t = meta.questTarget(g, q);
-          if (t && t.monster && t.monster !== '*' && t.monster !== '#boss') return { monster: t.monster };
-          if (t && t.boss) return { boss: t.boss };
+          if (t && t.monster && t.monster !== '*' && t.monster !== '#boss') monsters.push(t.monster);
+          else if (t && t.boss) bosses.push(t.boss);
+          else if (t && t.building) { const cost = g.c.get('buildings', t.building).cost || {}; if ((cost.wood || 0) > econ.bal(g, 'wood') + (g.state.cargo.wood || 0)) monsters.push('node_tree'); if ((cost.stone || 0) > econ.bal(g, 'stone') + (g.state.cargo.stone || 0)) monsters.push('node_rock'); } // fehlendes Baumaterial sammeln
         }
-        return null;
+        return monsters.length || bosses.length ? { monsters, bosses } : null;
       },
       interact: (o, world) => {
         try {

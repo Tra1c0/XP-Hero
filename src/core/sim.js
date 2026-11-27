@@ -262,6 +262,13 @@ export class World {
     if (!this.mode && this.hooks.cargoFull && this.hooks.cargoFull() && g.state.settings.autoReturn) { this.pending = { travel: 'base', autoBack: g.state.world.area }; return; }
     // Jagdgebiet = Gebiet, in dem die Auto-Jagd eingeschaltet wurde (aus der Basis heraus: das erste betretene). Sie wandert nicht in stärkere Nachbargebiete.
     if (!this.mode && this.map.world && !p.huntArea) { const z = this.zone(); if (z && z !== 'base') p.huntArea = z; }
+    // Beute einsammeln: liegt nach einem Kampf etwas in der Nähe (z. B. nach Fernkampf oder Flächenschaden), läuft die Figur erst dorthin
+    if (!this.mode && (!p.tgt || !p.tgt.alive) && this.drops.length) {
+      let bd = (9 * M) ** 2, drop = null;
+      for (const d of this.drops) { const dd = dist2(p.x, p.y, d.x, d.y); if (dd < bd && d.t > 1) { bd = dd; drop = d; } }
+      if (drop && bd > (g.c.cfg.player.pickupRadius * 0.6) ** 2 && (p.lootT = (p.lootT || 0) + dt) < 6) { this.follow(drop.x, drop.y, dt, 10); return; }
+      if (!drop) p.lootT = 0;
+    } else p.lootT = 0;
     // Quest-Modus (Einstellung autoMode: 'quest' = Standard, 'near' = nächster Gegner): Ziel ist die Monsterart bzw. der Boss der offenen Quest,
     // auch in einem anderen offenen Gebiet. Ist gerade keins am Leben, wartet die Figur an dessen Spawnplatz.
     let focus = null;
@@ -270,12 +277,12 @@ export class World {
       focus = p.focus;
     }
     if (focus) {
-      const want = (e) => e.gid && e.group && this.areaOpen(e.group.area) && (focus.monster ? e.v.monster === focus.monster : e.v.rank === 'boss' && e.group.area === focus.boss);
+      const want = (e) => e.gid && e.group && this.areaOpen(e.group.area) && (focus.monsters.includes(e.v.monster) || (e.v.rank === 'boss' && focus.bosses.includes(e.group.area) && (bossOk || g.state.player.level >= e.v.level - g.c.cfg.world.autoBossLevelGap)));
       if (!p.tgt || !p.tgt.alive || !want(p.tgt)) {
         let best = null, bd = Infinity, home = null, hd = Infinity;
         for (const e of this.enemies) { if (!want(e)) continue; const d = dist2(p.x, p.y, e.alive ? e.x : e.hx, e.alive ? e.y : e.hy); if (e.alive && p.skip[e.gid + ':' + e.slot] > this.t) continue; if (e.alive) { if (d < bd) { bd = d; best = e; } } else if (d < hd) { hd = d; home = e; } }
         if (best) { p.tgt = best; p.huntArea = best.group.area; p.stuckT = 0; p.stuckD = bd; p.path = null; }
-        else if (home) { p.tgt = null; p.huntArea = home.group.area; if (hd > (3 * M) ** 2) this.follow(home.hx, home.hy, dt, 2 * M); else p.mx = p.my = 0; return; }
+        else if (home) { p.tgt = null; p.huntArea = home.group.area; if (hd > (1.5 * M) ** 2) this.follow(home.hx, home.hy, dt, M); else p.mx = p.my = 0; return; }
       }
     }
     if (!p.tgt || !p.tgt.alive || p.skip[p.tgt.gid + ':' + p.tgt.slot] > this.t) {
@@ -499,7 +506,9 @@ export class World {
     for (const o of this.map.objects) {
       const inR = dist2(p.x, p.y, o.x, o.y) < o.r * o.r;
       // Tor-Balken melden sich nur, wenn sie wirklich verschlossen sind (unten); alles andere reagiert beim Betreten des Radius
-      if (inR && !o.in) { o.in = true; if (o.type !== 'gatebar' && this.hooks.interact) this.hooks.interact(o, this); } else if (!inR && o.in) o.in = false;
+      if (inR && !o.in) { o.in = true; o.retryT = this.t + 4; if (o.type !== 'gatebar' && this.hooks.interact) this.hooks.interact(o, this); } else if (!inR && o.in) o.in = false;
+      // Truhen und Geschenke: wer im Kreis stehen bleibt, bekommt sie auch dann, wenn sie erst später erscheinen oder das Aufheben zuerst scheiterte (alle 4 s erneut)
+      else if (inR && (o.type === 'chest' || o.type === 'gift' || o.type === 'areachest') && this.t >= (o.retryT || 0)) { o.retryT = this.t + 4; if (this.hooks.interact) this.hooks.interact(o, this); }
       if (inR && (o.type === 'building' || o.type === 'npc')) near = o;
       if (inR && o.type === 'gatebar' && !o.open() && !o.warned) { o.warned = true; if (this.hooks.interact) this.hooks.interact(o, this); } else if (!inR) o.warned = false;
     }

@@ -77,7 +77,7 @@ export function buildBaseContent(opt = {}) {
     streakBonusPct: 10, streakMax: 5 }, 'E', 'Async-PvP gegen gekennzeichnete Bots/Snapshots.');
   C('spin', { unlockConfigRaw: '1,3', spinCost: { spin_ticket: 1 } }, '?', 'Unlock-Config 1,3: Bedeutung ungeklärt, nicht angewendet.');
   C('orbAlias', { crimson: null, azure: null, soul: null }, '?', 'Interne Orb-Namen nicht zugeordnet; betroffene Reward-Zeilen sind deaktiviert.');
-  C('world', { normalPerNode: 1, rareRespawnMinSec: 900, spawnSpreadM: 2.5, activeRadiusM: 40 }, 'E', 'Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius.');
+  C('world', { normalPerNode: 1, rareRespawnMinSec: 900, spawnSpreadM: 2.5, activeRadiusM: 40, autoBossLevelGap: 3 }, 'E', 'Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius.');
   C('ledgerKeep', 400, 'E'); C('saveSlots', 2, 'E');
 
   // ------------------------------------------------------------------ Items (Auszug der 116 Definitionen)
@@ -261,7 +261,7 @@ export function buildBaseContent(opt = {}) {
     { id: 'fast', aggro: 300, leash: 600, patrol: 120, speed: 165, range: 44, interval: 1.0, windup: 0.25, assist: 190, ring: true, backoff: 0.45 },
     { id: 'ranged', aggro: 340, leash: 560, patrol: 70, speed: 85, range: 260, interval: 1.9, windup: 0.4, proj: 320, assist: 170, keep: 150 },
     { id: 'flee', aggro: 240, leash: 700, patrol: 140, speed: 150, range: 0, interval: 9, windup: 0, flee: true },
-    { id: 'boss', aggro: 420, leash: 760, patrol: 0, speed: 90, range: 70, interval: 1.6, windup: 0.5, pattern: 'slam', assist: 260 },
+    { id: 'boss', aggro: 230, leash: 560, patrol: 0, speed: 90, range: 70, interval: 1.6, windup: 0.5, pattern: 'slam', assist: 260 },
     { id: 'node', aggro: 0, leash: 0, patrol: 0, speed: 0, range: 0, interval: 9, windup: 0 },
   ]);
   T('bossPatterns', 'E', 'Generische, eigene Bossfähigkeiten (keine Originalmuster). nova: Geschosse im Kreis nach dem Einschlag, sobald der Boss wütend ist.', [
@@ -293,8 +293,8 @@ export function buildBaseContent(opt = {}) {
 
   // ------------------------------------------------------------------ Spielerlevel
   const lvRows = [];
-  for (let L = 1; L <= 400; L++) lvRows.push({ level: L, xp: Math.round(45 * L ** 1.8), atk: Math.round(3 * L ** 1.5694), hp: Math.round(100 * L ** 1.9032) });
-  T('playerLevels', 'E', 'XP-Schwellen unbekannt: EIGENE, austauschbare Kurve (2,25-fach gestreckt: Leveln war zu schnell). ATK/HP an Tracker-L99 (4.055 / 627.721, interpoliert) verankert.', lvRows);
+  for (let L = 1; L <= 400; L++) lvRows.push({ level: L, xp: Math.round(45 * L ** 1.8), atk: 2 + L, hp: 100 + 15 * (L - 1) });
+  T('playerLevels', 'E', 'XP-Schwellen unbekannt: eigene, austauschbare Kurve. Grundwerte je Level bewusst klein (Angriff 2 + Level, Leben 100 + 15 je Level): im Original kommt die Stärke fast ganz aus Fähigkeiten, Waffen und Helden (Vergleich mit Bildern der Vorlage).', lvRows);
 
   // ------------------------------------------------------------------ Upgrade-Pfade
   const up = [], sname = (st) => ({ atk: 'Kraft erhöhen', cargo: 'Fracht erhöhen', hp: 'Lebenspunkte erhöhen', regen: 'HP-Regeneration erhöhen', critChance: 'Kritische Trefferchance erhöhen', critDmg: 'Kritischen Schaden erhöhen', skillDmgPct: 'Fertigkeitsschaden erhöhen', lifesteal: 'Lebensraub erhöhen', cooldownPct: 'Abklingzeit verringern', dmgPct: 'Grundangriff verstärken', meleePct: 'Nahkampfschaden erhöhen', rangedPct: 'Fernkampfschaden erhöhen' }[st]);
@@ -468,7 +468,7 @@ export function buildBaseContent(opt = {}) {
     { id: 'quarry', name: 'Quarry', x: 1220, y: 420, cost: { gold: 1613, wood: 15 }, unlock: [], max: 1, produce: { item: 'stone', perHour: 20, cap: 40 } },
     { id: 'costumeshop', name: 'CostumeShop', x: 620, y: 300, cost: { gold: 3954, wood: 20, stone: 10, orb_red: 5 }, unlock: [], max: 1 },
     { id: 'portal', name: 'Portal', x: 980, y: 300, cost: { gold: 5170 }, unlock: ['portal'], max: 1 },
-    { id: 'raidcamp', name: 'Raid Camp', x: 700, y: 500, cost: { gold: 8000, wood: 20, stone: 20 }, unlock: [], max: 1, s: 'B', note: 'Gebäude aus Ryans Questkette (D); Kosten eigen.' },
+    { id: 'raidcamp', name: 'Raid Camp', x: 700, y: 500, cost: { gold: 2590 }, unlock: [], max: 1, s: 'D', note: 'Gebäude aus Ryans Questkette, Kosten 2.590 Gold (D, BossRaidCamp).' },
   ].map((b) => ({ ...b, pos: W1_BUILDINGS[b.id] })));
   // Figuren und Standorte nach NpcData der Referenz (D). Dialogtexte sind EIGENE Texte; nur die Szenenstruktur (Anzahl, Freischaltquest) folgt der Referenz.
   const SC = (id, after, ...lines) => ({ id, after, lines });

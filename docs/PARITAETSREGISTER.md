@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 19j75hmy9f6).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 15b4fxnulb6).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -26,7 +26,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | areaChests | 20 | R | R:20 | Je Gebiet eine einmalige Gebietstruhe (Kap. 1: 6 Stage-Truhen der Referenz, Position D neben dem Truhenspawner); Inhalt eigen. |
 | giftChestLevels | 400 | R | R:400 | Gold L1=12 und L400=1.983.356 (D); Zwischenwerte geometrisch interpoliert (E). Bonus: Gold x5 + 10 Gems (D). |
 | keyHouseSlots | 15 | D | D:15 | 15 Freischaltzeilen; Gem-Summe 5.570. |
-| playerLevels | 400 | E | E:400 | XP-Schwellen unbekannt: EIGENE, austauschbare Kurve (2,25-fach gestreckt: Leveln war zu schnell). ATK/HP an Tracker-L99 (4.055 / 627.721, interpoliert) verankert. |
+| playerLevels | 400 | E | E:400 | XP-Schwellen unbekannt: eigene, austauschbare Kurve. Grundwerte je Level bewusst klein (Angriff 2 + Level, Leben 100 + 15 je Level): im Original kommt die Stärke fast ganz aus Fähigkeiten, Waffen und Helden (Vergleich mit Bildern der Vorlage). |
 | upgradeTracks | 43 | R | D:36 R:4 E:3 | Ability 9 nutzbar (+ Critical Damage mit 0 Stufen) / Special 11 (Sternstufen) / Extra 8 / Soul 9 / Blessing 3x50 (D-Zählungen); Werte außer Power eigen. |
 | rarities | 9 | E | E:9 | Seltenheitsnamen D; Multiplikatoren/Maxlevel eigen. |
 | weaponClasses | 6 | R | R:6 | 6 Klassen und S-Skill-Namen D; Reichweite/Takt/Passiva eigen. |
@@ -45,7 +45,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | runeGrades | 8 | R | R:8 | Levelgrenzen ca. 10-80 je Grad (D); Kosten/Refund eigen. |
 | rateGroups | 7 | R | E:5 R:1 D:1 | Rate-Gruppe 4001 = 65/30/4/1 (D); übrige Gewichte eigen. |
 | gachaBoxes | 12 | R | R:10 ?:1 D:1 | 26 Boxdefinitionen im Original; hier 12 belegbare (inkl. 8 Runentruhen, Special Hero Chest). Gem-Preise eigen, kein universeller 10er-Preis. |
-| buildings | 8 | D | D:7 B:1 | 26 Gebäudedefinitionen im Original; hier die 7 dokumentierten Einstiegskosten (Gold D, Materialmengen E). |
+| buildings | 8 | D | D:8 | 26 Gebäudedefinitionen im Original; hier die 7 dokumentierten Einstiegskosten (Gold D, Materialmengen E). |
 | npcs | 29 | R | E:2 D:26 R:1 | 8 Figuren, 27 Standorte, Szenen-Freischaltung nach Referenz (D-Struktur); alle Dialogtexte und Älteste/Schmied sind eigen. |
 | worldObjects | 2 | D | D:2 | Invasionsportale (Positionen der Referenz, dekorativ: Invasion läuft über das Menü) und Lagerfeuer. |
 | worlds | 1 | B | B:1 | Zusammenhängende Kapitel-1-Welt: Gelände, Gebietsgrenzen, Fels, Wasser und Farbtöne als Raster aus der Originalkarte (B); Referenzpunkte D; Bauplätze der Basis E. Meter, X=Ost, Z=Nord. |
@@ -97,7 +97,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | invasion | E | `{"entryCost":{"ticket_invasion":1},"k":32,"startRating":1000,"botsPerTier":30,"bankPerHour":20,"bankCap":20…` | Async-PvP gegen gekennzeichnete Bots/Snapshots. |
 | spin | ? | `{"unlockConfigRaw":"1,3","spinCost":{"spin_ticket":1}}` | Unlock-Config 1,3: Bedeutung ungeklärt, nicht angewendet. |
 | orbAlias | ? | `{"crimson":null,"azure":null,"soul":null}` | Interne Orb-Namen nicht zugeordnet; betroffene Reward-Zeilen sind deaktiviert. |
-| world | E | `{"normalPerNode":1,"rareRespawnMinSec":900,"spawnSpreadM":2.5,"activeRadiusM":40}` | Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius. |
+| world | E | `{"normalPerNode":1,"rareRespawnMinSec":900,"spawnSpreadM":2.5,"activeRadiusM":40,"autoBossLevelGap":3}` | Kapitel-1-Welt: Gegner je normalem Spawnknoten (Original unbekannt), Seltenheitsschwelle nach Respawnzeit, Simulationsradius. |
 | ledgerKeep | E | `400` |  |
 | saveSlots | E | `2` |  |
 | special | R | `{"maxStar":4,"starBonus":[{"stat":"atk","pct":5},{"stat":"cooldownPct","v":5}]}` | Vier Sternstufen (D). Bonus je Sternaufstieg +5 % Kraft / +5 % Abklingzeit nach einem Bild der Vorlage (B, dort für 3 -> 4 Sterne); für die übrigen Aufstiege übernommen. |
