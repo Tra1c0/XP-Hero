@@ -228,16 +228,18 @@ export function buildBaseContent(opt = {}) {
   T('variants', 'E', 'Zeilen mit s=D tragen Referenzwerte (Level/HP/ATK bzw. Drops).', variants);
   T('spawnGroups', 'R', 'Kapitel 1: 124 platzierte Spawnknoten mit Monster, Position, Respawn und Patrol aus den Szenendaten (D). Kapitel 2/3: 71/58 Gruppen (D), Position eigen.', groups);
   T('resourceGroups', 'E', 'Rohstoffstellen als angreifbare Knoten.', resGroups);
+  // assist: Radius, in dem Nachbarn mit alarmiert werden. ring: Nahkämpfer verteilen sich um das Ziel. keep: Fernkämpfer halten Abstand.
+  // backoff: Sekunden Rückzug nach einem Treffer (Hit-and-Run).
   T('behaviors', 'E', 'Gegner-KI-Parameter je Typ; Original-KI unbekannt.', [
-    { id: 'melee', aggro: 260, leash: 520, patrol: 90, speed: 105, range: 46, interval: 1.4, windup: 0.35 },
-    { id: 'fast', aggro: 300, leash: 600, patrol: 120, speed: 165, range: 44, interval: 1.0, windup: 0.25 },
-    { id: 'ranged', aggro: 340, leash: 560, patrol: 70, speed: 85, range: 260, interval: 1.9, windup: 0.4, proj: 320 },
+    { id: 'melee', aggro: 260, leash: 520, patrol: 90, speed: 105, range: 46, interval: 1.4, windup: 0.35, assist: 150, ring: true },
+    { id: 'fast', aggro: 300, leash: 600, patrol: 120, speed: 165, range: 44, interval: 1.0, windup: 0.25, assist: 190, ring: true, backoff: 0.45 },
+    { id: 'ranged', aggro: 340, leash: 560, patrol: 70, speed: 85, range: 260, interval: 1.9, windup: 0.4, proj: 320, assist: 170, keep: 150 },
     { id: 'flee', aggro: 240, leash: 700, patrol: 140, speed: 150, range: 0, interval: 9, windup: 0, flee: true },
-    { id: 'boss', aggro: 420, leash: 760, patrol: 0, speed: 90, range: 70, interval: 1.6, windup: 0.5, pattern: 'slam' },
+    { id: 'boss', aggro: 420, leash: 760, patrol: 0, speed: 90, range: 70, interval: 1.6, windup: 0.5, pattern: 'slam', assist: 260 },
     { id: 'node', aggro: 0, leash: 0, patrol: 0, speed: 0, range: 0, interval: 9, windup: 0 },
   ]);
-  T('bossPatterns', 'E', 'Generische, eigene Bossfähigkeiten (keine Originalmuster).', [
-    { id: 'slam', period: 7, windup: 1.2, radius: 150, mult: 2.5, enrageHpPct: 30, enrageIntervalMult: 0.7 },
+  T('bossPatterns', 'E', 'Generische, eigene Bossfähigkeiten (keine Originalmuster). nova: Geschosse im Kreis nach dem Einschlag, sobald der Boss wütend ist.', [
+    { id: 'slam', period: 7, windup: 1.2, radius: 150, mult: 2.5, enrageHpPct: 30, enrageIntervalMult: 0.7, nova: 8, novaSpeed: 240, novaMult: 0.8 },
   ]);
   T('statuses', 'E', 'Statuseffekte: Stack-Limit, Erneuerung, Immunität.', [
     { id: 'slow', maxStacks: 1, refresh: 'renew', speedMult: 0.5, bossImmune: false },

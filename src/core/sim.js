@@ -96,7 +96,7 @@ export class World {
   makeEnemy(v, x, y) {
     const beh = this.g.c.get('behaviors', v.beh);
     return { v, beh, x, y, px: x, py: y, hx: x, hy: y, hp: v.hp, maxHp: v.hp, st: 'spawn', t: 0.4, cd: 0, alive: true, slowT: 0, stunT: 0, burnT: 0, burnN: 0, burnAcc: 0,
-      pcd: beh.pattern ? this.g.c.get('bossPatterns', beh.pattern).period : 0, tx: x, ty: y, cx: 0, cy: 0, r: v.rank === 'boss' ? 34 : v.rank === 'elite' ? 24 : 16 };
+      pcd: beh.pattern ? this.g.c.get('bossPatterns', beh.pattern).period : 0, tx: x, ty: y, cx: 0, cy: 0, ang: (this.eSeq = (this.eSeq || 0) + 1) * 2.399, r: v.rank === 'boss' ? 34 : v.rank === 'elite' ? 24 : 16 };
   }
   // Gebiet freigeschaltet? (Basis und Greenhaven immer; sonst Boss-Erstsieg des Vorgängers). Gesperrte Gebiete spawnen nichts.
   areaOpen(areaId) {
@@ -370,6 +370,14 @@ export class World {
       if (e.x === ox && e.y === oy) e.stuck = (e.stuck || 0) + dt; else e.stuck = 0;
       return d < 6;
     };
+    const away = (e, sp) => { const d = Math.hypot(p.x - e.x, p.y - e.y) || 1, k = (sp * dt) / d; [e.x, e.y] = slide(G, e.x, e.y, e.x - (p.x - e.x) * k, e.y - (p.y - e.y) * k, 14); };
+    // Alarm: wer den Spieler bemerkt, weckt ruhende Nachbarn im Umkreis (keine Kettenreaktion)
+    const alert = (e) => {
+      e.st = 'aggro'; e.t = 0.3;
+      const r2 = (e.beh.assist || 0) ** 2;
+      if (r2) for (const o of this.enemies) if (o !== e && o.alive && (o.st === 'idle' || o.st === 'patrol') && o.beh.aggro > 0 && !o.beh.flee && dist2(o.x, o.y, e.x, e.y) < r2 && los(G, o.x, o.y, e.x, e.y)) { o.st = 'aggro'; o.t = 0.45; }
+    };
+    const near = [];
     const sees = (e) => this.mode || los(G, e.x, e.y, p.x, p.y);
     for (const e of this.enemies) {
       if (!e.alive) continue;
@@ -389,14 +397,14 @@ export class World {
       switch (e.st) {
         case 'spawn': if ((e.t -= dt) <= 0) e.st = 'idle'; break;
         case 'idle':
-          if (p.alive && d < aggro && sees(e)) { e.st = 'aggro'; e.t = 0.3; break; }
+          if (p.alive && d < aggro && sees(e)) { alert(e); break; }
           if ((e.t -= dt) <= 0 && b.patrol > 0) {
             const a = rnd(g.state.rng, 'world') * 6.283, tx = clamp(e.hx + Math.cos(a) * b.patrol, 20, this.map.w - 20), ty = clamp(e.hy + Math.sin(a) * b.patrol, 20, this.map.h - 20);
             if (walkable(G, tx, ty) && los(G, e.hx, e.hy, tx, ty)) { e.tx = tx; e.ty = ty; e.st = 'patrol'; } else e.t = 2;
           }
           break;
         case 'patrol':
-          if (p.alive && d < aggro && sees(e)) { e.st = 'aggro'; e.t = 0.3; break; }
+          if (p.alive && d < aggro && sees(e)) { alert(e); break; }
           if (move(e, e.tx, e.ty, sp * 0.4) || e.stuck > 1) { e.st = 'idle'; e.t = 1.5 + rnd(g.state.rng, 'world') * 3; }
           break;
         case 'aggro': if ((e.t -= dt) <= 0) e.st = 'chase'; break;
@@ -405,7 +413,10 @@ export class World {
           if (!p.alive || dist2(e.x, e.y, e.hx, e.hy) > leash * leash || e.stuck > 2.5) { e.st = 'return'; e.stuck = 0; break; }
           if (b.flee) { if (d > aggro * 1.6) { e.st = 'return'; break; } const k = (sp * dt) / (d || 1); [e.x, e.y] = slide(G, e.x, e.y, e.x - (p.x - e.x) * k, e.y - (p.y - e.y) * k, 14); break; }
           if (b.pattern && (e.pcd -= dt) <= 0) { const pt = g.c.get('bossPatterns', b.pattern); e.st = 'cast'; e.t = pt.windup; e.cx = p.x; e.cy = p.y; e.pcd = pt.period * (e.hp < (e.maxHp * pt.enrageHpPct) / 100 ? pt.enrageIntervalMult : 1); break; }
-          if (d <= b.range + p.r) { e.st = 'attack'; e.t = b.windup; } else move(e, p.x, p.y, sp);
+          near.push(e);
+          if (d <= b.range + p.r && (!b.proj || sees(e))) { e.st = 'attack'; e.t = b.windup; }
+          else if (b.ring && d < b.range * 3 && !(e.stuck > 0.4)) move(e, p.x + Math.cos(e.ang) * b.range * 0.75, p.y + Math.sin(e.ang) * b.range * 0.75, sp); // eigener Platz im Ring um das Ziel
+          else move(e, p.x, p.y, sp);
           break;
         case 'attack':
           if ((e.t -= dt) <= 0) {
@@ -415,14 +426,27 @@ export class World {
             e.st = 'cool'; e.cd = b.interval;
           }
           break;
-        case 'cool': if ((e.cd -= dt) <= 0) e.st = 'chase'; break;
+        case 'cool':
+          near.push(e);
+          if ((e.cd -= dt) <= 0) { e.st = 'chase'; break; }
+          if (p.alive && ((b.keep && d < b.keep) || (b.backoff && e.cd > b.interval - b.backoff))) away(e, sp * 0.75);
+          break;
         case 'cast':
-          if ((e.t -= dt) <= 0) { const pt = g.c.get('bossPatterns', b.pattern); if (p.alive && dist2(p.x, p.y, e.cx, e.cy) < pt.radius * pt.radius) this.hurt(Math.round(e.v.atk * pt.mult)); this.fx.push({ x: e.cx, y: e.cy, r: pt.radius, t: 0.3, k: 2 }); e.st = 'chase'; }
+          if ((e.t -= dt) <= 0) { const pt = g.c.get('bossPatterns', b.pattern); if (p.alive && dist2(p.x, p.y, e.cx, e.cy) < pt.radius * pt.radius) this.hurt(Math.round(e.v.atk * pt.mult)); this.fx.push({ x: e.cx, y: e.cy, r: pt.radius, t: 0.3, k: 2 });
+            if (pt.nova && e.hp < (e.maxHp * pt.enrageHpPct) / 100) for (let k = 0; k < pt.nova && this.proj.length < 200; k++) { const a = (k / pt.nova) * 6.283; this.proj.push({ x: e.x, y: e.y, vx: Math.cos(a) * pt.novaSpeed, vy: Math.sin(a) * pt.novaSpeed, life: 1.6, dmg: Math.round(e.v.atk * pt.novaMult), aoe: 0, hostile: true }); }
+            e.st = 'chase'; }
           break;
         case 'return':
           if (move(e, e.hx, e.hy, sp * 1.5) || e.stuck > 3) { e.x = e.hx; e.y = e.hy; e.px = e.x; e.py = e.y; e.hp = e.maxHp; e.st = 'idle'; e.t = 1; e.stuck = 0; }
           break;
       }
+    }
+    // Verfolger schieben sich sanft auseinander, statt auf einem Punkt zu stapeln
+    for (let i = 0; i < near.length; i++) for (let j = i + 1; j < near.length; j++) {
+      const a = near[i], c = near[j], dx = c.x - a.x, dy = c.y - a.y, min = (a.r + c.r) * 0.9, d2 = dx * dx + dy * dy;
+      if (d2 >= min * min || a.st === 'attack' || c.st === 'attack') continue;
+      const d = Math.sqrt(d2) || 1, k = Math.min(60 * dt, (min - d) / 2) / d, ux = d2 ? dx * k : k, uy = dy * k;
+      [a.x, a.y] = slide(G, a.x, a.y, a.x - ux, a.y - uy, 14); [c.x, c.y] = slide(G, c.x, c.y, c.x + ux, c.y + uy, 14);
     }
   }
 

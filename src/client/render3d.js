@@ -4,6 +4,7 @@
 import { SHAPES, BIOMES, WATER, SCATTER, expand, hex } from './assets3d.js';
 import { FLOOR, WALL, WATER as K_WATER, LAVA, walkIdx, findPath } from '../core/worldgrid.js';
 import { npcStatus, currentQuests } from '../core/meta.js';
+import { enemyParts, enemyTop } from './enemy3d.js';
 
 const VIEW_W = 21, TILT = (52 * Math.PI) / 180; // sichtbare Breite in Metern (Hochformat), Neigung
 const INST = 11; // pos3, rot, scl3, rgba(em)
@@ -269,13 +270,14 @@ export class Renderer3D {
       if (!vis(ex, ez)) continue;
       const v = e.v, rk = v.rank;
       if (rk === 'node') { expand(v.id === 'node_tree' ? 'tree_round2' : 'rock_grey', ex, 0, ez, 0, 0.75, out); continue; }
-      const s = rk === 'boss' ? 2.1 : rk === 'rare' ? 1.6 : rk === 'elite' ? 1.3 : 1, hue = hash(v.monster.length * 31, v.monster.charCodeAt(0));
-      const base = e.stunT > 0 ? '#ffffff' : e.slowT > 0 ? '#7fb6ff' : RANK_COL[rk] || RANK_COL.normal;
-      const bc = col(base), tint = [bc[0] * (0.8 + hue * 0.35), bc[1] * (0.8 + (1 - hue) * 0.3), bc[2] * (0.85 + hue * 0.2)];
-      const parts = [['cyl6', ex, 0, ez, 0, 0.8 * s, 0.75 * s, 0.8 * s, tint, 0], ['sphere', ex, 0.62 * s, ez, 0, 0.62 * s, 0.55 * s, 0.62 * s, tint, 0],
-        ['box', ex - 0.14 * s, 0.85 * s, ez + 0.26 * s, 0, 0.1 * s, 0.1 * s, 0.1 * s, '#ffffff', 0.6], ['box', ex + 0.14 * s, 0.85 * s, ez + 0.26 * s, 0, 0.1 * s, 0.1 * s, 0.1 * s, '#ffffff', 0.6]];
-      if (rk === 'boss' || rk === 'rare') parts.push(['cone6', ex, 1.12 * s, ez, 0, 0.5 * s, 0.45 * s, 0.5 * s, rk === 'boss' ? '#ffd24a' : '#d6a1ff', 0.6]);
-      out.push(...parts); xray.push(parts[0], parts[1]);
+      const s0 = rk === 'boss' ? 2.1 : rk === 'rare' ? 1.6 : rk === 'elite' ? 1.3 : 1, s = s0 * (e.st === 'attack' ? 1.12 : e.st === 'spawn' ? 0.6 : 1);
+      // Blickrichtung: im Kampf zum Spieler, sonst in Laufrichtung (bleibt stehen, wenn der Gegner steht)
+      const fight = e.st === 'chase' || e.st === 'attack' || e.st === 'cool' || e.st === 'aggro' || e.st === 'cast', mv = Math.abs(e.x - e.px) + Math.abs(e.y - e.py) > 0.05;
+      if (fight && !e.beh.flee) e.face = Math.atan2(p.x - e.x, p.y - e.y); else if (mv) e.face = Math.atan2(e.x - e.px, e.y - e.py); else if (e.face === undefined) e.face = (e.ang || 0) % 6.283;
+      const parts = enemyParts(v, ex, ez, e.face, s, e.stunT > 0 ? '#ffffff' : e.st === 'attack' ? '#ffd9d0' : null);
+      if (e.slowT > 0) fx.push(['disc', ex, 0.05, ez, 0, 1.7 * s0, 1, 1.7 * s0, '#7fd0ff', 1]);
+      out.push(...parts); xray.push(parts[0], parts[1], parts[2]);
+      if (rk === 'rare' || rk === 'boss') fx.push(['disc', ex, 0.04, ez, 0, 2.4 * s0, 1, 2.4 * s0, rk === 'boss' ? '#ffb020' : '#b060ff', 1]);
       shadows.push(['disc', ex, 0.02, ez, 0, 1.0 * s, 1, 1.0 * s, '#000000', 0]);
       if (e.st === 'cast') fx.push(['disc', X(e.cx), 0.05, Z(e.cy), 0, 7.5, 1, 7.5, '#ff2030', 1]);
     }
@@ -374,9 +376,9 @@ export class Renderer3D {
       if (!e.alive) continue;
       const ex = X(e.px + (e.x - e.px) * a), ez = Z(e.py + (e.y - e.py) * a);
       if (Math.abs(ex - px) > 14 || Math.abs(ez - pz) > 24) continue;
-      const s = e.v.rank === 'boss' ? 2.1 : e.v.rank === 'rare' ? 1.6 : e.v.rank === 'elite' ? 1.3 : 1, [sx, sy] = this.project(ex, 1.45 * s, ez);
+      const s = e.v.rank === 'boss' ? 2.1 : e.v.rank === 'rare' ? 1.6 : e.v.rank === 'elite' ? 1.3 : 1, top = enemyTop(e.v) * s + 0.25, [sx, sy] = this.project(ex, top, ez);
       if (e.hp < e.maxHp || e.v.rank !== 'normal') { const bw = 26 * s; ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(sx - bw / 2, sy - 6, bw, 4); ctx.fillStyle = '#6fdc6f'; ctx.fillRect(sx - bw / 2, sy - 6, (bw * e.hp) / e.maxHp, 4); }
-      if (e.v.rank !== 'normal' && e.v.rank !== 'node') label(`${e.v.name} L${e.v.level}`, ex, 1.45 * s + 0.5, ez, e.v.rank === 'boss' ? '#ffd24a' : '#ffd0a0');
+      if (e.v.rank !== 'normal' && e.v.rank !== 'node') label(`${e.v.name} L${e.v.level}`, ex, enemyTop(e.v) * s + 0.75, ez, e.v.rank === 'boss' ? '#ffd24a' : '#ffd0a0');
     }
     { // Lebensleiste über der Figur (HUD oben zeigt wie in der Vorlage nur Level, XP und Währungen)
       const [hx, hy] = this.project(X(w.p.px + (w.p.x - w.p.px) * a), 2.0, Z(w.p.py + (w.p.y - w.p.py) * a)), bw = 46, f = Math.max(0, w.p.hp / game.stats.hp);

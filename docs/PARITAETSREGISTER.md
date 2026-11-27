@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint u9q6fvald).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 2atcmub02pf).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -18,7 +18,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | spawnGroups | 253 | R | D:128 R:115 E:10 | Kapitel 1: 124 platzierte Spawnknoten mit Monster, Position, Respawn und Patrol aus den Szenendaten (D). Kapitel 2/3: 71/58 Gruppen (D), Position eigen. |
 | resourceGroups | 7 | E | E:7 | Rohstoffstellen als angreifbare Knoten. |
 | behaviors | 6 | E | E:6 | Gegner-KI-Parameter je Typ; Original-KI unbekannt. |
-| bossPatterns | 1 | E | E:1 | Generische, eigene Bossfähigkeiten (keine Originalmuster). |
+| bossPatterns | 1 | E | E:1 | Generische, eigene Bossfähigkeiten (keine Originalmuster). nova: Geschosse im Kreis nach dem Einschlag, sobald der Boss wütend ist. |
 | statuses | 3 | E | E:3 | Statuseffekte: Stack-Limit, Erneuerung, Immunität. |
 | chestSpawners | 20 | R | D:18 E:2 | Kapitel 1: Position + Respawn aus Szenendaten (D); Stage 7-12/14-19 Respawn dokumentiert; Rest eigen. |
 | giftSpawners | 45 | R | E:28 D:17 | Kapitel 1: 17 Gift-Chest-Spawner mit Position und Respawn 300 s aus Szenendaten (D); Kap. 2/3 eigen. |
