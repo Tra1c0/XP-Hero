@@ -65,3 +65,37 @@ export function icon(name, color, size = 28) {
 export const itemIcon = (id, size) => { const m = id.startsWith('piece:') ? ['helmet'] : ITEM[id] || ['star']; return icon(m[0], m[1], size); };
 export const STAT_ICON = { atk: 'sword', cargo: 'bag', hp: 'heart', regen: 'heartplus', critChance: 'burst', critDmg: 'burst', moveSpeedPct: 'boot', atkSpeedPct: 'bolt', multiHit: 'dagger', lifesteal: 'drop',
   skillDmgPct: 'staff', cooldownPct: 'bolt', goldPct: 'coin', xpPct: 'star', dmgPct: 'sword', bossDmgPct: 'skull', dropPct: 'gift', meleePct: 'blunt', rangedPct: 'crossbow', synergyPct: 'dice' };
+
+// ---------------------------------------------------------------- Heldenfiguren (eigene Entwürfe): klobiger Körper, großer Kopf, Kopfschmuck je Held
+const HAT = {
+  none: () => '', scarf: (a) => `<path d="M17 36H47V43H40L44 52 36 44H17Z" fill="${a}" ${O}/>`,
+  helm: (a) => `<path d="M14 26Q14 6 32 6 50 6 50 26V30H14Z" fill="#aab2c2" ${O}/><path d="M22 24H42V29H22Z" fill="#33221a"/><path d="M30 6Q34 -3 40 4 36 5 34 8Z" fill="${a}" ${O}/>`,
+  cap: (a) => `<ellipse cx="32" cy="14" rx="23" ry="6" fill="${a}" ${O}/><path d="M20 14Q20 2 32 2 44 2 44 14Z" fill="${a}" ${O}/>`,
+  horns: (a) => `<path d="M16 16Q4 12 5 2 12 8 19 9Z" fill="${a}" ${O}/><path d="M48 16Q60 12 59 2 52 8 45 9Z" fill="${a}" ${O}/>`,
+  crown: (a) => `<path d="M19 13 21 2 27 9 32 1 37 9 43 2 45 13Z" fill="${a}" ${O}/>`,
+  knot: (a) => `<path d="M29 10H35V38H29Z" fill="${a}"/><path d="M27 4H37V11H27Z" fill="#7a5236" ${O}/>`,
+  halo: (a) => `<ellipse cx="32" cy="5" rx="13" ry="3.5" fill="none" stroke="#33221a" stroke-width="6"/><ellipse cx="32" cy="5" rx="13" ry="3.5" fill="none" stroke="${a}" stroke-width="3"/>`,
+  ears: (a) => `<path d="M17 14 16 1 27 10Z" fill="#e8eef5" ${O}/><path d="M47 14 48 1 37 10Z" fill="#e8eef5" ${O}/><path d="M16 22H48V27H16Z" fill="${a}"/>`,
+  flame: (a) => `<path d="M17 16Q12 2 22 6 24 -3 32 4 40 -4 42 6 52 2 47 16Z" fill="${a}" ${O}/>`,
+  hood: (a) => `<path d="M11 40Q8 4 32 3 56 4 53 40H46V20Q46 13 32 13 18 13 18 20V40Z" fill="${a}" ${O}/>`,
+  witch: (a) => `<path d="M8 15H56L50 19H14Z" fill="#3a2a55" ${O}/><path d="M19 15 34 -5 45 15Z" fill="#3a2a55" ${O}/><path d="M20 12H44V15H20Z" fill="${a}"/>`,
+  hair: (a) => `<path d="M12 44Q8 6 32 5 56 6 52 44H45V16H19V44Z" fill="${a}" ${O}/>`,
+};
+const hexOk = (c, d) => (/^#[0-9a-fA-F]{3,8}$/.test(c || '') ? c : d);
+export function heroArt(look, size = 64, dim = false) {
+  const [b0, h0, hat, a0] = look || [], b = hexOk(b0, '#f5a524'), hd = hexOk(h0, '#ffc94a'), a = hexOk(a0, '#e5503f'), e = document.createElement('span');
+  e.className = 'ic'; e.style.width = size + 'px'; e.style.height = Math.round(size * 1.125) + 'px';
+  const back = hat === 'hair' || hat === 'hood' ? (HAT[hat] || HAT.none)(a) : '', front = hat === 'hair' || hat === 'hood' ? '' : (HAT[hat] || HAT.none)(a);
+  e.innerHTML = `<svg viewBox="0 -6 64 72" width="${size}" height="${Math.round(size * 1.125)}" aria-hidden="true" ${dim ? 'style="filter:brightness(.35) saturate(.6)"' : ''}><ellipse cx="32" cy="63" rx="17" ry="3.5" fill="#0003"/>
+    <path d="M22 54H30V63H22ZM34 54H42V63H34Z" fill="#7a4a2c" ${O}/>${back}
+    <path d="M9 38H18V52H9ZM46 38H55V52H46Z" fill="${b}" ${O} style="filter:brightness(.82)"/><rect x="17" y="35" width="30" height="21" rx="5" fill="${b}" ${O}/><path d="M17 47H47V51H17Z" fill="#7a4a2c"/><rect x="29" y="46" width="6" height="6" rx="1" fill="#ffd24a" ${O}/>
+    <rect x="15" y="9" width="34" height="29" rx="9" fill="${hd}" ${O}/><path d="M20 15Q24 11 30 11" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="3" stroke-linecap="round"/>
+    ${hat === 'helm' ? '' : '<rect x="23" y="23" width="4" height="6" rx="2" fill="#33221a"/><rect x="37" y="23" width="4" height="6" rx="2" fill="#33221a"/>'}${front}</svg>`;
+  return e;
+}
+Object.assign(ICONS, {
+  thumb: () => P('M8 22H16V42H8Z', '#fff') + P('M16 22 24 6Q30 6 29 14L27 20H38Q43 20 42 26L39 38Q38 42 33 42H16Z', '#fff'),
+  back: () => P('M4 24 22 8V17H44V31H22V40Z', '#fff'),
+  info: () => C(24, 24, 18, '#9aa3b5') + '<path d="M24 22V34" stroke="#fff" stroke-width="5" stroke-linecap="round"/><circle cx="24" cy="14" r="3" fill="#fff"/>',
+  starf: (c = '#ffd24a') => P('M24 4 30 17 44 18 33 28 37 42 24 34 11 42 15 28 4 18 18 17Z', c),
+});

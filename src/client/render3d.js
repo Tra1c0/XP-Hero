@@ -249,8 +249,18 @@ export class Renderer3D {
     // Spieler (Platzhalter-Figur)
     const p = w.p, [px, pz] = lerp(p), face = Math.atan2(p.x - p.px || 0.0001, p.y - p.py || 1) || 0;
     this.face = Math.abs(p.x - p.px) + Math.abs(p.y - p.py) > 0.1 ? face : this.face || 0;
-    const ch = [['cyl8', px, 0, pz, 0, 0.75, 1.05, 0.75, p.alive ? '#3f8ee0' : '#555c66', 0], ['sphere', px, 1.0, pz, 0, 0.55, 0.55, 0.55, '#f1c9a5', 0],
-      ['box', px + Math.sin(this.face) * 0.55, 0.6, pz + Math.cos(this.face) * 0.55, this.face, 0.14, 0.14, 0.9, '#d9dde3', 0.1]];
+    // Spielfigur (eigener Entwurf, klobig wie die Vorlage): Farben vom ausgerüsteten Helden; Beine, Rumpf, Arme, großer Kopf, Rucksack
+    const look = (game.c.by.heroes.get(game.stats.heroId) || {}).look || [], okc = (c0, d0) => (/^#[0-9a-fA-F]{6}$/.test(c0 || '') ? c0 : d0);
+    const bc2 = p.alive ? okc(look[0], '#f5a524') : '#555c66', hc2 = p.alive ? okc(look[1], '#ffc94a') : '#777f8a', ac2 = okc(look[3], '#3f8ee0'), f = this.face, cf = Math.cos(f), sf = Math.sin(f);
+    const at = (dx, dz) => [px + dx * cf + dz * sf, pz - dx * sf + dz * cf]; // dx = rechts, dz = vorn
+    const part = (shape, dx, y, dz, sx, sy, sz, c2, em = 0) => { const [x, z] = at(dx, dz); return [shape, x, y, z, f, sx, sy, sz, c2, em]; };
+    const ch = [part('box', -0.2, 0, 0, 0.26, 0.4, 0.3, '#7a4a2c'), part('box', 0.2, 0, 0, 0.26, 0.4, 0.3, '#7a4a2c'),
+      part('box', 0, 0.36, 0, 0.82, 0.62, 0.52, bc2), part('box', 0, 0.36, 0.02, 0.84, 0.14, 0.54, '#7a4a2c'),
+      part('box', -0.52, 0.42, 0.05, 0.22, 0.5, 0.26, '#8a5a3c'), part('box', 0.52, 0.42, 0.05, 0.22, 0.5, 0.26, '#8a5a3c'),
+      part('box', 0, 0.5, -0.36, 0.5, 0.42, 0.24, '#6a4a30'),
+      part('box', 0, 0.96, 0, 0.78, 0.68, 0.7, hc2), part('box', 0, 0.97, 0.01, 0.16, 0.69, 0.72, ac2), part('box', 0, 1.62, 0, 0.26, 0.16, 0.26, '#7a5236'),
+      part('box', 0.62, 0.55, 0.45, 0.12, 0.12, 0.8, '#d9dde3', 0.1)];
+    fx.push(['disc', px, 0.04, pz, 0, 3.2, 1, 3.2, '#8dff7a', 1]);
     out.push(...ch); xray.push(...ch); shadows.push(['disc', px, 0.02, pz, 0, 1.2, 1, 1.2, '#000000', 0]);
     // Gegner
     for (const e of w.enemies) {

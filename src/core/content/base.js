@@ -333,20 +333,29 @@ export function buildBaseContent(opt = {}) {
       otherW: k === 0 ? 0 : 40, other: [{ item: 'weapon_scroll', min: 1, max: 3 }] })));
 
   // ------------------------------------------------------------------ Helden
-  const heroes = [], HR = [['rare', 6, 1], ['epic', 6, 2], ['legendary', 5, 3], ['mythic', 3, 4]];
-  let hn = 0;
-  for (const [rar, cnt, tier] of HR) for (let k = 0; k < cnt; k++) { hn++; heroes.push({ id: `h_${String(hn).padStart(2, '0')}`, name: `Held ${hn}`, rarity: rar, tier,
-    atkPct: 5 * tier + k, hpPct: 5 * tier + (cnt - k), mastery: CLS[hn % 6][0], masteryPct: 10 * tier, skill: ['h_strike', 'h_frost', 'h_burn', 'h_heal'][hn % 4],
-    unlockPieces: 10 * tier, evolvable: true, s: 'E' }); }
-  ['Freyja', 'The Skull', 'Hana', 'Vlad'].forEach((nm, k) => heroes.push({ id: `h_${slug(nm)}`, name: nm, rarity: 'exotic', tier: 5, atkPct: 40 + k * 2, hpPct: 40, mastery: CLS[k][0],
-    masteryPct: 60, skill: ['h_strike', 'h_burn', 'h_frost', 'h_heal'][k], unlockPieces: 80, evolvable: false, s: 'D' }));
-  T('heroes', 'E', 'Heldenliste unbekannt (24/26): eigene Platzhalter. Freyja/The Skull/Hana/Vlad: Exotic ohne Evolutionszeilen (D).', heroes);
+  // 26 Helden in 8 Seltenheitsstufen; Verteilung (4/4/3/3/2/2/4/4) und Waffenklasse je Platz nach der Heldenübersicht der Vorlage (B).
+  // Namen (außer Barbar und den vier Exotic-Helden) und alle Figuren-Designs (look) sind eigene Entwürfe.
+  const HRAR = ['normal', 'fine', 'rare', 'epic', 'legendary', 'ancient', 'mythic', 'exotic'], HTIER = [1, 1, 2, 2, 3, 3, 4, 5];
+  const HL = [
+    [0, 'Wanderer', 'sword', ['#f5b21a', '#ffd23f', 'scarf', '#e5503f']], [0, 'Schildknappe', 'sword', ['#9aa3b5', '#ffc94a', 'helm', '#e5503f']], [0, 'Dornenläufer', 'dagger', ['#4f9a3c', '#6fbf4a', 'cap', '#7a4a2c']], [0, 'Hornwächter', 'blunt', ['#5b7fe0', '#6f8fe8', 'horns', '#f3ead8']],
+    [1, 'Hofmagierin', 'staff', ['#b06ad0', '#ffd9a0', 'crown', '#ffd24a']], [1, 'Nachtschütze', 'crossbow', ['#2f2a3a', '#ffc94a', 'none', '#e9a23a']], [1, 'Barbar', 'sword', ['#f5a524', '#ffc94a', 'knot', '#3f8ee0']], [1, 'Stierhüter', 'blunt', ['#f3f3f3', '#f3f3f3', 'horns', '#3b6fd0']],
+    [2, 'Schlackenriese', 'blunt', ['#3a2f2f', '#2a2222', 'none', '#ff8a2a']], [2, 'Revolverheld', 'gun', ['#2a2a2a', '#ffc94a', 'cap', '#b3382b']], [2, 'Glutteufel', 'dagger', ['#c9372c', '#e5503f', 'horns', '#2a2222']],
+    [3, 'Liebesbote', 'crossbow', ['#f6ead0', '#ffd23f', 'halo', '#ff7fb0']], [3, 'Schattenkatze', 'dagger', ['#3a4a6a', '#e8eef5', 'ears', '#e5503f']], [3, 'Korsarin', 'gun', ['#8a2f4a', '#ffd9a0', 'cap', '#e5503f']],
+    [4, 'Söldner', 'gun', ['#3f5f8f', '#ffc94a', 'helm', '#2a2a2a']], [4, 'Flammenrufer', 'staff', ['#2f3f8f', '#ffc94a', 'flame', '#ff8a2a']],
+    [5, 'Waldläuferin', 'crossbow', ['#3f9a4a', '#ffd9a0', 'hood', '#2f6b3f']], [5, 'Walküre', 'blunt', ['#5a4a3a', '#ffd9a0', 'horns', '#ffd24a']],
+    [6, 'Sonnenpaladin', 'sword', ['#f6f6f6', '#ffd24a', 'halo', '#ffb02e']], [6, 'Klingenmönch', 'dagger', ['#f3ead8', '#ff8a2a', 'hood', '#b3382b']], [6, 'Eisenkoloss', 'gun', ['#d0392c', '#e5503f', 'helm', '#ffd24a']], [6, 'Sturmhexe', 'staff', ['#5a3f8f', '#ffd9a0', 'witch', '#ff8a2a']],
+  ];
+  const heroes = HL.map(([r, nm, cls, look], k) => { const tier = HTIER[r], n = k + 1; return { id: `h_${String(n).padStart(2, '0')}`, name: nm, rarity: HRAR[r], tier, atkPct: 4 + 6 * r + (k % 3), hpPct: 6 + 6 * r + ((k + 1) % 3),
+    mastery: cls, masteryPct: 10 + 6 * r, skill: ['h_strike', 'h_frost', 'h_burn', 'h_heal'][n % 4], unlockPieces: 10 * tier, evolvable: true, look, s: nm === 'Barbar' ? 'B' : 'E' }; });
+  [['Freyja', 'staff', ['#9fd9f5', '#e8f6ff', 'crown', '#5aa9e6']], ['The Skull', 'blunt', ['#2a2222', '#f3ead8', 'crown', '#e5503f']], ['Hana', 'sword', ['#2a2233', '#ffd9a0', 'hair', '#b04bd0']], ['Vlad', 'dagger', ['#3a2233', '#c9b8e0', 'hair', '#2a2222']]]
+    .forEach(([nm, cls, look], k) => heroes.push({ id: `h_${slug(nm)}`, name: nm, rarity: 'exotic', tier: 5, atkPct: 50 + k * 2, hpPct: 50, mastery: cls, masteryPct: 60, skill: ['h_frost', 'h_strike', 'h_burn', 'h_heal'][k], unlockPieces: 80, evolvable: false, look, s: 'D' }));
+  T('heroes', 'R', '26 Helden, 8 Seltenheitsstufen, Waffenklasse je Platz nach Heldenübersicht der Vorlage (B). Freyja/The Skull/Hana/Vlad: Exotic ohne Evolutionszeilen (D). Namen, Werte und Figuren-Designs eigen.', heroes);
   T('heroLevelCosts', 'R', 'Stützstufen 1 und 10..130 je Tiergruppe (D-Struktur); Evolution-Coin-Werte eigen.', [1, 2, 3, 4, 5].map((tier) =>
     ({ tier, rows: [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130].map((lv) => ({ lv, cost: { evo_coin: Math.round(tier * (2 + lv * lv / 20)) } })) })));
   T('heroStars', 'E', 'Sterne 1-6 (D); Kosten/Optionen eigen.', [2, 3, 4, 5, 6].map((star) =>
     ({ star, pieces: [0, 0, 10, 20, 40, 80, 160][star], coins: [0, 0, 50, 150, 400, 1000, 2500][star], bonus: [{ stat: 'dmgPct', v: 5 * star }, { stat: 'hp', pct: 5 * star }] })));
   const coll = [];
-  for (const rar of ['rare', 'epic', 'legendary', 'mythic', 'exotic']) [1, 3, 6, 9, 12, 15, 18].forEach((need, k) =>
+  for (const rar of HRAR) [1, 3, 6, 9, 12, 15, 18].forEach((need, k) =>
     coll.push({ id: `col_${rar}_${need}`, group: rar, need, bonus: { stat: k % 2 ? 'hp' : 'atk', pct: 2 + k } }));
   T('heroCollection', 'R', 'Sternsumme je Raritätsgruppe, Schwellen 1 bzw. Dreierschritte (D); Boni eigen. Accountweit.', coll);
 

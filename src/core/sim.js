@@ -432,7 +432,8 @@ export class World {
     let near = null;
     for (const o of this.map.objects) {
       const inR = dist2(p.x, p.y, o.x, o.y) < o.r * o.r;
-      if (inR && !o.in) { o.in = true; if (this.hooks.interact) this.hooks.interact(o, this); } else if (!inR && o.in) o.in = false;
+      // Tor-Balken melden sich nur, wenn sie wirklich verschlossen sind (unten); alles andere reagiert beim Betreten des Radius
+      if (inR && !o.in) { o.in = true; if (o.type !== 'gatebar' && this.hooks.interact) this.hooks.interact(o, this); } else if (!inR && o.in) o.in = false;
       if (inR && (o.type === 'building' || o.type === 'npc')) near = o;
       if (inR && o.type === 'gatebar' && !o.open() && !o.warned) { o.warned = true; if (this.hooks.interact) this.hooks.interact(o, this); } else if (!inR) o.warned = false;
     }

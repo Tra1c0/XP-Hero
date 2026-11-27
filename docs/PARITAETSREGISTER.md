@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 18ugm9fu5p7).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1vxcbkc0f5s).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -33,10 +33,10 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | skills | 10 | E | E:10 | Skillnamen der S-Reihen D; Parameter eigen. |
 | weapons | 84 | R | R:84 | 84 Varianten, 12 Reihen (D). Stats nach DPS-Rechner-Struktur (DPS Add + PerLevel*Level)*RarityMult; Zahlen, Merge-Anzahl, Evo-Kosten eigen. Transzendenz offen. |
 | smithy | 8 | D | D:8 | Kosten = Upgrade zur nächsten Stufe (R). Sichtbare Raten summieren sich ab Stufe 2 auf 60 %; der Rest (otherW) ist NICHT normiert, sondern ein eigener, gekennzeichneter Sonstiges-Ausgang (E). |
-| heroes | 24 | E | E:20 D:4 | Heldenliste unbekannt (24/26): eigene Platzhalter. Freyja/The Skull/Hana/Vlad: Exotic ohne Evolutionszeilen (D). |
+| heroes | 26 | R | E:21 B:1 D:4 | 26 Helden, 8 Seltenheitsstufen, Waffenklasse je Platz nach Heldenübersicht der Vorlage (B). Freyja/The Skull/Hana/Vlad: Exotic ohne Evolutionszeilen (D). Namen, Werte und Figuren-Designs eigen. |
 | heroLevelCosts | 5 | R | R:5 | Stützstufen 1 und 10..130 je Tiergruppe (D-Struktur); Evolution-Coin-Werte eigen. |
 | heroStars | 5 | E | E:5 | Sterne 1-6 (D); Kosten/Optionen eigen. |
-| heroCollection | 35 | R | R:35 | Sternsumme je Raritätsgruppe, Schwellen 1 bzw. Dreierschritte (D); Boni eigen. Accountweit. |
+| heroCollection | 56 | R | R:56 | Sternsumme je Raritätsgruppe, Schwellen 1 bzw. Dreierschritte (D); Boni eigen. Accountweit. |
 | traitQualities | 7 | E | E:7 | Qualitätsstufen bis SSS (B); Gewichte/Multiplikatoren eigen. |
 | traitOptions | 9 | E | E:9 | Optionen/Rollgewichte eigen. |
 | synergies | 3 | E | E:3 | Synergiegruppen eigen. |

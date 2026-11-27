@@ -6,7 +6,7 @@ import * as gear from '../core/gear.js';
 import * as home from '../core/home.js';
 import * as meta from '../core/meta.js';
 import * as modes from '../core/modes.js';
-import { icon, itemIcon, STAT_ICON } from './skin.js';
+import { icon, itemIcon, STAT_ICON, heroArt } from './skin.js';
 import { BIOMES, WATER as WCOL, hex } from './assets3d.js';
 
 // Lokalisierung: t(Quelltext) -> Übersetzung; ohne Eintrag bleibt der deutsche Quelltext.
@@ -125,6 +125,13 @@ P.hero = () => {
   const cur = { ability: ['orb_jungle', 'orb_hell', 'gold'], special: ['orb_pink', 'orb_red'], extra: ['orb_ice', 'orb_jungle'], soul: ['orb_hell'], blessing: ['exp'] }[f[0]];
   return [...head, chips(...cur), ...upgradeRows(f[0]), fams.length > 1 ? tabs('up', fams.map((x) => [x[0], x[1]])) : null];
 };
+// Gibt es eine nicht ausgerüstete Waffe, die stärker ist als die schwächste ausgerüstete (oder ist ein freier Slot leer)?
+function betterWeapon() {
+  const g = game.g, ws = game.state.weapons, eq = ws.slots.slice(0, ws.unlocked), free = ws.list.filter((w) => !ws.slots.includes(w.uid));
+  if (!free.length) return false;
+  if (eq.some((u) => !u)) return true;
+  const min = Math.min(...eq.map((u) => prog.weaponDmg(g, ws.list.find((w) => w.uid === u)))); return free.some((w) => prog.weaponDmg(g, w) > min);
+}
 const wIcon = (w, size) => icon(game.c.get('weapons', w.def).cls, null, size);
 const rarCol = (w) => game.c.get('rarities', game.c.get('weapons', w.def).rarity).color;
 function weaponSheet(w) {
@@ -152,11 +159,12 @@ P.weapons = () => {
   const autoEquip = () => { const best = [...ws.list].sort((a, b) => prog.weaponDmg(g, b) - prog.weaponDmg(g, a)).slice(0, ws.unlocked); best.forEach((w, i) => game.try('equipWeapon', w.uid, i)); render(); };
   return [chips('exp', 'weapon_scroll', 'gold', 'gems'),
     h('div', { cls: 'equip' }, h('div', { cls: 'col' }, slot(0), slot(1), slot(2)),
-      h('div', { cls: 'mid' }, h('div', { cls: 'power ot' }, icon('burst', '#ff8a2a', 24), fmt(game.stats.atk + mainDmg)), icon('hero', null, 132), h('div', { cls: 'pedestal' }),
+      h('div', { cls: 'mid' }, h('div', { cls: 'power ot' }, icon('burst', '#ff8a2a', 24), fmt(game.stats.atk + mainDmg)), heroArt(c.get('heroes', s.heroes.active).look, 128), h('div', { cls: 'pedestal' }),
         has('heroes') ? btn('Held', () => open('heroes'), false, 'sm') : null),
       h('div', { cls: 'col' }, slot(3), slot(4), slot(5))),
     ns && !ns.quest ? row(`Slot ${ns.slot} freischalten`, h('span', {}, `Level ${ns.level} · `, costEl(ns.cost)), btn('Freischalten', () => act('unlockWeaponSlot'), false, 'go')) : null,
-    h('div', { cls: 'wbar' }, btn('Ausrüsten', autoEquip, !ws.list.length, 'pri'), h('b', { cls: 'ot' }, 'Waffe'), btn('Verbinden', () => { const r = act('mergeAll'); if (r.ok) toast(`${r.value} Verbindungen`); }, !ws.list.length, 'blue')),
+    h('div', { cls: 'wbar' }, h('span', { cls: betterWeapon() ? 'badge thumbb' : '', style: 'position:relative' }, btn('Ausrüsten', autoEquip, !ws.list.length, 'pri')), h('b', { cls: 'ot' }, 'Waffe'),
+      h('span', { cls: anyMerge() ? 'badge' : '', style: 'position:relative' }, btn('Verbinden', () => open('fusion'), !ws.list.length, 'blue'))),
     list.length ? h('div', { cls: 'grid5' }, cap('w', list.map((w) => h('button', { cls: 'tile' + (ws.slots.includes(w.uid) ? ' eq' : ''), style: `background:${rarCol(w)}`, on: () => weaponSheet(w) }, wIcon(w, 40), h('span', { cls: 'lvt ot' }, `Lv.${w.level}`),
       w.lock ? h('span', { cls: 'lk' }, '🔒') : null, !ws.slots.includes(w.uid) && prog.weaponDmg(g, w) > mainDmg ? h('span', { cls: 'thumb' }, '▲') : null)), 40)) : h('p', { cls: 'center' }, 'Noch keine Waffen. Öffne eine Waffentruhe im Shop oder schmiede am Amboss.')];
 };
@@ -176,7 +184,7 @@ P.inv = () => {
     cargo.length ? sec(`Fracht (${home.cargoUsed(game.g)}/${game.stats.cargo})`, h('div', { cls: 'grid4' }, cargo.map(([i, n]) => tile(i, n)))) : null];
 };
 P.menu = () => {
-  // Karte, Basis und Events haben eigene Knöpfe im HUD und stehen deshalb nicht noch einmal im Menü
+  // Helden erreicht man über die Ausrüstung; Karte, Basis und Events haben eigene Knöpfe im HUD und stehen deshalb nicht noch einmal im Menü
   const items = [['quests', 'Quests', 'talk'], ['inv', 'Inventar', 'backpack'], ['smithy', 'Schmiede', 'anvil', 'craft'], ['heroes', 'Helden', 'helmet', 'heroes'], ['traits', 'Traits', 'dice', 'traits'],
     ['runes', 'Runen', 'rune', 'runes'], ['settings', 'Mehr', 'gear']];
   return [h('div', { cls: 'grid4' }, items.filter((x) => !x[3] || has(x[3])).map(([id, label, ic]) => h('button', { cls: 'tile menu', on: () => open(id) }, icon(ic, null, 40), h('span', { cls: 'ot' }, label))))];
@@ -230,24 +238,70 @@ P.shop = () => {
   }
   return out;
 };
+const RAR_H = { normal: ['Gewöhnlich', '#b9c6d6'], fine: ['Ausgezeichnet', '#6fcf4a'], rare: ['Selten', '#4a8fe8'], epic: ['Episch', '#a45ae0'], legendary: ['Legendär', '#f0b429'], ancient: ['Antik', '#e0564a'], mythic: ['Mythisch', '#2fb7a8'], exotic: ['Exotisch', '#f58a6a'] };
+const heroCan = (d) => { const g = game.g, o = game.state.heroes.owned[d.id]; return o ? has('heroes') && o.level < 130 && gear.heroLevelCost(g, d.id, o.level + 1) <= econ.bal(g, 'evo_coin') : econ.bal(g, `piece:${d.id}`) >= d.unlockPieces; };
+// Übersicht wie in der Vorlage: Effekte aller Helden (Sammlung, accountweit) und Effekte des ausgerüsteten Helden
+function heroEffects() {
+  const s = game.state, c = game.c, sum = {}, act = c.get('heroes', s.heroes.active), ao = s.heroes.owned[s.heroes.active];
+  const stars = {};
+  for (const [id, o] of Object.entries(s.heroes.owned)) { const d = c.by.heroes.get(id); if (d) stars[d.rarity] = (stars[d.rarity] || 0) + o.star; }
+  if (has('heroCollection')) for (const r of c.t.heroCollection) if ((stars[r.group] || 0) >= r.need) sum[r.bonus.stat] = (sum[r.bonus.stat] || 0) + r.bonus.pct;
+  const line = (k, v, plus) => h('div', { cls: 'erow' }, h('span', {}, k), h('b', { cls: v ? 'pos' : 'zero' }, `${plus && v ? '+' : ''}${v}%`));
+  const lv = (ao.level - 1) * c.cfg.heroes.levelPct;
+  modal('Helden-Effekte', h('div', {}, h('div', { cls: 'etitle' }, '✦ Alle Helden-Effekte ✦'), line('Angriff verstärken', sum.atk || 0), line('KP', sum.hp || 0),
+    has('heroCollection') ? null : h('p', { cls: 'sub center' }, 'Die Helden-Sammlung wird später freigeschaltet.'),
+    h('div', { cls: 'etitle' }, '✦ Ausrüster-Effekte ✦'), h('div', { cls: 'eq' }, h('span', { cls: 'hcard', style: `background:${RAR_H[act.rarity][1]}` }, heroArt(act.look, 54), h('span', { cls: 'lvt ot' }, `Lv.${ao.level}`)),
+      h('div', { style: 'flex:1' }, line('KRAFT', act.atkPct + lv, true), line('HP', act.hpPct + lv, true), line(`Meisterschaft ${c.get('weaponClasses', act.mastery).name}`, act.masteryPct, true)))), [['Schließen', null]]);
+}
 P.heroes = () => {
   const g = game.g, s = game.state, c = game.c;
-  const col = has('heroCollection') ? sec('Sammlung (accountweit)', ['rare', 'epic', 'legendary', 'mythic', 'exotic'].map((rar) => {
-    const sum = Object.entries(s.heroes.owned).filter(([id]) => c.get('heroes', id).rarity === rar).reduce((a, [, o]) => a + o.star, 0);
-    const nx = c.t.heroCollection.find((r) => r.group === rar && r.need > sum);
-    return row(`${rar}: ${sum} Sterne`, nx ? `nächster Bonus bei ${nx.need}: ${sn(nx.bonus.stat)} +${nx.bonus.pct}%` : 'alle Boni aktiv');
-  })) : null;
-  return [h('p', { cls: 'sub' }, `Evolution Coins ${fmt(econ.bal(g, 'evo_coin'))} · Select Tickets ${econ.bal(g, 'hero_select_ticket')} · Raid-Team: ${s.heroes.raidTeam.map((id) => c.get('heroes', id).name).join(', ')}`),
-    cap('h', c.t.heroes.map((d) => {
-      const o = s.heroes.owned[d.id], pc = econ.bal(g, `piece:${d.id}`), si = gear.heroStarInfo(g, d.id), inTeam = s.heroes.raidTeam.includes(d.id);
-      return h('div', { cls: 'card' }, h('div', { cls: 'ti' }, `${d.name} [${d.rarity}] ${o ? `L${o.level} ${'★'.repeat(o.star)}` : '🔒'}${s.heroes.active === d.id ? ' · aktiv' : ''}`),
-        h('div', { cls: 'sub' }, `ATK +${d.atkPct}% · HP +${d.hpPct}% · Mastery ${d.mastery} +${d.masteryPct}% · Skill ${c.get('skills', d.skill).name} · Scherben ${pc}`, o && has('heroEvolution') ? h('span', {}, ' · Stern-Up: ', si.available ? costEl(si.cost) : si.reason) : null),
-        h('div', { cls: 'btns' }, o ? [btn('Aktivieren', () => act('setActiveHero', d.id), s.heroes.active === d.id), btn(`Level +1 (${o.level < 130 ? gear.heroLevelCost(g, d.id, o.level + 1) : '-'})`, () => act('heroLevelUp', d.id, 1), o.level >= 130),
-          btn('+10', () => act('heroLevelUp', d.id, 10), o.level >= 130), has('heroEvolution') ? btn('Stern-Up', () => act('heroStarUp', d.id), !si.available) : null,
-          btn(inTeam ? 'Aus Raid-Team' : 'Ins Raid-Team', () => act('setRaidTeam', inTeam ? s.heroes.raidTeam.filter((x) => x !== d.id) : [...s.heroes.raidTeam, d.id]))]
-          : btn(`Freischalten (${d.unlockPieces} Scherben)`, () => act('unlockHero', d.id), pc < d.unlockPieces, 'pri'),
-        btn('Select Ticket', () => act('useSelectTicket', d.id), econ.bal(g, 'hero_select_ticket') < 1)));
-    }), 12), col];
+  const d = c.by.heroes.get(tab.hero) || c.get('heroes', s.heroes.active), o = s.heroes.owned[d.id], pc = econ.bal(g, `piece:${d.id}`), si = gear.heroStarInfo(g, d.id), rar = RAR_H[d.rarity];
+  const lvPct = c.cfg.heroes.levelPct, lv = o ? o.level : 1, bonus = (lv - 1) * lvPct, sk = c.get('skills', d.skill), inTeam = s.heroes.raidTeam.includes(d.id);
+  const stat = (ic, a, b) => h('div', { cls: 'hstat' }, icon(ic, null, 26), h('b', { cls: 'ot' }, a, b ? h('em', {}, ' ' + b) : null));
+  const skillT = (need, ic, col, tip) => h('button', { cls: 'sktile', style: `background:${col}`, on: () => toast(tip, 3200) }, (o ? o.star : 0) >= need ? icon(ic, null, 30) : icon('lock', null, 26), h('small', {}, '★'.repeat(need)));
+  const acts = [];
+  if (!o) acts.push(btn(`Freischalten (${pc}/${d.unlockPieces})`, () => act('unlockHero', d.id), pc < d.unlockPieces, 'go'));
+  else {
+    if (s.heroes.active !== d.id) acts.push(btn('Ausrüsten', () => act('setActiveHero', d.id), false, 'pri'));
+    if (has('heroEvolution')) acts.push(btn('Stern-Up', () => (si.available ? act('heroStarUp', d.id) : toast(si.reason)), !si.available, 'blue'));
+    if (has('raid')) acts.push(btn(inTeam ? 'Aus Raid-Team' : 'Ins Raid-Team', () => act('setRaidTeam', inTeam ? s.heroes.raidTeam.filter((x) => x !== d.id) : [...s.heroes.raidTeam, d.id]), false, 'sm'));
+    acts.push(h('button', { cls: 'b go big', disabled: !has('heroes') || o.level >= 130, on: () => act('heroLevelUp', d.id, 1) }, icon('up', null, 22), ' Verstärken', o.level < 130 ? h('small', {}, ' ', itemIcon('evo_coin', 14), gear.heroLevelCost(g, d.id, o.level + 1)) : null));
+  }
+  if (econ.bal(g, 'hero_select_ticket') > 0) acts.unshift(btn('Select Ticket', () => act('useSelectTicket', d.id), false, 'sm'));
+  return [chips('exp', 'evo_coin', 'hero_select_ticket'),
+    h('div', { cls: 'hpage' }, h('div', { cls: 'hban ot', style: `background:${rar[1]}` }, rar[0]),
+      h('div', { cls: 'hfig' }, heroArt(d.look, 150, !o), h('div', { cls: 'pedestal' }), h('div', { cls: 'stars' }, [1, 2, 3, 4, 5, 6].map((k) => icon('starf', (o ? o.star : 0) >= k ? '#ffd24a' : '#3a2a1e', 24)))),
+      h('div', { cls: 'hinfo' }, h('div', { cls: 'hname' }, icon(d.mastery, null, 24), h('b', { cls: 'ot' }, d.name), h('button', { cls: 'ibtn', 'aria-label': 'Helden-Effekte', on: heroEffects }, icon('info', null, 26))),
+        h('div', { cls: 'hbox' }, stat('pass', `Lv.${lv}`), stat('sword', `${d.atkPct + bonus}%`, o && lv < 130 ? `+${lvPct}` : ''), stat('heart', `${d.hpPct + bonus}%`, o && lv < 130 ? `+${lvPct}` : '')),
+        h('div', { cls: 'hbox' }, h('div', { cls: 'sub center' }, 'Fertigkeit'), h('div', { cls: 'skrow' }, skillT(1, 'burst', '#c9d3e6', `${sk.name}: Heldenfähigkeit, Abklingzeit ${sk.cd}s`),
+          skillT(3, 'sword', '#6fcf4a', 'Ab 3 Sternen: Schaden +15 %, HP +15 %'), skillT(6, 'starf', '#4a8fe8', 'Ab 6 Sternen: Schaden +30 %, HP +30 %'))),
+        h('div', { cls: 'sub' }, `Scherben ${pc}${o && has('heroEvolution') && si.available ? ` · Stern-Up: ${fmtCost(si.cost)}` : ''}`))),
+    h('div', { cls: 'wbar' }, h('span', {}), h('b', { cls: 'ot' }, 'Alle Helden'), btn('Alle Effekte', heroEffects, false, 'blue')),
+    h('div', { cls: 'grid4' }, c.t.heroes.map((x) => { const ox = s.heroes.owned[x.id]; return h('button', { cls: 'hcard' + (x.id === d.id ? ' sel' : '') + (heroCan(x) ? ' badge' : ''), style: `background:${RAR_H[x.rarity][1]}`, on: () => { tab.hero = x.id; render(); } },
+      heroArt(x.look, 62, !ox), h('span', { cls: 'lvt ot' }, `Lv.${ox ? ox.level : 1}`), h('span', { cls: 'cls' }, icon(x.mastery, null, 18)), s.heroes.active === x.id ? h('span', { cls: 'eqt ot' }, 'Ausgerüstet') : null); })),
+    h('div', { cls: 'pbar' }, h('button', { cls: 'b back', 'aria-label': 'Zurück', on: () => open('weapons') }, icon('back', null, 26)), h('div', { cls: 'btns', style: 'margin:0;justify-content:flex-end;flex:1' }, acts))];
+};
+// Fusionsseite: Waffe wählen -> Ergebnis, Werte vorher > nachher, benötigte Duplikate; Sammelfusion verbindet alles Mögliche
+const anyMerge = () => game.state.weapons.list.some((w) => gear.mergePreview(game.g, w.uid).ok);
+P.fusion = () => {
+  const g = game.g, c = game.c, ws = game.state.weapons;
+  const sel = ws.list.find((w) => w.uid === tab.fuse) || null, mp = sel ? gear.mergePreview(g, sel.uid) : null, d = sel && c.get('weapons', sel.def), nx = mp && mp.next;
+  const tileW = (w, cls = '') => h('span', { cls: 'tile ' + cls, style: `background:${rarCol(w)}` }, wIcon(w, 40), h('span', { cls: 'lvt ot' }, `Lv.${w.level}`));
+  const empty = (cls = '') => h('span', { cls: 'tile slotx ' + cls }, h('span', { cls: 'plus' }, '+'));
+  const dmgAt = (def, lvl) => Math.round((def.dpsAdd + def.perLevel * lvl) * c.get('rarities', def.rarity).mult);
+  const need = d ? d.mergeCount : 3, fod = mp ? mp.fodder : [];
+  const mats = sel ? [tileW(sel), h('b', { cls: 'ot', style: 'font-size:1.4rem' }, '+'), ...Array.from({ length: need - 1 }, (_, k) => (fod[k] ? tileW(fod[k]) : empty()))] : [empty()];
+  const list = ws.list.filter((w) => c.get('weapons', w.def).next).sort((a, b) => (gear.mergePreview(g, b.uid).ok ? 1 : 0) - (gear.mergePreview(g, a.uid).ok ? 1 : 0) || c.get('weapons', b.def).rarity - c.get('weapons', a.def).rarity);
+  return [chips('gems', 'weapon_scroll', 'gold'),
+    h('div', { cls: 'forge' }, h('div', { cls: 'fres' }, nx ? h('span', { cls: 'tile big', style: `background:${c.get('rarities', nx.rarity).color}` }, icon(nx.cls, null, 54), h('span', { cls: 'lvt ot' }, `Lv.${Math.max(sel.level, ...fod.map((x) => x.level))}`)) : empty('big'),
+        nx ? h('div', { cls: 'fcard' }, h('div', { cls: 'hban ot', style: `background:${c.get('rarities', nx.rarity).color};position:static;transform:none;margin:-14px auto 4px;font-size:.7rem` }, c.get('rarities', nx.rarity).name),
+          h('b', {}, nx.name), h('div', { cls: 'ot' }, 'SCHADEN: ', dmgAt(d, sel.level), h('em', {}, ' > ' + dmgAt(nx, sel.level))), h('div', { cls: 'ot' }, 'MAX. LEVEL: ', c.get('rarities', d.rarity).maxLevel, h('em', {}, ' > ' + c.get('rarities', nx.rarity).maxLevel)),
+          Object.keys(mp.cost || {}).length ? h('div', { cls: 'sub' }, 'Kosten: ', costEl(mp.cost)) : null, mp.ok ? null : h('div', { cls: 'sub', style: 'color:#b3382b' }, mp.reason)) : sel ? h('div', { cls: 'fcard' }, h('b', {}, d.name), h('div', { cls: 'sub' }, 'Endstufe dieser Reihe')) : h('div', { cls: 'fcard' }, h('div', { cls: 'sub' }, 'Wähle unten eine Waffe. Drei gleiche ergeben die nächste Stufe.'))),
+      h('div', { cls: 'farrow' }, icon('up', null, 30)), h('div', { cls: 'fmats' }, mats),
+      sel ? btn('Verbessern', () => { const r = act('mergeWeapon', sel.uid); if (r.ok) toast(`Neu: ${c.get('weapons', r.value.def).name}`, 2600); }, !mp.ok, 'go') : null),
+    h('div', { cls: 'wbar' }, h('button', { cls: 'b back', 'aria-label': 'Zurück', on: () => open('weapons') }, icon('back', null, 22)), h('b', { cls: 'ot' }, 'Auswählen'), btn('Sammelfusion', () => { const r = act('mergeAll'); if (r.ok) toast(`${r.value} Verbindungen`); }, !anyMerge(), 'pri')),
+    list.length ? h('div', { cls: 'grid5' }, cap('f', list.map((w) => h('button', { cls: 'tile' + (sel && w.uid === sel.uid ? ' eq' : ''), style: `background:${rarCol(w)};${gear.mergePreview(g, w.uid).ok ? '' : 'filter:brightness(.6)'}`, on: () => { tab.fuse = w.uid; render(); } }, wIcon(w, 40), h('span', { cls: 'lvt ot' }, `Lv.${w.level}`),
+      ws.slots.includes(w.uid) ? h('span', { cls: 'cnt ot' }, 'E') : null)), 40)) : h('p', { cls: 'center' }, 'Keine Waffen zum Verbinden.')];
 };
 P.traits = () => {
   const g = game.g, s = game.state, c = game.c, pr = s.traits.presets[s.traits.active], rc = gear.traitRollCost(g);
@@ -418,7 +472,7 @@ P.settings = () => {
 };
 
 const TITLES = { quests: 'Quests', hero: 'Upgrades', weapons: 'Ausrüstung', base: 'Basis', shop: 'Shop', heroes: 'Helden', traits: 'Traits', runes: 'Runen', modes: 'Herausforderungen', events: 'Events', map: 'Karte', settings: 'Mehr',
-  inv: 'Inventar', smithy: 'Schmiede', menu: 'Menü' };
+  inv: 'Inventar', smithy: 'Schmiede', menu: 'Menü', fusion: 'Waffen verbessern' };
 const BAR = [['hero', 'up', ['abilities']], ['weapons', 'sword', ['weaponVault']], ['craft', 'anvil', ['craft']], ['modes', 'tower', ['tower', 'raid', 'tomb', 'pvp', 'invasion']], ['shop', 'shop', ['shop']]];
 export function open(id) { cur = id; render(); }
 export function close() { cur = null; $('panel').hidden = true; drawNav(); }
@@ -432,14 +486,17 @@ export function render() {
 }
 function drawNav() {
   const g = game.g, tier = gear.smithyTier(g), cost = tier ? game.c.cfg.craftCost[tier - 1] : 0;
-  const key = BAR.map(([, , f]) => (f.some(has) ? 1 : 0)).join('') + cur + tier + (econ.bal(g, 'gold') >= cost);
+  const n = notices(), key = BAR.map(([, , f]) => (f.some(has) ? 1 : 0)).join('') + cur + tier + (econ.bal(g, 'gold') >= cost) + [n.merge, n.better, n.modes, n.shop].join();
   if (drawNav.key === key) return;
   drawNav.key = key;
   $('nav').replaceChildren(...BAR.map(([id, ic, f]) => {
     const ok = f.some(has), locked = () => toast('Noch nicht freigeschaltet – folge den Quests.');
     if (id === 'craft') return h('button', { cls: 'nb craft' + (ok ? '' : ' locked'), 'aria-label': 'Schmieden', on: () => (!ok ? locked() : !tier ? toast('Baue zuerst die Smithy in der Basis.') : reward('Geschmiedet', act('craft', 1))) },
       tier ? h('span', { cls: 'tier ot' }, tier) : null, icon(ic, null, 44), h('span', { cls: 'info ot' }, 'x1', h('small', { cls: econ.bal(g, 'gold') >= cost ? '' : 'cost miss' }, tier ? [itemIcon('gold', 13), fmt(cost)] : '—')));
-    return h('button', { cls: 'nb' + (cur === id ? ' on' : '') + (ok ? '' : ' locked'), 'aria-label': TITLES[id], on: () => (!ok ? locked() : cur === id ? close() : open(id)) }, icon(ic, null, 42));
+    const mark = ok && ((id === 'modes' && n.modes) || (id === 'shop' && n.shop));
+    return h('button', { cls: 'nb' + (cur === id ? ' on' : '') + (ok ? '' : ' locked') + (mark ? ' badge' : ''), 'aria-label': TITLES[id], on: () => (!ok ? locked() : cur === id ? close() : open(id)) }, icon(ic, null, 42),
+      id === 'weapons' && ok && n.better ? h('span', { cls: 'thumb' }, icon('thumb', null, 14)) : null,
+      id === 'weapons' && ok && n.merge ? h('span', { cls: 'bubble ot', on: (e) => { e.stopPropagation(); open('fusion'); } }, 'Verbinden') : null);
   }));
 }
 
@@ -450,7 +507,9 @@ function notices() {
   if (now - notes.t < 1000) return notes;
   const g = game.g, s = game.state, ready = eventGroups().filter((x) => x[2]).map((x) => x[0]);
   // Jedes "!" führt genau dorthin, wo etwas abzuholen ist: Missionen-Knopf -> Missionen, Stern-Knopf -> erste andere Gruppe mit Belohnung
-  notes = { t: now, missions: ready.includes('missions'), passTab: ready.find((x) => x !== 'missions') || null, chest: s.keyhouse.slots.some((x) => x.chest && g.now() >= x.chest.readyAt) };
+  notes = { t: now, missions: ready.includes('missions'), passTab: ready.find((x) => x !== 'missions') || null, chest: s.keyhouse.slots.some((x) => x.chest && g.now() >= x.chest.readyAt),
+    merge: has('weaponVault') && anyMerge(), better: has('weaponVault') && betterWeapon(), modes: ['tower', 'raid', 'tomb'].some((m) => has(m) && econ.bal(g, 'ticket_' + m) > 0),
+    shop: has('shop') && game.c.t.shop.some((x) => x.gemClaim && meta.skuInfo(g, x.id).left > 0) };
   return notes;
 }
 export function hud() {
