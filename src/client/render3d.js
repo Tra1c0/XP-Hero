@@ -5,7 +5,7 @@ import { SHAPES, BIOMES, WATER, SCATTER, expand, hex } from './assets3d.js';
 const TREE = { a1_1: 'tree_round', a1_2: 'palm', a1_4: 'pine_snow' }; // fällbare Bäume je Gebiet
 import { FLOOR, WALL, WATER as K_WATER, LAVA, walkIdx, findPath } from '../core/worldgrid.js';
 import { npcStatus, currentQuests } from '../core/meta.js';
-import { enemyParts, enemyTop, npcParts, heroBody, WEAPON_PARTS } from './enemy3d.js';
+import { enemyParts, enemyTop, npcParts, heroBody, buildWeaponParts } from './enemy3d.js';
 
 const VIEW_W = 11.5, TILT = (45 * Math.PI) / 180; // an der Vorlage vermessen: Figur ca. 1/13 der Bildbreite, Kreise auf dem Boden ca. 0,7-fach gestaucht; // sichtbare Breite in Metern (Hochformat), Neigung
 const INST = 13; // pos3, rot, scl3, rgba(em), Neigung (vor/zurück, seitlich)
@@ -339,18 +339,24 @@ export class Renderer3D {
     // Waffen: Hauptwaffe in der Hand mit Schwungbogen, Nebenwaffen schweben im Kreis um die Figur und stoßen beim Angriff zum Ziel (eigene Darstellung, Zeit aus der Simulation)
     {
       const tm = w.t + a / 30, load = w.loadout(), subs = load.filter((l) => l.slot > 0), wf = w.p.wfire || {}, ws = [];
-      const model = (cls, x, y, z, yaw, k = 1) => { // Teile entlang der lokalen Vorwärtsachse (z), nur um die Hochachse drehbar
+      if (this.weaponContent !== game.c) {
+        this.weaponModels = buildWeaponParts(game.c.t.rarities);
+        this.weaponContent = game.c;
+      }
+      const modelle = this.weaponModels, { slots, list } = game.state.weapons;
+      const model = (id, cls, x, y, z, yaw, k = 1) => { // Teile entlang der lokalen Vorwärtsachse (z), nur um die Hochachse drehbar
         const cy = Math.cos(yaw), sy = Math.sin(yaw), q = (shape, f, r, yy, sx, sy2, sz, c3, em = 0) => ws.push([shape, x + (r * cy + f * sy) * k, y + yy * k, z + (-r * sy + f * cy) * k, yaw, sx * k, sy2 * k, sz * k, c3, em]);
-        for (const t of WEAPON_PARTS[cls] || WEAPON_PARTS.fist) q(...t);
+        for (const t of modelle[id] || modelle[cls] || modelle.fist) q(...t);
       };
       const ease = (u) => Math.sin(Math.min(1, Math.max(0, u)) * Math.PI);
       for (const l of load) {
+        const uid = slots[l.slot], id = uid != null ? list.find((waffe) => waffe.uid === uid)?.def : undefined;
         const fr = wf[l.slot], dt2 = fr ? tm - fr.t : 9, dur = Math.min(0.28, Math.max(0.14, l.interval * 0.6)), u = dt2 >= 0 && dt2 < dur ? dt2 / dur : -1;
         // Waffen-Fertigkeit: die Waffe wächst, wirbelt einmal ganz herum und fliegt zum Ziel
         const sk = (w.p.wsk || {})[l.slot], us = sk && tm - sk.t >= 0 && tm - sk.t < 0.45 ? (tm - sk.t) / 0.45 : -1;
         if (us >= 0) {
           const e3 = ease(us), sx2 = X(sk.x) - px, sz2 = Z(sk.y) - pz, dl = Math.hypot(sx2, sz2) || 1, reach2 = Math.min(dl, 3.2) * e3;
-          model(l.cls.id, px + (sx2 / dl) * reach2, 0.9 + e3 * 0.6, pz + (sz2 / dl) * reach2, sk.a + us * 12.566, 1 + e3 * 0.9);
+          model(id, l.cls.id, px + (sx2 / dl) * reach2, 0.9 + e3 * 0.6, pz + (sz2 / dl) * reach2, sk.a + us * 12.566, 1 + e3 * 0.9);
           fx.push(['disc', X(sk.x), 0.07, Z(sk.y), 0, 1 + us * 4.5, 1, 1 + us * 4.5, '#ffd24a', 1]);
           if (l.slot === 0) this.face = sk.a;
           continue;
@@ -359,13 +365,13 @@ export class Renderer3D {
           // Hauptwaffe: Nahkampf schwingt in einem Bogen von rechts nach links durch die Zielrichtung, Fernwaffen zucken zurück
           if (u >= 0) this.face = fr.a;
           const base = this.face, sw = u >= 0 && l.cls.melee ? (0.5 - u) * 2.6 : 0.9, rec = u >= 0 && !l.cls.melee ? -0.18 * ease(u) : 0, yaw = base + sw;
-          model(l.cls.id, px + Math.sin(yaw) * (0.45 + rec), 0.62, pz + Math.cos(yaw) * (0.45 + rec), yaw, 1);
+          model(id, l.cls.id, px + Math.sin(yaw) * (0.45 + rec), 0.62, pz + Math.cos(yaw) * (0.45 + rec), yaw, 1);
           if (u >= 0 && l.cls.melee) for (let k2 = 0; k2 < 5; k2++) { const ya = base + (0.5 - (u - k2 * 0.05)) * 2.6; if (u - k2 * 0.05 > 0) fx.push(['disc', px + Math.sin(ya) * 1.35, 0.5, pz + Math.cos(ya) * 1.35, 0, 0.5 - k2 * 0.08, 1, 0.5 - k2 * 0.08, '#ffffff', 1]); }
         } else {
           const n = subs.length, k2 = subs.indexOf(l), oa = tm * 1.1 + (k2 / n) * 6.283, bob = Math.sin(tm * 2.6 + k2 * 1.7) * 0.1;
           let ox = Math.sin(oa) * 1.25, oz = Math.cos(oa) * 1.25, yaw = oa + 1.571;
           if (u >= 0) { const e2 = ease(u), reach = Math.min(2.4, l.cls.melee ? 1.9 : 0.5); ox = ox * (1 - e2) + Math.sin(fr.a) * reach * e2; oz = oz * (1 - e2) + Math.cos(fr.a) * reach * e2; yaw = l.cls.melee ? fr.a + (0.5 - u) * 5 : fr.a; }
-          model(l.cls.id, px + ox, 1.05 + bob, pz + oz, yaw, 0.85);
+          model(id, l.cls.id, px + ox, 1.05 + bob, pz + oz, yaw, 0.85);
           shadows.push(['disc', px + ox, 0.02, pz + oz, 0, 0.5, 1, 0.5, '#000000', 0]);
         }
       }
