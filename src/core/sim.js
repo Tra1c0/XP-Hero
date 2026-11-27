@@ -151,7 +151,7 @@ export class World {
       if (!w) return;
       const d = g.c.get('weapons', w.def), cls = g.c.get('weaponClasses', d.cls), sub = slot > 0;
       out.push({ slot, cls, sub, dmg: (st.atk + weaponDmg(g, w)) * cls.basicMult * (sub ? cb.subDmgMult : 1),
-        interval: (cls.interval * (sub ? cb.subIntervalMult : 1)) / (1 + st.atkSpeedPct / 100), range: cls.range, skill: d.skill ? g.c.get('skills', d.skill) : null });
+        interval: (cls.interval * (sub ? cb.subIntervalMult : 1)) / (1 + st.atkSpeedPct / 100), range: cls.range, skill: d.skill ? g.c.get('skills', d.skill) : null, wskill: d.wskill || null });
     });
     if (!out.length) out.push({ slot: 0, cls: { id: 'fist', melee: true, range: 50, targets: 1, aoe: 0, proj: 0 }, sub: false, dmg: st.atk, interval: 0.8 / (1 + st.atkSpeedPct / 100), range: 50, skill: null });
     const h = g.c.get('heroes', st.heroId);
@@ -332,7 +332,18 @@ export class World {
         p.wcd[l.slot] -= dt;
         if (p.wcd[l.slot] <= 0) {
           let tgt = l.slot === 0 && p.cur && p.cur.alive && dist2(p.x, p.y, p.cur.x, p.cur.y) <= (l.range + p.cur.r) ** 2 ? p.cur : this.nearest(p.x, p.y, l.range);
-          if (tgt) { if (l.slot === 0) p.cur = tgt; this.fire(l, tgt); p.wcd[l.slot] = l.interval; } else p.wcd[l.slot] = 0;
+          if (tgt) {
+            if (l.slot === 0) p.cur = tgt;
+            this.fire(l, tgt); p.wcd[l.slot] = l.interval;
+            // Waffen-Fertigkeit: nach jedem n-ten Angriff dieser Waffe ein Zusatzschlag mit dem Gesamtfaktor der Waffe, flächig am Ziel
+            if (l.wskill && ((p.wn ||= {})[l.slot] = (p.wn[l.slot] || 0) + 1) >= cfg.combat.weaponSkillEvery) {
+              p.wn[l.slot] = 0;
+              const tx = tgt.x, ty = tgt.y, R = cfg.combat.weaponSkillRadius;
+              this.query(tx, ty, R, (e) => this.hit(e, l.dmg * l.wskill.mult, l.cls.melee ? 'melee' : 'ranged', true));
+              this.fx.push({ x: tx, y: ty, r: R, t: 0.3, k: 1 });
+              (p.wsk ||= {})[l.slot] = { t: this.t, a: Math.atan2(tx - p.x, ty - p.y), x: tx, y: ty };
+            }
+          } else p.wcd[l.slot] = 0;
         }
         if (l.skill) this.trySkill(l.skill, 'w' + l.slot, l.dmg, dt);
       }

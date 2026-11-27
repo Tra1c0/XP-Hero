@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 1bpv9ejmwi8).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint t30lcybqne).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -31,7 +31,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | rarities | 9 | E | E:9 | Seltenheitsnamen D; Multiplikatoren/Maxlevel eigen. |
 | weaponClasses | 6 | R | R:6 | 6 Klassen und S-Skill-Namen D; Reichweite/Takt/Passiva eigen. |
 | skills | 10 | E | E:10 | Skillnamen der S-Reihen D; Parameter eigen. |
-| weapons | 84 | R | R:84 | 84 Varianten, 12 Reihen (D). Stats nach DPS-Rechner-Struktur (DPS Add + PerLevel*Level)*RarityMult; Zahlen, Merge-Anzahl, Evo-Kosten eigen. Transzendenz offen. |
+| weapons | 84 | R | R:84 | 84 Varianten, 12 Reihen, Namen und Waffen-Fertigkeiten ab Epic mit Gesamtfaktor (D). Auslösung der Fertigkeit nach jedem n-ten Angriff (combat.weaponSkillEvery) ist eigen, die Quellen nennen keinen Auslöser. Stats nach DPS-Rechner-Struktur (DPS Add + PerLevel*Level)*RarityMult; Zahlen, Merge-Anzahl, Evo-Kosten eigen. Transzendenz offen. |
 | smithy | 8 | D | D:8 | Kosten = Upgrade zur nächsten Stufe (R). Sichtbare Raten summieren sich ab Stufe 2 auf 60 %; der Rest (otherW) ist NICHT normiert, sondern ein eigener, gekennzeichneter Sonstiges-Ausgang (E). |
 | heroes | 26 | R | E:21 B:1 D:4 | 26 Helden, 8 Seltenheitsstufen, Waffenklasse je Platz nach Heldenübersicht der Vorlage (B). Freyja/The Skull/Hana/Vlad: Exotic ohne Evolutionszeilen (D). Namen, Werte und Figuren-Designs eigen. |
 | heroLevelCosts | 5 | R | R:5 | Stützstufen 1 und 10..130 je Tiergruppe (D-Struktur); Evolution-Coin-Werte eigen. |
@@ -77,7 +77,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | dailyTickets | E | `{"ticket_tower":5,"ticket_raid":2,"ticket_tomb":3}` | Tägliche Grundtickets (Auffüllen bis zu diesem Wert). |
 | player | E | `{"baseCargo":20,"moveSpeed":230,"critChance":5,"critDmg":150,"pickupRadius":90,"regenPct":1,"radius":16}` | Grundwerte Spieler. |
 | statCaps | E | `{"critChance":100,"cooldownPct":70,"atkSpeedPct":400,"moveSpeedPct":150,"lifesteal":50,"multiHit":100,"trip…` | Obergrenzen; Kritchance <= 100. |
-| combat | R | `{"subIntervalMult":2.2,"subDmgMult":0.6,"dropDespawnSec":90,"respawnOfflineContinues":true,"defaultRespawnS…` | Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt. |
+| combat | R | `{"weaponSkillEvery":6,"weaponSkillRadius":110,"subIntervalMult":2.2,"subDmgMult":0.6,"dropDespawnSec":90,"r…` | Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt. |
 | weaponLevelCost | E | `{"scrollPer5":1,"goldBase":50}` | Scrolls = ceil(L/5)*(1+r); Gold = goldBase*L*(1+r)^2. |
 | craftCost | B | `[5,5,5,5,5,5,5,5]` | Schmieden kostet auf jeder Schmiedestufe 5 Kristalle (Vorlage). |
 | weaponSlots | ? | `[{"slot":1},{"slot":2,"quest":true},{"slot":3,"level":20,"cost":{"gold":20000}},{"slot":4,"level":40,"cost"…` | Slot 2 per Quest (D); Slots 3-6 eigene Kosten. |

@@ -7,6 +7,7 @@ import { WORLD, BUILDINGS as W1_BUILDINGS, BASE as W1_BASE, REF as W1, zoneOf as
 import { inPoly } from '../worldgrid.js';
 import { BESTIARY } from './bestiary_ref.js';
 import { ABILITY_REF } from './progression_ref.js';
+import { WEAPON_REF } from './weapon_ref.js';
 import { NPC_REF } from './npc_ref.js';
 
 export const SCHEMA = 1;
@@ -53,7 +54,7 @@ export function buildBaseContent(opt = {}) {
   C('dailyTickets', { ticket_tower: 5, ticket_invasion: 5, ticket_raid: 2, ticket_tomb: 3, ticket_pvp: 5 }, 'E', 'Tägliche Grundtickets (Auffüllen bis zu diesem Wert).');
   C('player', { baseCargo: 20, moveSpeed: 230, critChance: 5, critDmg: 150, pickupRadius: 90, regenPct: 1, radius: 16 }, 'E', 'Grundwerte Spieler.');
   C('statCaps', { critChance: 100, cooldownPct: 70, atkSpeedPct: 400, moveSpeedPct: 150, lifesteal: 50, multiHit: 100, tripleHit: 100 }, 'E', 'Obergrenzen; Kritchance <= 100.');
-  C('combat', { subIntervalMult: 2.2, subDmgMult: 0.6, dropDespawnSec: 90, respawnOfflineContinues: true, defaultRespawnSec: 30, bossRespawnSec: 3600, tick: 1 / 30 }, 'R',
+  C('combat', { weaponSkillEvery: 6, weaponSkillRadius: 110, subIntervalMult: 2.2, subDmgMult: 0.6, dropDespawnSec: 90, respawnOfflineContinues: true, defaultRespawnSec: 30, bossRespawnSec: 3600, tick: 1 / 30 }, 'R',
     'Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt.');
   C('weaponLevelCost', { scrollPer5: 1, goldBase: 50 }, 'E', 'Scrolls = ceil(L/5)*(1+r); Gold = goldBase*L*(1+r)^2.');
   C('craftCost', [5, 5, 5, 5, 5, 5, 5, 5], 'B', 'Schmieden kostet auf jeder Schmiedestufe 5 Kristalle (Vorlage).');
@@ -362,12 +363,15 @@ export function buildBaseContent(opt = {}) {
   const weapons = [];
   for (const [cls, cname] of CLS) for (const series of ['n', 's']) {
     const from = series === 'n' ? 0 : 3, to = series === 'n' ? 7 : 8;
-    for (let r = from; r <= to; r++) weapons.push({ id: `w_${cls}_${series}_${r}`, cls, series, rarity: r, name: `${cname}${series === 's' ? ' S' : ''} (${RARITIES[r]})`,
+    // Namen, Angriffe je Sekunde und Fertigkeit (Name + Gesamtfaktor, erst ab Epic) aus den Referenzdaten (D). Die S-Reihe behält ihre eigene Fertigkeit mit Abklingzeit.
+    const refOf = (r) => ((WEAPON_REF[cls] || {})[series] || []).find((x) => x[1] === r);
+    for (let r = from; r <= to; r++) weapons.push({ id: `w_${cls}_${series}_${r}`, cls, series, rarity: r, name: refOf(r) ? `${refOf(r)[0]}${series === 's' ? ` (${RARITIES[r]})` : ''}` : `${cname}${series === 's' ? ' S' : ''} (${RARITIES[r]})`,
+      aps: refOf(r) ? refOf(r)[2] : null, wskill: series === 'n' && refOf(r) && refOf(r)[3] ? { name: refOf(r)[3].replace(/([a-z])([A-Z])/g, '$1 $2'), mult: refOf(r)[4] } : null,
       dpsAdd: Math.round(4 * (1 + r) ** 2 * (series === 's' ? 1.5 : 1)), perLevel: Math.round(2 * (1 + r) ** 1.6 * (series === 's' ? 1.5 : 1)),
       next: r < to ? `w_${cls}_${series}_${r + 1}` : null, mergeCount: 3, evoCost: r >= 3 ? { weapon_scroll: 10 * (r - 2), gold: 5000 * 4 ** (r - 3) } : {},
       skill: series === 's' ? CLS.find((c) => c[0] === cls)[6] : null });
   }
-  T('weapons', 'R', '84 Varianten, 12 Reihen (D). Stats nach DPS-Rechner-Struktur (DPS Add + PerLevel*Level)*RarityMult; Zahlen, Merge-Anzahl, Evo-Kosten eigen. Transzendenz offen.', weapons);
+  T('weapons', 'R', '84 Varianten, 12 Reihen, Namen und Waffen-Fertigkeiten ab Epic mit Gesamtfaktor (D). Auslösung der Fertigkeit nach jedem n-ten Angriff (combat.weaponSkillEvery) ist eigen, die Quellen nennen keinen Auslöser. Stats nach DPS-Rechner-Struktur (DPS Add + PerLevel*Level)*RarityMult; Zahlen, Merge-Anzahl, Evo-Kosten eigen. Transzendenz offen.', weapons);
   const SM = [[20, [[0, 100]], 0], [1300, [[0, 49], [1, 10], [2, 1]]], [20100, [[0, 44.75], [1, 12], [2, 3], [3, 0.25]], { orb_red: 10 }],
     [34500, [[0, 41.5], [1, 14], [2, 4], [3, 0.5]], { orb_red: 20 }], [134300, [[0, 39.25], [1, 15], [2, 5], [3, 0.75]], { orb_pink: 10 }],
     [288900, [[0, 37], [1, 16], [2, 6], [3, 1]], { orb_pink: 20, orb_red: 40 }], [765000, [[0, 33.5], [1, 18], [2, 7], [3, 1.5]], { orb_pink: 30, orb_red: 60 }],

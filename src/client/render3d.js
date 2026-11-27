@@ -307,6 +307,15 @@ export class Renderer3D {
       const ease = (u) => Math.sin(Math.min(1, Math.max(0, u)) * Math.PI);
       for (const l of load) {
         const fr = wf[l.slot], dt2 = fr ? tm - fr.t : 9, dur = Math.min(0.28, Math.max(0.14, l.interval * 0.6)), u = dt2 >= 0 && dt2 < dur ? dt2 / dur : -1;
+        // Waffen-Fertigkeit: die Waffe wächst, wirbelt einmal ganz herum und fliegt zum Ziel
+        const sk = (w.p.wsk || {})[l.slot], us = sk && tm - sk.t >= 0 && tm - sk.t < 0.45 ? (tm - sk.t) / 0.45 : -1;
+        if (us >= 0) {
+          const e3 = ease(us), sx2 = X(sk.x) - px, sz2 = Z(sk.y) - pz, dl = Math.hypot(sx2, sz2) || 1, reach2 = Math.min(dl, 3.2) * e3;
+          model(l.cls.id, px + (sx2 / dl) * reach2, 0.9 + e3 * 0.6, pz + (sz2 / dl) * reach2, sk.a + us * 12.566, 1 + e3 * 0.9);
+          fx.push(['disc', X(sk.x), 0.07, Z(sk.y), 0, 1 + us * 4.5, 1, 1 + us * 4.5, '#ffd24a', 1]);
+          if (l.slot === 0) this.face = sk.a;
+          continue;
+        }
         if (l.slot === 0) {
           // Hauptwaffe: Nahkampf schwingt in einem Bogen von rechts nach links durch die Zielrichtung, Fernwaffen zucken zurück
           if (u >= 0) this.face = fr.a;

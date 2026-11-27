@@ -431,3 +431,17 @@ test('T19 Simulation unabhängig von der Render-FPS (30/60/120)', () => {
   const a = run(30);
   assert.equal(run(60), a); assert.equal(run(120), a);
 });
+
+test('Waffen-Fertigkeit: Namen und Faktoren aus den Referenzdaten, erst ab Epic, Auslösung nach jedem n-ten Angriff', () => {
+  const { game, clock, s, unlock } = mk();
+  const W = (id) => game.c.get('weapons', id);
+  assert.equal(W('w_dagger_n_0').name, 'Crude Dagger'); assert.equal(W('w_dagger_n_2').wskill, null, 'Normal bis Rare ohne Fertigkeit');
+  assert.deepEqual(W('w_dagger_n_3').wskill, { name: 'Spinner', mult: 1.7 }); assert.deepEqual(W('w_staff_n_7').wskill, { name: 'Electric Field', mult: 4.6 });
+  assert.equal(W('w_sword_s_4').wskill, null, 'S-Reihe behält ihre eigene Fertigkeit');
+  unlock('weaponVault'); game.cmd('grantExternal', 't', [{ weapon: 'w_sword_n_3' }]); game.cmd('equipWeapon', s().weapons.list[0].uid, 0);
+  const w = game.world, e = w.enemies.find((x) => x.alive && x.v.rank === 'normal');
+  Object.assign(e, { hp: 1e9, maxHp: 1e9 }); w.p.x = e.x - 30; w.p.y = e.y; w.p.hp = 1e9; game.g.stats.hp = 1e9;
+  let n = 0, last = -1;
+  for (let k = 0; k < 30 * 12; k++) { game.tick(1 / 30); clock.t += 1000 / 30; const sk = (w.p.wsk || {})[0]; if (sk && sk.t !== last) { last = sk.t; n++; } e.x = w.p.x + 30; e.y = w.p.y; e.hp = 1e9; }
+  assert.ok(n >= 2, `Fertigkeit löst wiederholt aus (${n})`);
+});
