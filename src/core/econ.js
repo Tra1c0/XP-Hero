@@ -42,12 +42,23 @@ export function pay(g, cost, source, ref = '', times = 1) {
 
 // ---- Rewards -------------------------------------------------------------
 // Löst eine Reward-Spezifikation in konkrete Einträge auf (RNG nur hier), ohne zu buchen.
+// Gold eines normalen Gegners im weitesten offenen Gebiet: Maß für Goldmengen, die mit dem Fortschritt mitwachsen (Tauschangebote, Pakete).
+export function stageGold(g) {
+  let best = 1;
+  for (const a of g.c.t.areas) {
+    if (!(a.prev === 'base' || g.state.world.cleared[a.prev])) continue;
+    for (const sg of g.c.t.spawnGroups) if (sg.area === a.id) { const v = g.c.by.variants.get(sg.v); if (v && v.rank === 'normal' && v.gold > best) best = v.gold; }
+  }
+  return best;
+}
 export function resolve(g, spec, stream = 'loot', mult = 1) {
   const out = [];
   for (const e of spec || []) {
     if (e.item !== undefined) {
       const n = e.n !== undefined ? e.n : rndInt(g.state.rng, stream, e.min, e.max);
       out.push({ item: e.item, n: n * mult });
+    } else if (e.goldKills !== undefined) {
+      out.push({ item: 'gold', n: Math.round(e.goldKills * stageGold(g)) * mult });
     } else if (e.alias !== undefined) {
       const it = g.c.cfg.orbAlias[e.alias];
       if (it) out.push({ item: it, n: rndInt(g.state.rng, stream, e.min, e.max) * mult });

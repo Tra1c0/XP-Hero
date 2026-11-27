@@ -60,7 +60,7 @@ const FEAT = { abilities: 'Ability-Upgrades', shop: 'Shop', weaponVault: 'Waffen
   carnival: 'Carnival', liveEvent: 'Live-Events', heroShop: 'Helden-Beschwörung', heroes: 'Helden', invasion: 'Invasion', pvp: 'PvP', portal: 'Portal', sTierChest: 'S-Tier-Truhe', heroEvolution: 'Helden-Evolution', heroCollection: 'Helden-Sammlung', traits: 'Traits',
   soul: 'Soul Imprint', raid: 'Boss Raid', tomb: 'Tomb of Heroes', runes: 'Runen', special: 'Special-Upgrades', extra: 'Extra-Upgrades', blessing: 'Blessings', spin: 'Lucky Spin', randomReward: 'Bonusbelohnung', keyhouse: 'Key House' };
 const sn = (k) => t(STAT[k] || k), fn = (k) => t(FEAT[k] || k);
-const tabs = (key, list) => { if (!list.some((x) => x[0] === tab[key])) tab[key] = list[0][0]; return h('div', { cls: 'tabs' }, list.map(([id, label, badge]) => h('button', { cls: 'tab' + (tab[key] === id ? ' on' : '') + (badge ? ' badge' : ''), on: () => { tab[key] = id; render(); } }, t(label)))); };
+const tabs = (key, list) => { if (!list.some((x) => x[0] === tab[key])) tab[key] = list[0][0]; const el = h('div', { cls: 'tabs' }, list.map(([id, label, badge]) => h('button', { cls: 'tab' + (tab[key] === id ? ' on' : '') + (badge ? ' badge' : ''), on: () => { tab[key] = id; render(); } }, t(label))));; requestAnimationFrame(() => { const on = el.querySelector('.on'); if (on) el.scrollLeft = Math.max(0, on.offsetLeft - (el.clientWidth - on.offsetWidth) / 2); }); return el; };
 const cap = (key, list, n = 40) => { const lim = more[key] || n; return [...list.slice(0, lim), list.length > lim ? btn(`mehr anzeigen (${list.length - lim})`, () => { more[key] = lim + n * 2; render(); }) : null]; };
 
 // Zielführung: Figur läuft per Pfadsuche zum Questziel (manuelle Eingabe bricht ab).
@@ -247,36 +247,108 @@ P.base = () => {
   const cargo = Object.entries(s.cargo).map(([i, n]) => `${n} ${itemName(i)}`).join(', ') || 'leer';
   return [sec('Gebäude', b), sec('Key House', kh), sec('Cargo', row(`${home.cargoUsed(g)} / ${game.stats.cargo}`, cargo, btn('Abgeben', () => reward('Abgegeben', act('deliver')), s.world.area !== 'base')))];
 };
-function boxRows() {
-  const g = game.g;
-  return game.c.t.gachaBoxes.filter((b) => !b.unlock || econ.check(g, b.unlock)).map((b) => {
-    const st = gear.boxState(g, b.id), rate = game.c.get('rateGroups', b.rate), sum = rate.rows.reduce((a, r) => a + r.w, 0), ms = gear.milestoneAt(b, st.ms);
-    return h('div', { cls: 'card' }, h('div', { cls: 'ti' }, b.name), h('div', { cls: 'sub' }, `Kosten: ${b.costs.map(fmtCost).join(' oder ')} · ${b.per > 1 ? b.per + ' Stück je Öffnung · ' : ''}Raten: ${rate.rows.map((r) => ((100 * r.w) / sum).toFixed(1) + '%').join(' / ')}`
-      + (b.pity ? ` · Pity ${st.pity}/${b.pity.n}` : '') + (ms ? ` · Meilenstein bei ${ms} (${st.opens})` : '')),
-    h('div', { cls: 'btns' }, b.multi.map((n) => btn(`x${n}`, () => { const co = gear.boxCost(g, b.id, n); confirmBig(co ? Object.fromEntries(Object.entries(co).map(([i, v]) => [i, v * n])) : {}, () => { const r = act('openBox', b.id, n); if (r.ok) modal(b.name, fmtReward(r.value)); }); }, !gear.boxCost(g, b.id, n)))));
+// ---------------------------------------------------------------- Shop (vier Reiter wie in der Vorlage; keine Echtgeldkäufe)
+const shd = (title) => h('div', { cls: 'shd ot' }, h('i', {}, '◆'), t(title), h('i', {}, '◆'));
+const rarName = (r) => (RAR_H[['normal', 'fine', 'rare', 'epic', 'legendary', 'ancient', 'mythic', 'exotic'][r]] || [game.c.get('rarities', r).name])[0];
+// Belohnungskachel: Symbol und Menge (Gold aus goldKills wird mit dem aktuellen Fortschritt berechnet)
+function rtile(e) {
+  const g = game.g, c = game.c;
+  if (e.goldKills !== undefined) return h('span', { cls: 'rt' }, itemIcon('gold', 30), h('b', { cls: 'ot' }, 'x' + fmt(Math.round(e.goldKills * econ.stageGold(g)))));
+  if (e.weaponPool) return h('span', { cls: 'rt', style: `background:${c.get('rarities', e.weaponPool.rarity).color}` }, icon('sword', null, 30), h('b', { cls: 'ot' }, rarName(e.weaponPool.rarity)));
+  if (e.weapon) { const d = c.get('weapons', e.weapon); return h('span', { cls: 'rt', style: `background:${c.get('rarities', d.rarity).color}` }, icon(d.cls, null, 30), h('b', { cls: 'ot' }, 'Lv.1')); }
+  if (e.heroPieces) return h('span', { cls: 'rt' }, icon('helmet', null, 30), h('b', { cls: 'ot' }, 'x' + e.heroPieces.n));
+  if (e.flag) return h('span', { cls: 'rt' }, icon('star', null, 30), h('b', { cls: 'ot' }, 'Perk'));
+  if (e.item) return h('span', { cls: 'rt', title: itemName(e.item) }, itemIcon(e.item, 30), h('b', { cls: 'ot' }, 'x' + fmt(e.n ?? e.min)));
+  return h('span', { cls: 'rt' }, icon('gift', null, 30));
+}
+const priceEl = (price) => (Object.keys(price).length ? Object.entries(price).map(([i, n]) => h('span', { cls: 'pr' + (econ.bal(game.g, i) >= n ? '' : ' miss') }, itemIcon(i, 20), fmt(n))) : t('Gratis'));
+const buySku = (sku) => confirmBig(sku.price, () => { const r = act('buy', sku.id, 1); if (r.ok) reveal(sku.name, r.value); });
+// Aufdeck-Bild nach Truhen und Paketen: ein Fund groß, mehrere als Raster; "Erneut öffnen" wiederholt denselben Kauf.
+function reveal(title, list, again) {
+  const c = game.c, m = h('div', { cls: 'reveal' }), agg = [];
+  for (const e of list || []) { const k = e.item && agg.find((x) => x.item === e.item); if (k) k.n += e.n; else agg.push({ ...e }); }
+  const nameOf = (e) => (e.weapon ? c.get('weapons', e.weapon).name.replace(/\s*\(.*\)$/, '') : e.rune ? c.get('runes', e.rune).name : e.item ? itemName(e.item) : title);
+  const tagOf = (e) => (e.weapon ? rarName(c.get('weapons', e.weapon).rarity) : e.item ? 'x' + fmt(e.n) : '');
+  const one = agg.length === 1 ? agg[0] : null;
+  m.append(h('div', { cls: 'rv' }, h('div', { cls: 'rvn ot' }, one ? nameOf(one) : t(title)), one ? h('div', { cls: 'rvtag' }, tagOf(one)) : null,
+    h('div', { cls: 'rvglow' + (one ? '' : ' many') }, agg.map((e) => h('div', { cls: 'rvi' }, rtile(e), one ? null : h('small', {}, nameOf(e))))),
+    again ? h('button', { cls: 'b go rvagain', on: (ev) => { ev.stopPropagation(); m.remove(); again.run(); } }, h('span', {}, t('Erneut öffnen')), h('b', { cls: 'ot' }, again.label)) : null,
+    h('div', { cls: 'rvhint' }, t('Tippen zum Fortfahren'))));
+  m.addEventListener('click', () => m.remove());
+  document.body.append(m);
+}
+function openBoxUi(b, n) {
+  const g = game.g, co = gear.boxCost(g, b.id, n);
+  if (!co) return toast('Dafür fehlen Schlüssel oder Gems.');
+  confirmBig(Object.fromEntries(Object.entries(co).map(([i, v]) => [i, v * n])), () => {
+    const r = act('openBox', b.id, n), nx = gear.boxCost(g, b.id, n);
+    if (r.ok) reveal(b.name, r.value, nx ? { label: Object.entries(nx).map(([i, v]) => `${fmt(v * n)} ${itemName(i)}`).join(' '), run: () => openBoxUi(b, n) } : null);
   });
 }
+function packCard(sku) {
+  const g = game.g, i = meta.skuInfo(g, sku.id), lim = sku.limit, left = Math.max(0, i.left), sold = Number.isFinite(i.left) && left <= 0;
+  const tag = !lim ? null : sku.reset === 'daily' ? `Heutige Käufe ${left}/${lim}` : sku.reset === 'weekly' ? `Wöchentliche Käufe ${left}/${lim}` : sku.reset === 'monthly' ? `Monatliche Käufe ${left}/${lim}` : lim === 1 ? 'Einmalig' : `Verbleibende Käufe ${left}/${lim}`;
+  const lockTxt = sku.need || (sku.unlock && sku.unlock.cleared ? `${game.c.get('variants', game.c.get('areas', sku.unlock.cleared).boss).name} besiegen` : 'Noch gesperrt');
+  return h('div', { cls: `pack hue-${sku.hue || (sku.cat === 'perks' ? 'purple' : sku.cat === 'chapter_packs' ? 'red' : 'green')}` + (i.unlocked && !sold ? '' : ' off') },
+    h('div', { cls: 'pkart' }, sku.reward[0] ? rtile(sku.reward[0]).firstChild : icon('gift', null, 56)),
+    h('div', { cls: 'pkbody' }, h('div', { cls: 'pkn ot' }, sku.name), tag ? h('div', { cls: 'pktag' }, tag) : null, h('div', { cls: 'pkr' }, sku.reward.map(rtile)),
+      !i.unlocked ? h('div', { cls: 'pklock ot' }, icon('lock', '#fff', 18), lockTxt) : sold ? h('div', { cls: 'pklock ot' }, t('Abgeholt')) : h('button', { cls: 'b pkbuy ' + (i.affordable ? 'go' : ''), on: () => buySku(sku) }, priceEl(sku.price))));
+}
+function exTile(sku) {
+  const i = meta.skuInfo(game.g, sku.id), free = !Object.keys(sku.price).length, sold = Number.isFinite(i.left) && i.left <= 0, e = sku.reward[0];
+  if (!i.unlocked) return null;
+  return h('button', { cls: 'extile' + (sold ? ' off' : '') + (free && !sold ? ' badge' : ''), 'aria-label': sku.name, on: () => (sold ? toast('Heute schon abgeholt.') : buySku(sku)) },
+    h('b', { cls: 'ot' }, e.goldKills !== undefined ? fmt(Math.round(e.goldKills * econ.stageGold(game.g))) : e.item ? fmt(e.n) : sku.name), e.item || e.goldKills !== undefined ? itemIcon(e.item || 'gold', 40) : icon('star', null, 40),
+    h('span', { cls: 'exp ot' }, sold ? '✓' : priceEl(sku.price)));
+}
+function boxCards() {
+  const g = game.g;
+  return game.c.t.gachaBoxes.filter((b) => !b.unlock || econ.check(g, b.unlock)).map((b) => {
+    const st = gear.boxState(g, b.id), ms = gear.milestoneAt(b, st.ms), hero = /hero/.test(b.id), rune = /^rune/.test(b.id);
+    return h('div', { cls: 'pack box hue-' + (hero ? 'blue' : rune ? 'green' : 'purple') }, h('div', { cls: 'pkart' }, icon(hero ? 'helmet' : rune ? 'rune' : 'chest', null, 60)),
+      h('div', { cls: 'pkbody' }, h('div', { cls: 'pkn ot' }, b.name),
+        b.pity ? h('div', { cls: 'pktag' }, `Garantie in ${b.pity.n - st.pity} Öffnungen`) : null, ms ? h('div', { cls: 'pktag' }, `Bonus bei ${ms} Öffnungen (${st.opens})`) : null, b.per > 1 ? h('div', { cls: 'pktag' }, `${b.per} Stück je Öffnung`) : null,
+        h('div', { cls: 'pkopen' }, b.multi.map((n) => { const co = gear.boxCost(g, b.id, n) || b.costs[b.costs.length - 1], key = Object.keys(co)[0], ok = !!gear.boxCost(g, b.id, n);
+          return h('button', { cls: 'b ' + (n > 1 ? 'go' : 'pri') + (ok && /^key/.test(key) ? ' badge' : ''), on: () => openBoxUi(b, n) }, h('span', {}, `${n}x öffnen`), h('span', { cls: 'pr' + (ok ? '' : ' miss') }, itemIcon(key, 18), fmt(co[key] * n))); }))));
+  });
+}
+const SHOP_TABS = [['special', 'Spezial'], ['chests', 'Truhen'], ['recharge', 'Aufladen'], ['exchange', 'Tauschen']];
+function shopBadge(id) {
+  const g = game.g, c = game.c, free = (cats) => c.t.shop.some((x) => cats.includes(x.cat) && !Object.keys(x.price).length && (() => { const i = meta.skuInfo(g, x.id); return i.unlocked && i.left > 0; })());
+  if (id === 'special') return free(['packs', 'stage_packs', 'chapter_packs']);
+  if (id === 'chests') return c.t.gachaBoxes.some((b) => (!b.unlock || econ.check(g, b.unlock)) && b.costs.some((co) => /^key/.test(Object.keys(co)[0]) && econ.canAfford(g, co)));
+  if (id === 'recharge') return free(['daily_gems', 'tickets']);
+  return free(['exchange', 'materials']);
+}
 P.shop = () => {
-  const g = game.g, c = game.c;
-  const cats = [['chests', 'Truhen'], ['daily_gems', 'Gratis'], ['tickets', 'Tickets'], ['materials', 'Material'], ['stage_packs', 'Stage Packs'], ['chapter_packs', 'Chapter Packs'], ['merchant', 'Händler'], ['invasion', 'Invasion'], ['perks', 'Perks']]
-    .filter(([id]) => id === 'chests' || id === 'merchant' || c.t.shop.some((x) => x.cat === id)); // Reiter ohne Angebote (z. B. Invasion im Solo-Spiel) entfallen
-  const out = [h('p', { cls: 'sub' }, `Gold ${fmt(econ.bal(g, 'gold'))} · Gems ${fmt(econ.bal(g, 'gems'))} · Keys W/S/H ${econ.bal(g, 'key_warrior')}/${econ.bal(g, 'key_stier')}/${econ.bal(g, 'key_special_hero')}`), tabs('shop', cats)];
-  if (tab.shop === 'chests') out.push(...boxRows());
-  else if (tab.shop === 'merchant') for (const m of c.t.merchant) {
-    const { def, st, unlocked } = meta.merchant(g, m.id);
-    if (!unlocked) continue;
-    const free = def.freeRefreshCap && econ.capLeft(g, def.freeRefreshCap) > 0;
-    out.push(sec(def.name, st.offers.map((o) => { const d = def.pool.find((x) => x.id === o.id); return row(`${d.name} (${o.left}x)`, costEl(d.price), btn('Kaufen', () => reward('Gekauft', act('buyMerchant', m.id, o.id)), o.left <= 0)); }),
-      btn(`Neu mischen (${free ? 'gratis' : fmtCost(def.refreshCost)})`, () => act('refreshMerchant', m.id))));
+  const g = game.g, c = game.c, cur = SHOP_TABS.some((x) => x[0] === tab.shop) ? tab.shop : (tab.shop = 'special'), out = [chips('gold', 'gems')];
+  const skus = (cat) => c.t.shop.filter((x) => x.cat === cat), groups = (list) => [...new Set(list.map((x) => x.group || ''))];
+  if (cur === 'special') {
+    const pk = skus('packs');
+    for (const gr of groups(pk)) out.push(shd(gr), pk.filter((x) => (x.group || '') === gr).map(packCard));
+    for (const [cat, title] of [['stage_packs', 'Gebiets-Pakete'], ['chapter_packs', 'Kapitel-Pakete'], ['perks', 'Dauerhafte Vorteile']]) if (skus(cat).length) out.push(shd(title), skus(cat).map(packCard));
+  } else if (cur === 'chests') out.push(shd('Truhen'), boxCards());
+  else if (cur === 'recharge') {
+    const gems = skus('daily_gems'), next = gems.find((x) => { const i = meta.skuInfo(g, x.id); return i.unlocked && i.left > 0; });
+    out.push(shd('Tägliche Gratis-Edelsteine'), h('div', { cls: 'gemrow' }, gems.map((x) => h('span', { cls: 'gemstep' + (meta.skuInfo(g, x.id).left > 0 ? '' : ' done') }, itemIcon('gems', 30), h('b', { cls: 'ot' }, 'x' + x.reward[0].n))),
+      h('button', { cls: 'b go' + (next ? ' badge' : ''), disabled: !next, on: () => next && buySku(next) }, t(next ? 'Erhalten' : 'Morgen wieder'))));
+    for (const m of c.t.merchant) {
+      const { def, st, unlocked } = meta.merchant(g, m.id);
+      if (!unlocked) continue;
+      const free = def.freeRefreshCap && econ.capLeft(g, def.freeRefreshCap) > 0;
+      out.push(shd(def.name), h('div', { cls: 'exgrid' }, st.offers.map((o) => { const d = def.pool.find((x) => x.id === o.id);
+        return h('button', { cls: 'extile mer' + (o.left <= 0 ? ' off' : ''), on: () => (o.left <= 0 ? toast('Ausverkauft.') : reward('Gekauft', act('buyMerchant', m.id, o.id))) }, h('b', { cls: 'ot' }, d.name), d.reward && d.reward[0] ? rtile(d.reward[0]).firstChild : icon('gift', null, 40), h('span', { cls: 'exp ot' }, o.left <= 0 ? '✓' : priceEl(d.price))); })),
+        btn(`Neu mischen (${free ? 'gratis' : fmtCost(def.refreshCost)})`, () => act('refreshMerchant', m.id), false, 'go'));
+    }
+    const tk = skus('tickets').map(exTile).filter(Boolean);
+    if (tk.length) out.push(shd('Tickets'), h('div', { cls: 'exgrid' }, tk));
   } else {
-    const rows = c.t.shop.filter((x) => x.cat === tab.shop).map((sku) => {
-      const i = meta.skuInfo(g, sku.id);
-      if (!i.unlocked && sku.cat !== 'stage_packs' && sku.cat !== 'chapter_packs') return null;
-      return row(sku.name, h('span', {}, costEl(sku.price), ` → ${fmtReward(sku.reward)}${Number.isFinite(i.left) ? ` · noch ${Math.max(0, i.left)}` : ''}${i.unlocked ? '' : ' · 🔒 Gebiet abschließen'}`),
-        btn(Object.keys(sku.price).length ? 'Kaufen' : 'Abholen', () => confirmBig(sku.price, () => reward(sku.name, act('buy', sku.id, 1))), !i.unlocked || i.left <= 0, 'pri'));
-    }).filter(Boolean);
-    out.push(rows.length ? rows : h('p', {}, t('Hier ist noch nichts freigeschaltet.')));
+    const ex = skus('exchange');
+    for (const gr of groups(ex)) out.push(shd(gr), h('div', { cls: 'exgrid' }, ex.filter((x) => x.group === gr).map(exTile)));
+    const mat = skus('materials').map(exTile).filter(Boolean);
+    if (mat.length) out.push(shd('Weitere Materialien'), h('div', { cls: 'exgrid' }, mat));
   }
+  out.push(h('div', { cls: 'uptabs' }, SHOP_TABS.map(([id, label]) => h('button', { cls: 'utab ot' + (id === cur ? ' on' : ''), on: () => { tab.shop = id; $('pbody').scrollTop = 0; render(); } }, t(label), shopBadge(id) ? h('span', { cls: 'ubadge' }, '!') : null))));
   return out;
 };
 const RAR_H = { normal: ['Gewöhnlich', '#b9c6d6'], fine: ['Ausgezeichnet', '#6fcf4a'], rare: ['Selten', '#4a8fe8'], epic: ['Episch', '#a45ae0'], legendary: ['Legendär', '#f0b429'], ancient: ['Antik', '#e0564a'], mythic: ['Mythisch', '#2fb7a8'], exotic: ['Exotisch', '#f58a6a'] };

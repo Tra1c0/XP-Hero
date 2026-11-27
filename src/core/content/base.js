@@ -239,7 +239,7 @@ export function buildBaseContent(opt = {}) {
       if (x[5]) v.speed = Math.round(x[5] * 130);
       v.ref = { id: x[0], hp: x[2], atk: x[3], type: x[4] };
     }
-    if (o.g) v.gold = o.g;
+    if (o.g && (!x || o.v.length === 1 || x[1] === Math.max(...o.v.map((q) => q[1])))) v.gold = o.g; // ein Goldwert je Monster: bei mehreren Varianten gilt er nur für die höchste, darunter eigene Kurve
     if (o.r && v.respawn === undefined) v.respawn = o.r;
     v.drops = [...v.drops.filter((d) => DROP_OWN.has(d.item)), ...o.d.map(([item, n]) => ({ item, n, count: 1, chance: 1, s: 'D' }))];
     v.s = 'D';
@@ -671,6 +671,23 @@ export function buildBaseContent(opt = {}) {
   S('inv_scroll', 'invasion', '20 Weapon Scrolls', { invasion_coin: 200 }, [{ item: 'weapon_scroll', n: 20 }], { limit: 5, reset: 'weekly', unlock: { unlock: 'invasion' } });
   S('inv_evo', 'invasion', '100 Evolution Coins', { invasion_coin: 400 }, [{ item: 'evo_coin', n: 100 }], { limit: 3, reset: 'weekly', unlock: { unlock: 'invasion' } });
   S('inv_keys', 'invasion', 'S-Tier Chest Key', { invasion_coin: 600 }, [{ item: 'key_stier', n: 1 }], { limit: 3, reset: 'weekly', unlock: { unlock: 'invasion' } });
+  // Pakete (Reiter Spezial): Inhalte nach der Vorlage (B). Es gibt keine Echtgeldkäufe: Einmal-Pakete werden durch Fortschritt freigeschaltet und sind dann gratis,
+  // wiederkehrende Pakete kosten Gems (Preise eigen) und enthalten dafür keine Gems. goldKills = Goldmenge in "Kills im weitesten Gebiet".
+  const PK = { cat: 'packs', s: 'R' };
+  S('pk_raid', 'packs', 'Ticket-Paket', { gems: 100 }, [{ item: 'ticket_raid', n: 3 }], { ...PK, group: 'Bossraid-Paket', hue: 'red', limit: 1, reset: 'daily', unlock: { unlock: 'raid' }, need: 'Bossraid freischalten' });
+  S('pk_growth', 'packs', 'Wachstums-Unterstützungspaket', {}, [{ item: 'key_stier', n: 10 }, { item: 'weapon_scroll', n: 400 }], { ...PK, group: 'Wachstums-Unterstützungspaket', hue: 'green', limit: 1, unlock: { cleared: 'a1_2' }, need: 'Scarlet besiegen' });
+  S('pk_weapon', 'packs', 'Waffen-Upgrade-Paket', {}, [{ item: 'weapon_scroll', n: 1400 }, { goldKills: 300 }, { item: 'gems', n: 210 }], { ...PK, group: 'Waffen-Upgrade-Paket', hue: 'orange', limit: 1, unlock: { cleared: 'a1_4' }, need: 'Frostfang besiegen' });
+  S('pk_old', 'packs', 'Altes Paket', { gems: 1200 }, [{ weaponPool: { series: 'n', rarity: 4 } }, { item: 'key_stier', n: 2 }], { ...PK, group: 'Sonderpaket', hue: 'blue', limit: 3, unlock: { cleared: 'a1_6' }, need: 'Baal besiegen' });
+  S('pk_hero_leg', 'packs', 'Legendäres Charakter-Paket', {}, [{ item: 'hero_select_ticket', n: 1 }, { item: 'exp', n: 1200 }, { item: 'gems', n: 1800 }], { ...PK, group: 'Charakter-Paket', hue: 'orange', limit: 1, unlock: { cleared: 'a2_3' }, need: 'Volcanus besiegen' });
+  S('pk_hero_old', 'packs', 'Paket mit alten Charakteren', {}, [{ item: 'hero_select_ticket', n: 1 }, { item: 'exp', n: 1400 }, { item: 'gems', n: 2400 }], { ...PK, group: 'Charakter-Paket', hue: 'red', limit: 1, unlock: { cleared: 'a3_1' }, need: 'Hobchief besiegen' });
+  const P30 = (k) => Array.from({ length: k }, () => ({ heroPieces: { rarity: 'any', n: 30 } }));
+  S('pk_piece_d', 'packs', 'Tägliches Splitter-Paket', { gems: 300 }, P30(1), { ...PK, group: 'Splitter-Pakete', hue: 'blue', limit: 1, reset: 'daily', unlock: { unlock: 'heroes' }, need: 'Helden freischalten' });
+  S('pk_piece_w', 'packs', 'Wöchentliches Splitter-Paket', { gems: 800 }, P30(3), { ...PK, group: 'Splitter-Pakete', hue: 'orange', limit: 1, reset: 'weekly', unlock: { unlock: 'heroes' }, need: 'Helden freischalten' });
+  S('pk_piece_m', 'packs', 'Monatliches Splitter-Paket', { gems: 1200 }, P30(5), { ...PK, group: 'Splitter-Pakete', hue: 'purple', limit: 1, reset: 'monthly', unlock: { unlock: 'heroes' }, need: 'Helden freischalten' });
+  // Tauschen: je Material eine Gratis-Abholung pro Tag (im Original per Werbevideo) und zwei Gem-Angebote; Mengen nach Vorlage (B), Gold wächst mit dem Fortschritt.
+  [['gold', 'Upgrade-Material', [37, 77, 402]], ['orb_red', 'Upgrade-Material', [9, 20, 104]], ['orb_pink', 'Upgrade-Material', [4, 10, 50]], ['crystal', 'Verstärkungsmaterial', [8, 16, 84]], ['weapon_scroll', 'Verstärkungsmaterial', [21, 44, 233]]]
+    .forEach(([item, group, ns]) => ns.forEach((n, k) => S(`ex_${item}_${k}`, 'exchange', { gold: 'Gold', orb_red: 'Rote Orbs', orb_pink: 'Pink-Orbs', crystal: 'Kristalle', weapon_scroll: 'Waffenrollen' }[item], [{}, { gems: 20 }, { gems: 100 }][k],
+      [item === 'gold' ? { goldKills: n } : { item, n }], { group, limit: k ? 0 : 1, reset: k ? 'none' : 'daily', s: 'B' })));
   S('perk_home', 'perks', 'Perk: Unbegrenzte Home Returns', { gems: 500 }, [{ flag: 'perk_home' }], { limit: 1, s: 'R' });
   S('perk_tickets', 'perks', 'Perk: +1 Tagesticket Tower/Invasion/Raid/Tomb', { gems: 1500 }, [{ flag: 'perk_tickets' }], { limit: 1, s: 'R' });
   S('perk_orbs', 'perks', 'Perk: Feld-Orb-Drops x2', { gems: 2000 }, [{ flag: 'perk_orbs' }], { limit: 1, unlock: { cleared: 'a1_3' }, s: 'R' });

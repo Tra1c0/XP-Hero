@@ -7,6 +7,7 @@ import { unlock, need } from './progress.js';
 function boughtMap(g, sku) {
   if (sku.reset === 'daily') return g.state.period.daily.claims;
   if (sku.reset === 'weekly') return g.state.period.weekly.claims;
+  if (sku.reset === 'monthly') { const d = new Date(g.now()), m = d.getUTCFullYear() * 12 + d.getUTCMonth(), sh = g.state.shop; if (!sh.monthly || sh.monthly.m < m) sh.monthly = { m, claims: {} }; return sh.monthly.claims; }
   return g.state.shop.bought;
 }
 export function skuInfo(g, id) {
