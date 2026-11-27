@@ -3,7 +3,8 @@
 // Je Figur zwei Ansichten: von vorn und schräg von oben (Spielansicht). Quelle sind dieselben Grundform-Teile, die das Spiel zeichnet.
 import fs from 'node:fs';
 import { buildBaseContent } from '../src/core/content/base.js';
-import { SHAPES } from '../src/client/assets3d.js';
+import { SHAPES, PROPS, BUILDINGS3D, expand } from '../src/client/assets3d.js';
+import { DECO } from '../src/core/content/scene1_ref.js';
 import { enemyParts, npcParts, heroBody, WEAPON_PARTS } from '../src/client/enemy3d.js';
 const T = buildBaseContent().tables, dir = new URL('../docs/sheets/', import.meta.url);
 const rgb = (c) => (typeof c === 'string' ? [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255) : c);
@@ -48,4 +49,10 @@ for (let i = 0; i < hs.length; i += 16) files.push(sheet(`helden_${i / 16 + 1}.s
 files.push(sheet('waffen.svg', 'Waffen: ein Modell je Waffenart (eigene Entwürfe; alle 84 Waffen nutzen derzeit diese 6 Formen)', T.weaponClasses.map((c) => [c.name, `Waffenart ${c.id}`, wpn(c.id)]), 3));
 const chars = [...new Map(T.npcs.map((n) => [n.char, n.name]))];
 files.push(sheet('siedlung.svg', 'Figuren der Siedlung (eigene Entwürfe)', chars.map(([c, n]) => [n, `npc_${c}`, npcParts(c, 0, 0, 0, 0)])));
+// Karten-Requisiten und Gebäude (eigene Entwürfe): Name = Schlüssel im Spiel; "Karte" = wie oft die Requisite in Kapitel 1 fest platziert ist
+const used = Object.fromEntries(Object.entries(DECO).map(([k, v]) => [k, v.length]));
+const props = Object.keys(PROPS).map((k) => [k, `prop · Teile ${expand(k, 0, 0, 0, 0, 1, []).length}${used[k] ? ' · Karte ' + used[k] + 'x' : ''}`, expand(k, 0, 0, 0, 0, 1, [])]).filter((x) => x[2].length);
+for (let i = 0; i < props.length; i += 24) files.push(sheet(`karte_requisiten_${String(i / 24 + 1).padStart(2, '0')}.svg`, `Karten-Requisiten ${i + 1}–${Math.min(props.length, i + 24)} von ${props.length} (eigene Entwürfe)`, props.slice(i, i + 24)));
+const bld = Object.keys(BUILDINGS3D).map((k) => [k, `Gebäude · Teile ${expand(k, 0, 0, 0, 0, 1, []).length}`, expand(k, 0, 0, 0, 0, 1, [])]).filter((x) => x[2].length);
+files.push(sheet('karte_gebaeude.svg', 'Gebäude und Bauplatz (eigene Entwürfe)', bld, 3));
 console.log(files.join(' '));
