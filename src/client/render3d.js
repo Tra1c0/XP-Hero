@@ -399,7 +399,7 @@ export class Renderer3D {
         ctx.save(); ctx.translate(Math.max(m, Math.min(this.w - m, ax)), Math.max(top, Math.min(bot, ay))); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-10, -10); ctx.lineTo(-10, 10); ctx.closePath(); ctx.stroke(); ctx.fill(); ctx.restore();
       }
     }
-    this.minimap(game, sc);
+    // Keine Minimap im HUD (die Vorlage hat keine); die Übersicht gibt es im Karten-Fenster.
   }
   minimap(game, sc) {
     const w = game.world, G = w.G, st = game.state, now = performance.now();

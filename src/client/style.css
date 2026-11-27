@@ -11,22 +11,22 @@ html,body { margin:0; height:100%; background:#000; color:var(--tx); font:700 14
 button { font:inherit; color:inherit; cursor:pointer; }
 /* ---- HUD */
 #top { position:absolute; left:8px; right:8px; top:calc(6px + env(safe-area-inset-top)); display:flex; align-items:center; gap:5px; pointer-events:none; }
-.lvl { flex:0 0 auto; width:38px; height:38px; display:grid; place-items:center; background:#6a6f7c; border:3px solid var(--ink); border-radius:9px; transform:rotate(45deg); margin:0 4px 0 6px; }
-.lvl b { transform:rotate(-45deg); font-size:1.2rem; }
-.pill { position:relative; height:30px; min-width:0; background:#000a; border-radius:9px; display:flex; align-items:center; overflow:hidden; }
-.pill.xp { flex:1.7 1 0; margin-left:-14px; padding-left:18px; } .pill.xp i { position:absolute; inset:0 auto 0 0; background:#f08a24; }
-.pill.xp span { position:relative; font-size:.98rem; white-space:nowrap; }
-.pill.cur { flex:1 1 0; padding:0 8px 0 2px; gap:3px; overflow:visible; margin-left:10px; } .pill.cur b { font-size:1rem; white-space:nowrap; margin-left:auto; }
-.pill.cur .slot { margin:-8px 0 -8px -16px; }
+.lvl { flex:0 0 auto; width:25px; height:25px; border-width:2.5px; border-radius:6px; display:grid; place-items:center; background:#6a6f7c; border:3px solid var(--ink); border-radius:9px; transform:rotate(45deg); margin:0 4px 0 6px; }
+.lvl b { transform:rotate(-45deg); font-size:.86rem; -webkit-text-stroke-width:3px; }
+.pill { position:relative; height:20px; min-width:0; background:#000a; border-radius:5px; display:flex; align-items:center; overflow:hidden; }
+.pill.xp { flex:0 0 30%; margin-left:-10px; margin-right:auto; padding-left:14px; } .pill.xp i { position:absolute; inset:0 auto 0 0; background:#f08a24; }
+.pill.xp span { position:relative; font-size:.8rem; white-space:nowrap; -webkit-text-stroke-width:3px; }
+.pill.cur { flex:0 0 15%; padding:0 6px 0 0; overflow:visible; margin-left:13px; } .pill.cur b { font-size:.8rem; white-space:nowrap; margin:0 auto; -webkit-text-stroke-width:3px; }
+.pill.cur .slot { margin:-6px 0 -6px -12px; }
 .ib { position:relative; width:52px; height:52px; padding:0; display:grid; place-items:center; background:#3a2f3ecc; border:3px solid var(--ink); border-radius:14px; box-shadow:inset 0 -4px 0 #0005, 0 2px 0 #0006; }
 .ib[hidden] { display:none; } .ib.on { background:#2f8f3fdd; } .ib:active { transform:translateY(2px); }
 .ib .cap { position:absolute; bottom:-4px; left:0; right:0; text-align:center; font-size:.62rem; }
 .badge::after { content:"!"; position:absolute; top:-7px; right:-7px; width:20px; height:20px; border-radius:50%; background:var(--red); border:2.5px solid #fff; color:#fff; font:900 13px/15px system-ui; text-align:center; box-shadow:0 1px 0 #0008; }
-#lefttop { position:absolute; left:8px; top:calc(52px + env(safe-area-inset-top)); display:flex; gap:8px; }
+#lefttop { position:absolute; left:8px; top:calc(42px + env(safe-area-inset-top)); display:flex; gap:8px; }
 #leftbot { position:absolute; left:8px; bottom:calc(98px + env(safe-area-inset-bottom)); display:grid; gap:8px; }
 #side { position:absolute; right:8px; bottom:calc(98px + env(safe-area-inset-bottom)); display:grid; gap:8px; justify-items:end; }
-#area { position:absolute; left:10px; top:calc(110px + env(safe-area-inset-top)); font-size:.8rem; pointer-events:none; opacity:.9; }
-#quests { position:absolute; right:0; top:calc(52px + env(safe-area-inset-top)); width:min(calc(100% - 196px),240px); display:grid; gap:6px; }
+#area { position:absolute; left:10px; top:calc(100px + env(safe-area-inset-top)); font-size:.8rem; pointer-events:none; opacity:.9; }
+#quests { position:absolute; right:0; top:calc(42px + env(safe-area-inset-top)); width:min(calc(100% - 196px),240px); display:grid; gap:6px; }
 .qcard { display:flex; align-items:center; gap:6px; text-align:left; padding:5px 4px 5px 10px; background:#2f4a2fd9; border:3px solid #24361f; border-right:0; border-radius:12px 0 0 12px; }
 .qcard.ready { background:#2f8f3fe6; } .qcard .tx { flex:1; min-width:0; font-size:.72rem; line-height:1.15; } .qcard .tx b { display:block; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 .qcard .qi { flex:0 0 auto; width:38px; height:38px; display:grid; place-items:center; background:var(--blue); border:2.5px solid var(--ink); border-radius:9px; }

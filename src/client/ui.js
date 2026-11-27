@@ -561,7 +561,7 @@ export function init(gm, nt) {
   game = gm; net = nt;
   const put = (id, ic, col, size = 34) => $(id).append(icon(ic, col, size));
   put('b_menu', 'menu'); put('b_pass', 'pass'); put('bonus', 'gift'); put('b_missions', 'missions'); put('b_map', 'map'); put('b_chest', 'chest'); put('homebtn', 'home'); put('auto', 'target');
-  document.querySelector('#p_gold .slot').append(icon('coin', null, 30)); document.querySelector('#p_gems .slot').append(icon('gem', null, 30)); document.querySelector('#p_third .slot').append(icon('scroll', null, 30));
+  document.querySelector('#p_gold .slot').append(icon('coin', null, 26)); document.querySelector('#p_gems .slot').append(icon('gem', null, 26)); document.querySelector('#p_third .slot').append(icon('scroll', null, 26));
   $('pclose').addEventListener('click', close);
   $('b_menu').addEventListener('click', () => (cur === 'menu' ? close() : open('menu')));
   $('b_pass').addEventListener('click', () => { notes.t = 0; tab.ev = notices().passTab || tab.ev || 'level'; open('events'); });
