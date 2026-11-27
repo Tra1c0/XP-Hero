@@ -64,7 +64,10 @@ function frame(ts) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-setTimeout(() => checkForUpdate(ui), 3000);
+setTimeout(() => checkForUpdate(ui), 1500);
+// Jedes Öffnen prüft: auch Rückkehr aus dem Hintergrund (Android: Capacitor feuert 'resume' und visibilitychange)
+const onOpen = () => checkForUpdate(ui, { minGapMs: 20000 });
+document.addEventListener('resume', onOpen);
 window.__checkUpdate = (force) => checkForUpdate(ui, { force });
-addEventListener('visibilitychange', () => { if (document.hidden) game.save(); else last = performance.now(); });
+addEventListener('visibilitychange', () => { if (document.hidden) game.save(); else { last = performance.now(); onOpen(); } });
 addEventListener('pagehide', () => game.save());
