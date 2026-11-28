@@ -22,8 +22,8 @@ test('Content: gültig, stabiler Fingerprint, Referenzsummen (T02/T05/T13)', () 
   assert.equal(T.areas.filter((a) => a.next).length, 19, '19 Gates');
   assert.equal(T.areas[19].next, null, 'kein Kapitel-4-Phantom');
   // Kapitel 1: 124 platzierte Spawnknoten (S1 11 · S2 36 · S3 32 · S4 16 · S5 12 · S6 17); Kapitel 2/3: 71/58 Spawngruppen
-  assert.deepEqual([1, 2, 3].map((ch) => T.spawnGroups.filter((g) => T.areas.find((a) => a.id === g.area).chapter === ch).length), [124, 71, 58]);
-  assert.deepEqual([1, 2, 3, 4, 5, 6].map((s) => T.spawnGroups.filter((g) => g.area === `a1_${s}`).length), [11, 36, 32, 16, 12, 17]);
+  assert.deepEqual([1, 2, 3].map((ch) => T.spawnGroups.filter((g) => T.areas.find((a) => a.id === g.area).chapter === ch).length), [113, 71, 58]);
+  assert.deepEqual([1, 2, 3, 4, 5, 6].map((s) => T.spawnGroups.filter((g) => g.area === `a1_${s}`).length), [9, 28, 31, 16, 12, 17]);
   assert.equal(T.giftSpawners.filter((g) => g.pos).length, 17);
   assert.equal(T.weapons.length, 84);
   assert.equal(new Set(T.weapons.map((w) => w.cls + w.series)).size, 12);
@@ -543,8 +543,11 @@ test('Kampf und Gebiete: Gegner vor Rohstoffen als Ziel, Geschosse fliegen an B�
 
 test('Spawngruppen: Größe und Streukreis je Punkt aus den Szenendaten; Rudel begrenzt, wie viele gleichzeitig mitkämpfen', () => {
   const T = pack.tables, sum = (area, name) => T.spawnGroups.filter((g) => g.area === area && T.variants.find((v) => v.id === g.v).name === name).reduce((a, g) => a + g.count, 0);
-  assert.deepEqual([sum('a1_1', 'Slime'), sum('a1_1', 'Spider'), sum('a1_1', 'Mushroom'), sum('a1_1', 'Mandragora'), sum('a1_2', 'Goblin'), sum('a1_2', 'Cactus'), sum('a1_2', 'Desert Spider'), sum('a1_3', 'Gold Elephant')], [15, 18, 10, 12, 28, 29, 37, 3]);
-  assert.equal(T.spawnGroups.filter((g) => g.area.startsWith('a1_')).reduce((a, g) => a + g.count, 0), 456);
+  assert.deepEqual([sum('a1_1', 'Slime'), sum('a1_1', 'Spider'), sum('a1_1', 'Mushroom'), sum('a1_1', 'Mandragora'), sum('a1_2', 'Goblin'), sum('a1_2', 'Cactus'), sum('a1_2', 'Desert Spider'), sum('a1_3', 'Gold Elephant')], [15, 12, 10, 12, 19, 17, 37, 3]);
+  assert.equal(T.spawnGroups.filter((g) => g.area.startsWith('a1_')).reduce((a, g) => a + g.count, 0), 422);
+  // in der Szene abgeschaltete Spawnpunkte spawnen nichts: Greenhaven hat genau einen Spinnenpunkt (12 Spinnen), nicht drei
+  assert.equal(T.spawnGroups.filter((g) => g.area === 'a1_1' && g.v === 'spider').length, 1);
+  assert.deepEqual([T.resourceGroups.filter((g) => g.v === 'node_tree').length, T.resourceGroups.filter((g) => g.v === 'node_rock').length], [37, 7], 'Rohstoffe: je Objekt ein Platz, nicht je Einzelteil');
   const { game, clock } = mk(); const w = game.world, sl = w.enemies.filter((e) => e.alive && e.v.id === 'slime');
   assert.equal(sl.length, 15); const cx = sl.reduce((a, e) => a + e.x, 0) / 15, cy = sl.reduce((a, e) => a + e.y, 0) / 15;
   assert.ok(sl.every((e) => Math.hypot(e.x - cx, e.y - cy) <= 6.5 * 40), 'Schleime stehen als Gruppe im 5-m-Kreis');

@@ -5,7 +5,7 @@ Erzeugt von `tools/map_brief.js`. Bilder dazu: `docs/sheets/karte_*.png`.
 ## Was die Karte festlegt (bleibt unverändert)
 
 - **Raster:** 97 × 85 Zellen zu 2 m (`src/core/content/world1_map.js`). Je Zelle: außerhalb, Fels, Boden eines Gebiets oder Wasser, dazu ein Farbton aus 39 Palettenfarben.
-- **Feste Plätze:** 1185 Deko-Objekte, 175 fällbare Bäume, 49 Steine/Erze, jeweils mit Position, Drehung und Größe (`src/core/content/scene1_ref.js`).
+- **Feste Plätze:** 1218 Deko-Objekte, 37 fällbare Bäume, 7 Steine/Erze, jeweils mit Position, Drehung und Größe (`src/core/content/scene1_ref.js`).
 - **Kollision:** nur das Raster. Requisiten blockieren nicht; sie sind reine Darstellung.
 
 ## Damit es nur detaillierter wird und sich nichts verschiebt
@@ -35,15 +35,15 @@ Erzeugt von `tools/map_brief.js`. Bilder dazu: `docs/sheets/karte_*.png`.
 | `bush` | 1.3 | 0.9 | 1.3 | 1 | 33 | town, green, verdant |
 | `bush_rose` | 1.3 | 0.9 | 1.3 | 3 | – | verdant |
 | `rock_grey` | 1.6 | 1.0 | 1.4 | 1 | 98 | town, green, verdant, ch2, ch3, arena |
-| `rock_sand` | 1.8 | 1.1 | 1.5 | 1 | 108 | desert |
+| `rock_sand` | 1.8 | 1.1 | 1.5 | 1 | 106 | desert |
 | `rock_dark` | 1.5 | 0.8 | 1.4 | 1 | 52 | ebon |
 | `rock_snow` | 1.6 | 1.0 | 1.5 | 2 | 62 | frost |
 | `rock_red` | 1.6 | 1.1 | 1.5 | 1 | 71 | hell |
-| `cactus` | 1.1 | 2.0 | 0.5 | 5 | 14 | desert |
+| `cactus` | 1.1 | 2.0 | 0.5 | 5 | 13 | desert |
 | `mesa_s` | 2.6 | 2.4 | 2.2 | 2 | – | desert |
 | `deadbush` | 0.9 | 0.6 | 0.9 | 2 | – | desert |
 | `deadtree` | 1.5 | 2.3 | 0.4 | 3 | 7 | ebon |
-| `grave` | 0.9 | 0.9 | 1.1 | 2 | 11 | ebon |
+| `grave` | 0.9 | 0.9 | 1.1 | 2 | 10 | ebon |
 | `shroom` | 1.1 | 1.1 | 1.1 | 2 | 18 | ebon |
 | `pine_snow` | 2.0 | 3.4 | 2.0 | 4 | 1 | frost |
 | `ice_crystal` | 1.1 | 2.3 | 1.0 | 2 | – | frost |
@@ -56,7 +56,7 @@ Erzeugt von `tools/map_brief.js`. Bilder dazu: `docs/sheets/karte_*.png`.
 | `flowers_s` | 0.7 | 0.3 | 0.5 | 3 | 80 | town, green, verdant |
 | `pebble` | 0.5 | 0.2 | 0.4 | 1 | – | green |
 | `pebble_sand` | 0.5 | 0.3 | 0.5 | 1 | – | desert |
-| `bones_s` | 0.8 | 0.1 | 0.1 | 2 | 82 | desert, ebon, hell |
+| `bones_s` | 0.8 | 0.1 | 0.1 | 2 | 81 | desert, ebon, hell |
 | `snow_lump` | 0.9 | 0.3 | 0.8 | 1 | 31 | frost |
 | `ice_shard_s` | 0.3 | 0.7 | 0.3 | 1 | 2 | frost |
 | `rubble` | 0.8 | 0.3 | 0.6 | 2 | – | verdant, ch3 |
@@ -113,7 +113,7 @@ Erzeugt von `tools/map_brief.js`. Bilder dazu: `docs/sheets/karte_*.png`.
 | `crystal_grass` | 1.2 | 1.5 | 0.7 | 6 | – | – |
 | `palm` | 2.9 | 3.0 | 2.0 | 6 | 4 | – |
 | `grass_frost` | 0.7 | 0.8 | 0.4 | 3 | 24 | – |
-| `ore` | 1.3 | 1.3 | 1.2 | 3 | 10 | – |
+| `ore` | 1.3 | 1.3 | 1.2 | 3 | 48 | – |
 | `candle` | 0.5 | 0.9 | 0.3 | 4 | 36 | – |
 | `egg` | 0.9 | 1.1 | 0.9 | 2 | 17 | – |
 | `cobweb` | 2.2 | 0.1 | 2.2 | 3 | 18 | – |
@@ -136,5 +136,5 @@ Erzeugt von `tools/map_brief.js`. Bilder dazu: `docs/sheets/karte_*.png`.
 
 ## Rohstoffe (im Spiel angreifbar)
 
-- Fällbarer Baum: 175 Plätze, drei Fassungen (Wiese `tree_round`, Wüste `palm`, Schnee `pine_snow`). Braucht zusätzlich einen Stumpf-Zustand nach dem Fällen.
-- Stein/Erz: 49 Plätze, zwei Fassungen (`rock_grey`, `ore`).
+- Fällbarer Baum: 37 Plätze, drei Fassungen (Wiese `tree_round`, Wüste `palm`, Schnee `pine_snow`). Braucht zusätzlich einen Stumpf-Zustand nach dem Fällen.
+- Stein/Erz: 7 Plätze, zwei Fassungen (`rock_grey`, `ore`).

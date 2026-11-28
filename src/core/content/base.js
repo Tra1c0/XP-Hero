@@ -7,7 +7,7 @@ import { WORLD, BUILDINGS as W1_BUILDINGS, BASE as W1_BASE, REF as W1, zoneOf as
 import { inPoly } from '../worldgrid.js';
 import { BESTIARY } from './bestiary_ref.js';
 import { ABILITY_REF, BLESS_REF } from './progression_ref.js';
-import { CHOP, STONE, SPAWN_PTS } from './scene1_ref.js';
+import { CHOP, STONE, SPAWN_PTS, SPAWN_OFF } from './scene1_ref.js';
 import { BUILD, SMITHY, SMITHY_RATES, SMITHY_ROLL, CHEST, CHESTSPAWN, KEYHOUSE, KEYSLOT, SUBSLOT, WGOLD, LVREW, MAINQ } from './econ_ref.js';
 import { WEAPON_REF } from './weapon_ref.js';
 import { WEAPON_WIKI, TYPE_BONUS, UPGRADE_WIKI } from './wiki_ref.js';
@@ -154,6 +154,8 @@ export function buildBaseContent(opt = {}) {
       byName[nm] = v;
     }
     nodes.forEach((n, k) => {
+      // In der Szene abgeschaltete Spawnpunkte (D): dort spawnt im Spiel nichts
+      if (SPAWN_OFF.some((q) => q[0] === s && Math.hypot(q[1] - n[2], q[2] - n[3]) < 0.75)) return;
       const v = byName[n[1]], isBoss = v === bv;
       // Gruppengröße und Streukreis des Spawnpunkts aus den Szenendaten (D): der nächstgelegene Punkt desselben Gebiets im Umkreis von 0,75 m
       let pt = null, pd = 0.75; for (const q of SPAWN_PTS) if (q[0] === s) { const d = Math.hypot(q[2] - n[2], q[3] - n[3]); if (d < pd) { pd = d; pt = q; } }
