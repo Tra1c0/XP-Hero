@@ -514,7 +514,7 @@ export function buildBaseContent(opt = {}) {
     { id: 'npc_smith', char: 'smith', name: 'Schmied', area: 'base', pos: W1_BASE.smith, s: 'E', scenes: [SC('s1', null, 'Bring mir Gold, dann schmiede ich dir Waffen.')] },
     { id: 'npc_kain', char: 'kain', name: 'Kain', area: 'a1_1', pos: W1.cain, s: 'D', scenes: KAIN },
     ...W1.guides.map(([st, X, Z]) => ({ id: `npc_taid_${st}`, char: 'taid', name: 'Taid', area: zoneOf(X, Z), home: `a1_${st}`, pos: [X, Z], s: 'D', scenes: [SC(`t${st}`, null, TAID[st])] })),
-    { id: 'npc_ryan_0', char: 'ryan', name: 'Ryan', area: 'base', pos: [25, 1], s: 'R', scenes: [SC('r0', null, RYAN[0], 'Bau mir ein Raid-Lager, dann zeige ich dir, wie man sie herausfordert.')] },
+    { id: 'npc_ryan_0', char: 'ryan', name: 'Ryan', area: 'base', pos: [W1_BUILDINGS.raidcamp[0] + 2.6, W1_BUILDINGS.raidcamp[1] + 1.4], s: 'R', scenes: [SC('r0', null, RYAN[0], 'Bau mir ein Raid-Lager, dann zeige ich dir, wie man sie herausfordert.')] },
     ...W1.raids.map(([st, X, Z]) => ({ id: `npc_ryan_${st}`, char: 'ryan', name: 'Ryan', area: zoneOf(X, Z), pos: [X, Z], kind: 'raid', raid: `raid_${st}`, s: 'D', scenes: [SC(`r${st}`, null, RYAN[st], 'Wirst du das uralte Wesen herausfordern?')] })),
     { id: 'npc_dnew', char: 'dnew', name: 'Dnew', area: 'a1_6', pos: [2, 66], s: 'D', scenes: [SC('d1', null, 'Bis hierher hat es kaum jemand geschafft. Der Schlund nimmt sich jeden.')] },
     // Kapitel 2/3: Standort je Gebiet nach Referenz, Position auf der Einzelkarte eigen

@@ -65,8 +65,14 @@ const cap = (key, list, n = 40) => { const lim = more[key] || n; return [...list
 
 // Zielführung: Figur läuft per Pfadsuche zum Questziel (manuelle Eingabe bricht ab).
 function walkTo(q) {
+  // Quests ohne Ort (Truhe im Shop öffnen, Upgrade kaufen, schmieden, ausrüsten ...) öffnen das passende Fenster statt irgendwohin zu laufen
+  const o = q.obj[0], k = o.counter || '', cd = o.cond || {};
+  const panel = k === 'gacha:hero' ? ['heroes'] : k.startsWith('gacha:') ? ['shop', () => { tab.shop = 'chests'; }] : cd.upgrade || k.startsWith('upgrade:') ? ['hero', () => { const u = game.c.t.upgradeTracks.find((x) => x.id === (cd.upgrade || k.slice(8))); tab.up = u ? u.family : k.slice(8); }]
+    : k === 'craft' || (cd.building === 'smithy' && cd.lv > 1 && game.state.buildings.smithy) ? ['smithy'] : cd.mainEquipped || cd.equippedSubs || cd.weaponSlots || k.startsWith('weapon:') ? ['weapons'] : cd.keySlots || k === 'chest:claim' ? ['base'] : k === 'heroLevel' || k === 'heroStar' ? ['heroes'] : null;
+  if (panel) { if (panel[1]) panel[1](); return open(panel[0]); }
+  if (cd.playerLevel) return toast(`Erreiche Level ${cd.playerLevel} – besiege Gegner und schließe Quests ab.`);
   const goal = game.questGoal(q);
-  if (!goal) return toast('Dieses Ziel liegt nicht in diesem Gebiet.');
+  if (!goal) return toast('Dafür gibt es gerade kein Ziel auf der Karte.');
   if (game.world.mode) return toast('Im Modus nicht möglich.');
   game.world.p.auto = false; game.world.goTo(goal.x, goal.y); close(); toast(`Unterwegs zu: ${goal.label}`);
 }
@@ -218,7 +224,7 @@ function weaponSheet(w0) {
       (d.bonus || []).length ? sect('Level-Bonus', h('div', { cls: 'wlb' }, d.bonus.map(([lv, mainOnly, st, v]) => h('div', { cls: 'wlbr' + (w.level >= lv && (!mainOnly || eq === 0) ? ' on' : '') }, h('b', {}, `Lv.${lv}`), h('span', {}, `${mainOnly ? '[Nur Hauptslot] ' : ''}${sn(st).replace(' %', '')} +${v}%`))))) : null,
       (() => { const tb = c.by.typeBonus.get(d.cls), hero = c.get('heroes', game.state.heroes.active); return tb ? sect('Waffenart', h('div', { cls: 'wlbr' + (eq === 0 && hero.mastery === d.cls ? ' on' : '') }, h('b', {}, cl.name), h('span', {}, tb.bonus.map(([st, v]) => `${sn(st).replace(' %', '')} +${v}%`).join(' · ') + ' – nur als Hauptwaffe eines Helden mit passender Meisterschaft'))) : null; })(),
       sk ? sect('Fertigkeit', h('div', { cls: 'wskill' }, h('span', { cls: 'wski' }, icon(STAT_ICON.skillDmgPct, null, 30)), h('div', {}, h('b', {}, sk.name), h('div', { cls: 'sub' }, `Trifft ${sk.hits > 1 ? sk.hits + '-mal ' : ''}mit ${Math.round(sk.mult * 100)} % Schaden · Abklingzeit ${sk.cd}s`)))) : null,
-      !sk && d.wskill ? sect('Fertigkeit', h('div', { cls: 'wskill' }, h('span', { cls: 'wski' }, icon(STAT_ICON.skillDmgPct, null, 30)), h('div', {}, h('b', {}, d.wskill.name), h('div', { cls: 'sub' }, `Löst nach jedem ${c.cfg.combat.weaponSkillEvery}. Angriff aus: ${Math.round(d.wskill.mult * 100)} % Schaden im Umkreis des Ziels`)))) : null,
+      !sk && d.wskill ? sect('Fertigkeit', h('div', { cls: 'wskill' }, h('span', { cls: 'wski' }, icon(STAT_ICON.skillDmgPct, null, 30)), h('div', {}, h('b', {}, d.wskill.name), h('div', { cls: 'sub' }, `Löst alle ${d.wskill.cd} s beim nächsten Angriff aus: ${Math.round(d.wskill.mult * 100)} % Schaden im Umkreis des Ziels`)))) : null,
       sect('Verbinden', mp.next ? h('div', { cls: 'wmerge' }, h('span', {}, `${d.mergeCount}× gleiche Waffe → ${mp.next.name}`), mp.ok ? btn('Verbinden', () => go('mergeWeapon', w.uid), false, 'blue') : h('span', { cls: 'sub' }, mp.reason)) : h('div', { cls: 'sub' }, 'Endstufe dieser Reihe')),
       h('div', { cls: 'wfoot' },
         h('div', { cls: 'wcol' }, ws.unlocked > 1 && eq !== 0 ? h('div', { cls: 'wmini' }, eq > 0 ? btn('Ablegen', () => go('unequipWeapon', eq), false, 'sm') : btn('Als Nebenwaffe', () => go('equipWeapon', w.uid, free > 0 ? free : 1), false, 'sm blue')) : null,

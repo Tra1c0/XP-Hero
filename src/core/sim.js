@@ -416,7 +416,8 @@ export class World {
       p.hp = Math.min(st.hp, p.hp + (st.regen + (st.hp * cfg.player.regenPct) / 100) * dt);
       // Hauptwaffe hält ihr Ziel, bis es stirbt oder die Reichweite verlässt; Nebenwaffen/Skills mit eigenen Takten
       // Schutzzone gilt in beide Richtungen: in der Basis wird nicht angegriffen (sonst gefahrloses Farmen mit Fernwaffen vom Rand aus)
-      const inSafe = !this.mode && !!this.map.world && this.zone() === 'base';
+      // In der Siedlung wird normal angegriffen (Gegner am Rand sind erreichbar); Gegner selbst betreten sie nicht.
+      const inSafe = false;
       if (!inSafe) for (const l of load) {
         p.wcd[l.slot] -= dt * slowP;
         if (l.wskill && p.wsc && p.wsc[l.slot] > 0) p.wsc[l.slot] -= dt;
@@ -513,7 +514,8 @@ export class World {
       if (r2) for (const o of this.enemies) if (o !== e && o.alive && (o.st === 'idle' || o.st === 'patrol') && o.beh.aggro > 0 && !o.beh.flee && dist2(o.x, o.y, e.x, e.y) < r2 && los(G, o.x, o.y, e.x, e.y)) { o.st = 'aggro'; o.t = 0.45; }
     };
     const near = [];
-    const sees = (e) => this.mode || (!pSafe && los(G, e.x, e.y, p.x, p.y));
+    // Die Siedlung schützt nur dadurch, dass Gegner sie nicht betreten: wer am Rand steht, kann angreifen und angegriffen werden
+    const sees = (e) => this.mode || los(G, e.x, e.y, p.x, p.y);
     for (const e of this.enemies) {
       if (!e.alive) continue;
       // Ruhende Gegner außerhalb des aktiven Radius werden nicht simuliert (Zustand bleibt erhalten)
@@ -546,7 +548,7 @@ export class World {
         case 'aggro': if ((e.t -= dt) <= 0) e.st = 'chase'; break;
         case 'chase':
           // Verfolgung endet bei Leine, Tod des Spielers oder wenn der Spieler hinter Wänden festhängt (keine Endlosschleife)
-          if (!p.alive || pSafe || dist2(e.x, e.y, e.hx, e.hy) > leash * leash || e.stuck > 2.5) { e.st = 'return'; e.stuck = 0; break; }
+          if (!p.alive || dist2(e.x, e.y, e.hx, e.hy) > leash * leash || e.stuck > 2.5) { e.st = 'return'; e.stuck = 0; break; }
           if (b.flee) { if (d > aggro * 1.6) { e.st = 'return'; break; } away(e, sp); break; }
           if (b.pattern && !e.mech && (e.pcd -= dt) <= 0) { const pt = g.c.get('bossPatterns', b.pattern); e.st = 'cast'; e.t = pt.windup; e.cx = p.x; e.cy = p.y; e.pcd = pt.period * (e.hp < (e.maxHp * pt.enrageHpPct) / 100 ? pt.enrageIntervalMult : 1); break; }
           near.push(e);

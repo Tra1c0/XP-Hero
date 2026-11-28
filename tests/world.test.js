@@ -105,3 +105,17 @@ test('Trittfeld: jedes Gebäude hat ein begehbares Feld vor sich; Betreten melde
     assert.ok(!w.near || w.near.id !== o.id, `${o.id}: Feld verlassen`);
   }
 });
+
+test('Siedlung: Schutzzone folgt den Gebäuden statt einem großen Kreis; vom Rand aus wird gekämpft, Gegner betreten sie nicht', async () => {
+  const { zoneAt, walkable } = await import('../src/core/worldgrid.js');
+  const { game, clock } = mk(); const w = game.world, G = w.G;
+  for (const o of w.map.objects.filter((x) => x.type === 'building')) assert.equal(zoneAt(G, o.x, o.y), 'base', `${o.id}: Trittfeld liegt in der Siedlung`);
+  for (const e of w.enemies) if (e.v.rank !== 'node') assert.notEqual(zoneAt(G, e.hx, e.hy), 'base', `${e.v.name}: kein Heimatpunkt in der Siedlung`);
+  let n = 0; for (let i = 0; i < G.zone.length; i++) if (G.kind[i] === 1 && G.zone[i] === 0) n++;
+  assert.ok(n > 30 && n < 110, `Siedlung umfasst ${n} Zellen (vorher über 70 allein im 10-m-Kreis, jetzt nur um die Gebäude)`);
+  let pair = null; for (let r = 1; r < G.rows - 1 && !pair; r++) for (let c = 1; c < G.cols - 1 && !pair; c++) { const x = (c + 0.5) * G.cpx, y = (r + 0.5) * G.cpx; if (zoneAt(G, x, y) === 'base' && walkable(G, x, y) && zoneAt(G, x, y + G.cpx) === 'a1_1' && walkable(G, x, y + G.cpx)) pair = [x, y]; }
+  const e = w.enemies.find((x) => x.alive && x.v.id === 'slime'); for (const o of w.enemies) if (o !== e) o.alive = false;
+  w.p.x = w.p.px = pair[0]; w.p.y = w.p.py = pair[1] + G.cpx / 2 - 6; e.x = e.hx = pair[0]; e.y = e.hy = pair[1] + G.cpx / 2 + 40; e.st = 'idle'; let entered = false;
+  for (let k = 0; k < 300 && e.alive; k++) { game.tick(1 / 30); clock.t += 1000 / 30; if (zoneAt(G, e.x, e.y) === 'base') entered = true; }
+  assert.equal(e.alive, false, 'Gegner direkt am Siedlungsrand wird besiegt'); assert.equal(entered, false, 'Gegner hat die Siedlung nicht betreten');
+});
