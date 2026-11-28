@@ -3,13 +3,15 @@
 // Liest den Spielzustand nur. Koordinaten: GL x = Ost, y = oben, z = Süden (= Simulations-y).
 import { SHAPES, BIOMES, WATER, SCATTER, expand, hex } from './assets3d.js';
 const TREE = { a1_1: 'tree_round', a1_2: 'palm', a1_4: 'pine_snow' }; // fällbare Bäume je Gebiet
-import { FLOOR, WALL, WATER as K_WATER, LAVA, walkIdx, findPath } from '../core/worldgrid.js';
+import { FLOOR, WALL, WATER as K_WATER, LAVA, walkIdx, findPath, zoneAt } from '../core/worldgrid.js';
 import { npcStatus, currentQuests } from '../core/meta.js';
-import { enemyParts, enemyTop, npcParts, heroBody, WEAPON_PARTS } from './enemy3d.js';
+import { enemyParts, enemyTop, enemySize, npcParts, heroBody, WEAPON_PARTS } from './enemy3d.js';
 import { parseGlb } from './glb.js';
 import { Rig, HeroAnim } from './rig.js';
 
-const VIEW_W = 11.5, TILT = (45 * Math.PI) / 180; // an der Vorlage vermessen: Figur ca. 1/13 der Bildbreite, Kreise auf dem Boden ca. 0,7-fach gestaucht; // sichtbare Breite in Metern (Hochformat), Neigung
+// Kamera nach den Werten der Vorlage (D): Neigung 54° nach unten, Öffnungswinkel 39°, Abstand 36 im Feld und 26 in der Siedlung.
+// Daraus die sichtbare Breite in Metern (Hochformat 9:20): 2 · Abstand · tan(19,5°) · 0,45. Die Zuordnung Feld/Siedlung ist aus Bildvergleichen geschlossen (E).
+const VIEW_FIELD = 11.5, VIEW_BASE = 8.3, TILT = (54 * Math.PI) / 180;
 const INST = 13; // pos3, rot, scl3, rgba(em), Neigung (vor/zurück, seitlich)
 const VS_I = `#version 300 es
 layout(location=0) in vec3 p; layout(location=1) in vec3 n; layout(location=2) in vec3 ip; layout(location=3) in float ir; layout(location=4) in vec3 is; layout(location=5) in vec4 ic; layout(location=6) in vec2 it;
@@ -451,7 +453,7 @@ export class Renderer3D {
       if (!vis(ex, ez)) continue;
       const v = e.v, rk = v.rank;
       if (rk === 'node') { expand(v.id === 'node_tree' ? (e.group && TREE[e.group.area]) || 'tree_round2' : e.group && e.group.area === 'a1_4' ? 'ore' : 'rock_grey', ex, 0, ez, (e.gid ? e.gid.length * 1.7 + e.hx : 0) % 6.28, v.id === 'node_tree' ? 0.95 : 0.7, out); continue; }
-      const s0 = v.scale || (rk === 'boss' ? 2.1 : rk === 'rare' ? 1.6 : rk === 'elite' ? 1.3 : 1), s = s0 * (e.st === 'attack' ? 1.12 : e.st === 'spawn' ? 0.6 : 1);
+      const s0 = enemySize(v) || v.scale || (rk === 'boss' ? 2.1 : rk === 'rare' ? 1.6 : rk === 'elite' ? 1.3 : 1), s = s0 * (e.st === 'attack' ? 1.12 : e.st === 'spawn' ? 0.6 : 1);
       // Blickrichtung: im Kampf zum Spieler, sonst in Laufrichtung (bleibt stehen, wenn der Gegner steht)
       const fight = e.st === 'chase' || e.st === 'attack' || e.st === 'cool' || e.st === 'aggro' || e.st === 'cast', mv = Math.abs(e.x - e.px) + Math.abs(e.y - e.py) > 0.05;
       if (fight && !e.beh.flee) e.face = Math.atan2(p.x - e.x, p.y - e.y); else if (mv) e.face = Math.atan2(e.x - e.px, e.y - e.py); else if (e.face === undefined) e.face = (e.ang || 0) % 6.283;
@@ -519,7 +521,8 @@ export class Renderer3D {
     // Nachführen unabhängig von der Bildrate (bei wenigen Bildern pro Sekunde hing die Figur sonst sichtbar aus der Mitte)
     const nowC = performance.now(), kc = 1 - Math.exp(-Math.min(0.25, (nowC - (this.camT || nowC)) / 1000) * 14); this.camT = nowC;
     this.cam.x += (tx - this.cam.x) * kc; this.cam.z += (tz - this.cam.z) * kc;
-    const aspect = this.h / this.w, hw = VIEW_W / 2, hh = hw * aspect, D = 60;
+    const vw = zoneAt(G, w.p.x, w.p.y) === 'base' ? VIEW_BASE : VIEW_FIELD; this.vw = (this.vw || vw) + (vw - (this.vw || vw)) * Math.min(1, kc * 0.25);
+    const aspect = this.h / this.w, hw = this.vw / 2, hh = hw * aspect, D = 60;
     // Kamerawackeln (an Haptik gekoppelt): klingt in ca. 0,3 s ab; bei "weniger Effekte" aus
     this.sh = Math.max(0, (this.sh || 0) - Math.min(0.25, (nowC - (this.shT || nowC)) / 1000) * 3.4); this.shT = nowC;
     const shk = game.state.settings.reducedFx ? 0 : this.sh * this.sh * 0.22, sx = Math.sin(nowC * 0.071) * shk, sz = Math.cos(nowC * 0.093) * shk;
@@ -586,7 +589,7 @@ export class Renderer3D {
       if (!e.alive) continue;
       const ex = X(e.px + (e.x - e.px) * a), ez = Z(e.py + (e.y - e.py) * a);
       if (Math.abs(ex - px) > 14 || Math.abs(ez - pz) > 24) continue;
-      const s = e.v.rank === 'boss' ? 2.1 : e.v.rank === 'rare' ? 1.6 : e.v.rank === 'elite' ? 1.3 : 1, top = enemyTop(e.v) * s + 0.25, [sx, sy] = this.project(ex, top, ez);
+      const s = enemySize(e.v) || e.v.scale || (e.v.rank === 'boss' ? 2.1 : e.v.rank === 'rare' ? 1.6 : e.v.rank === 'elite' ? 1.3 : 1), top = enemyTop(e.v) * s + 0.25, [sx, sy] = this.project(ex, top, ez);
       if (e.hp < e.maxHp || e.v.rank !== 'normal') { const bw = 26 * s; ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(sx - bw / 2, sy - 6, bw, 4); ctx.fillStyle = '#6fdc6f'; ctx.fillRect(sx - bw / 2, sy - 6, (bw * e.hp) / e.maxHp, 4); }
       if (e.v.rank !== 'normal' && e.v.rank !== 'node') label(`${e.v.name} L${e.v.level}`, ex, enemyTop(e.v) * s + 0.75, ez, e.v.rank === 'boss' ? '#ffd24a' : '#ffd0a0');
     }

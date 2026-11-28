@@ -64,11 +64,15 @@ function design(v) {
   if (v.rank === 'elite' || v.rank === 'rare') parts.push(['cone6', -0.24, top - 0.08, 0, 0.16, 0.34, 0.16, v.rank === 'rare' ? '#d6a1ff' : '#ffd9a0', 0.4, 0.3, false], ['cone6', 0.24, top - 0.08, 0, 0.16, 0.34, 0.16, v.rank === 'rare' ? '#d6a1ff' : '#ffd9a0', 0.4, -0.3, false]);
   if (v.rank === 'boss') parts.push(['cyl8', 0, top - 0.02, 0, 0.5, 0.14, 0.5, '#ffd24a', 0.5, 0, false], ...[0, 1, 2, 3].map((k) => ['cone6', Math.cos(k * 1.571) * 0.2, top + 0.1, Math.sin(k * 1.571) * 0.2, 0.13, 0.22, 0.13, '#ffd24a', 0.5, 0, false]));
   if (v.rank === 'special') parts.push(['sphere', 0, top + 0.1, 0, 0.26, 0.26, 0.26, '#ffd24a', 1, 0, false]);
-  d = { parts, top, kind };
+  // Breite der Grundfigur (ohne Rangschmuck) in Metern, für die Größenangabe aus den Daten (sizeM)
+  const wide = 2 * Math.max(...BUILD[kind]().map((q) => Math.max(Math.abs(q[1]) + Math.abs(q[4]) / 2, Math.abs(q[3]) + Math.abs(q[6]) / 2)));
+  d = { parts, top, kind, wide };
   cache.set(v.id, d);
   return d;
 }
 export const enemyTop = (v) => design(v).top;
+// Zeichengröße: Breite aus den Daten (sizeM) geteilt durch die Breite unserer Grundfigur; ohne Angabe null
+export const enemySize = (v) => (v.sizeM ? v.sizeM / design(v).wide : null);
 // Liefert die Teile in Weltkoordinaten. tint: Statusfarbe (ersetzt Körperfarben), sc: Größe, yaw: Blickrichtung.
 export function enemyParts(v, x, z, yaw, sc, tint) {
   const d = design(v), cf = Math.cos(yaw), sf = Math.sin(yaw), out = [];

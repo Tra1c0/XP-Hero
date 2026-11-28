@@ -173,8 +173,9 @@ export function buildBaseContent(opt = {}) {
     const mk = [], roster = [];
     if (s === 1 || ch !== 1) {
     if (s === 1) {
-      mk.push(V('mandragora', 'Mandragora', 1, 'normal', { hp: 12, atk: 1, s: 'D' }), V('slime', 'Slime', 2, 'normal', { hp: 16, atk: 1, s: 'D' }),
-        V('mushroom', 'Mushroom', 4, 'normal', { hp: 17, atk: 2, s: 'D' }), V('spider', 'Spider', 5, 'normal', { hp: 57, atk: 4, s: 'D' }));
+      // sizeM (D): Breite der Figur in Metern laut Modellmaßen der Vorlage
+      mk.push(V('mandragora', 'Mandragora', 1, 'normal', { hp: 12, atk: 1, sizeM: 0.79, s: 'D' }), V('slime', 'Slime', 2, 'normal', { hp: 16, atk: 1, sizeM: 1.04, s: 'D' }),
+        V('mushroom', 'Mushroom', 4, 'normal', { hp: 17, atk: 2, sizeM: 0.87, s: 'D' }), V('spider', 'Spider', 5, 'normal', { hp: 57, atk: 4, sizeM: 0.81, s: 'D' }));
     } else {
       for (const o of BESTIARY.filter((x) => x.ch === refCh(s) && x.v.length && !(x.v[0][4] === 'Champion' && AREA.some((a2) => a2[2] === x.n)))) {
         if (roster.some((r) => r.o === o)) continue;
@@ -187,10 +188,10 @@ export function buildBaseContent(opt = {}) {
     }
     }
     for (const v of mk) v.drops.push({ item: loot, n: 1, count: 1, chance: 0.5 }, { item: orb, n: 1, count: 1, chance: 0.03 });
-    const elite = s === 1 ? V('slime_king', 'Slime King', 3, 'elite', { hp: 63, atk: 6, s: 'D' }) : null;
+    const elite = s === 1 ? V('slime_king', 'Slime King', 3, 'elite', { hp: 63, atk: 6, sizeM: 1.17, s: 'D' }) : null;
     if (elite) elite.drops.push({ item: loot, n: 2, count: 2, chance: 1 }, { item: 'weapon_scroll', n: 1, count: 1, chance: 0.3 }, { item: orb, n: 2, count: 1, chance: 0.25 });
     if (ch >= 2 && elite) elite.drops.push({ item: 'attr_point', n: 2, count: 1, chance: 0.2 });
-    const bv = V(`boss_${id}`, boss, hi, 'boss', s === 1 ? { hp: 256, atk: 18, s: 'D' } : { s: [17, 19].includes(s) ? 'D' : 'E' });
+    const bv = V(`boss_${id}`, boss, hi, 'boss', s === 1 ? { hp: 256, atk: 18, sizeM: 3.82, s: 'D' } : { s: [17, 19].includes(s) ? 'D' : 'E' });
     bv.drops.push({ item: loot, n: 5, count: 4, chance: 1 }, { item: 'evo_coin', n: 5 * s, count: 2, chance: 1 }, { item: orb, n: 3, count: 3, chance: 1 });
     if (s === 17) bv.drops.push({ item: 'gems', n: 20, count: 5, chance: 1, s: 'D' }, { item: 'attr_point', n: 40, count: 5, chance: 1, s: 'D' });
     if (s === 19) bv.drops.push({ item: 'gems', n: 20, count: 5, chance: 1, s: 'D' }, { item: 'attr_point', n: 48, count: 5, chance: 1, s: 'D' });
