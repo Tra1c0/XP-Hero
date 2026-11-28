@@ -11,7 +11,7 @@ import { CHOP, STONE, SPAWN_PTS } from './scene1_ref.js';
 import { BUILD, SMITHY, SMITHY_RATES, SMITHY_ROLL, CHEST, CHESTSPAWN, KEYHOUSE, KEYSLOT, SUBSLOT, WGOLD, LVREW, MAINQ } from './econ_ref.js';
 import { WEAPON_REF } from './weapon_ref.js';
 import { WEAPON_WIKI, TYPE_BONUS, UPGRADE_WIKI } from './wiki_ref.js';
-import { ENEMY as G_ENEMY, LEVEL_XP, KILL_XP_LIMIT, PLAYER_LV, WEAPON as G_WEAPON, CONFIG as G_CONFIG } from './game_ref.js';
+import { ENEMY as G_ENEMY, LEVEL_XP, KILL_XP_LIMIT, PLAYER_LV, WEAPON as G_WEAPON, CONFIG as G_CONFIG, SPAWN as G_SPAWN } from './game_ref.js';
 import { NPC_REF } from './npc_ref.js';
 
 export const SCHEMA = 1;
@@ -58,7 +58,7 @@ export function buildBaseContent(opt = {}) {
   C('dailyTickets', { ticket_tower: 5, ticket_invasion: 5, ticket_raid: 2, ticket_tomb: 3, ticket_pvp: 5 }, 'E', 'Tägliche Grundtickets (Auffüllen bis zu diesem Wert).');
   C('player', { baseCargo: 20, moveSpeed: 230, critChance: 5, critDmg: 150, pickupRadius: 90, regenPct: 1, radius: 16 }, 'E', 'Grundwerte Spieler.');
   C('statCaps', { critChance: 100, cooldownPct: 70, atkSpeedPct: 400, moveSpeedPct: 150, lifesteal: 50, multiHit: 100, tripleHit: 100 }, 'E', 'Obergrenzen; Kritchance <= 100.');
-  C('combat', { weaponSkillRadius: 110, subRangeM: Number(G_CONFIG.SubWeapon_AttackRange), fistAps: Number(G_CONFIG.Player_Init_AtkSpd), enemyLeashM: 8, enemySpeedCap: 300, subIntervalMult: 2.2, subDmgMult: 0.6, dropDespawnSec: 90, respawnOfflineContinues: true, defaultRespawnSec: 30, bossRespawnSec: 3600, tick: 1 / 30 }, 'R',
+  C('combat', { weaponSkillRadius: 110, subRangeM: Number(G_CONFIG.SubWeapon_AttackRange), fistAps: Number(G_CONFIG.Player_Init_AtkSpd), enemyLeashM: 8, wanderCycleSec: Number(G_CONFIG.Enemy_WanderCycleTime) || 4, enemySpeedCap: 300, subIntervalMult: 2.2, subDmgMult: 0.6, dropDespawnSec: 90, respawnOfflineContinues: true, defaultRespawnSec: 30, bossRespawnSec: 3600, tick: 1 / 30 }, 'R',
     'Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt.');
   C('weaponLevelCost', { gold: WGOLD }, 'D', 'Waffenstufe: Gold nach Stützstufen (dazwischen linear), Schriftrollen 2 x Stufe - 1; unabhängig von der Seltenheit (Spieldaten).');
   C('craftCost', [5, 5, 5, 5, 5, 5, 5, 5], 'B', 'Schmieden kostet auf jeder Schmiedestufe 5 Kristalle (Vorlage).');
@@ -259,10 +259,12 @@ export function buildBaseContent(opt = {}) {
       v.drops = [{ item: 'orb_red', n: 1, count: e[32] || 5, chance: 1, s: 'D' }]; v.noExtraDrop = true; } }
   // Spieldaten je Gegner (D): XP, Gold, Angriffstakt, Reichweiten, Lauftempo und Haltung. ai.s/a/d = Haltung bei Sicht / in Aktionsweite / bei Treffer:
   // 0 ignorieren, 1 weiterwandern, 2 bewachen, 3 kämpfen, 4 fliehen (Zuordnung der Zahlen zu den Namen aus den Daten erschlossen, R).
+  const RETREAT = {}; for (const r of Object.values(G_SPAWN)) if (!RETREAT[r[0]]) RETREAT[r[0]] = r[2];
   for (const v of variants) {
     const e = v.ref && G_ENEMY[v.ref.id];
     if (!e) continue;
     v.xp = e[18]; v.gold = e[19]; if (e[28] > 0) v.hpDps = e[28]; if (e[29] > 1) v.goldPieces = e[29];
+    if (RETREAT[v.ref.id]) v.leashM = RETREAT[v.ref.id]; // Rückzugsradius um den Spawnpunkt (D): 8 m, bei Elite und Bossen 5 m
     v.ai = { aps: e[3], range: e[4], move: e[5], retreat: e[6], sight: e[7], action: e[8], angry: e[10], fleeT: e[11], s: e[12], a: e[13], d: e[14], flock: e[15], size: e[23], knock: e[25] };
     if (v.beh === 'flee' && e[14] !== 4) v.beh = 'melee';
     if (e[14] === 4) v.beh = 'flee';
@@ -514,7 +516,7 @@ export function buildBaseContent(opt = {}) {
     { id: 'npc_smith', char: 'smith', name: 'Schmied', area: 'base', pos: W1_BASE.smith, s: 'E', scenes: [SC('s1', null, 'Bring mir Gold, dann schmiede ich dir Waffen.')] },
     { id: 'npc_kain', char: 'kain', name: 'Kain', area: 'a1_1', pos: W1.cain, s: 'D', scenes: KAIN },
     ...W1.guides.map(([st, X, Z]) => ({ id: `npc_taid_${st}`, char: 'taid', name: 'Taid', area: zoneOf(X, Z), home: `a1_${st}`, pos: [X, Z], s: 'D', scenes: [SC(`t${st}`, null, TAID[st])] })),
-    { id: 'npc_ryan_0', char: 'ryan', name: 'Ryan', area: 'base', pos: [W1_BUILDINGS.raidcamp[0] + 2.6, W1_BUILDINGS.raidcamp[1] + 1.4], s: 'R', scenes: [SC('r0', null, RYAN[0], 'Bau mir ein Raid-Lager, dann zeige ich dir, wie man sie herausfordert.')] },
+    { id: 'npc_ryan_0', char: 'ryan', name: 'Ryan', area: 'base', pos: [25, 1], s: 'R', scenes: [SC('r0', null, RYAN[0], 'Bau mir ein Raid-Lager, dann zeige ich dir, wie man sie herausfordert.')] },
     ...W1.raids.map(([st, X, Z]) => ({ id: `npc_ryan_${st}`, char: 'ryan', name: 'Ryan', area: zoneOf(X, Z), pos: [X, Z], kind: 'raid', raid: `raid_${st}`, s: 'D', scenes: [SC(`r${st}`, null, RYAN[st], 'Wirst du das uralte Wesen herausfordern?')] })),
     { id: 'npc_dnew', char: 'dnew', name: 'Dnew', area: 'a1_6', pos: [2, 66], s: 'D', scenes: [SC('d1', null, 'Bis hierher hat es kaum jemand geschafft. Der Schlund nimmt sich jeden.')] },
     // Kapitel 2/3: Standort je Gebiet nach Referenz, Position auf der Einzelkarte eigen

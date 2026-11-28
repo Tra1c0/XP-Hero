@@ -114,7 +114,7 @@ export class World {
     let beh = this.g.c.get('behaviors', v.beh);
     // Verhalten aus den Spieldaten (falls vorhanden): Sicht- und Aktionsweite, Takt, Reichweite, Tempo, Rudel, Rückzugsradius
     const ai = v.ai, cb = this.g.c.cfg.combat;
-    if (ai && beh.id !== 'node') beh = { ...beh, aggro: (ai.s === 3 ? ai.sight : ai.a === 3 ? ai.action : 0) * M, leash: cb.enemyLeashM * M, speed: Math.min(cb.enemySpeedCap, (ai.move / 10) * M), range: Math.max(30, ai.range * M - 20),
+    if (ai && beh.id !== 'node') beh = { ...beh, aggro: (ai.s === 3 ? ai.sight : ai.a === 3 ? ai.action : 0) * M, leash: (v.leashM || cb.enemyLeashM) * M, speed: Math.min(cb.enemySpeedCap, (ai.move / 10) * M), range: Math.max(30, ai.range * M - 20),
       interval: Math.max(0.2, 1 / (ai.aps || 0.8) - beh.windup), assist: ai.flock > 1 ? 4 * M : 0, flock: ai.flock, passive: !(ai.s === 3 || ai.a === 3), onHit: ai.d };
     const hp0 = this.dynHp(v);
     return { v, beh, x, y, px: x, py: y, hx: x, hy: y, hp: hp0, maxHp: hp0, st: 'spawn', t: 0.4, cd: 0, alive: true, slowT: 0, stunT: 0, burnT: 0, burnN: 0, burnAcc: 0,
@@ -493,6 +493,8 @@ export class World {
 
   // Gegner verlassen ihr Gebiet nicht (Kapitelwelt): der Schritt wird zurückgenommen, wenn er in ein anderes Gebiet führt
   strays(e) { if (this.mode || !this.map.world || !e.group) return false; const z = zoneAt(this.G, e.x, e.y); return !!z && z !== e.group.area; }
+  // Harte Grenze: kein Gegner entfernt sich weiter als seinen Rückzugsradius von der Mitte seines Spawnpunkts (Schritte nach außen werden verworfen)
+  tooFar(e, ox, oy) { if (this.mode || !e.group || !this.map.world) return false; const d = dist2(e.x, e.y, e.group.x, e.group.y), L = e.beh.leash || 320; return d > L * L && d > dist2(ox, oy, e.group.x, e.group.y); }
   stepEnemies(dt) {
     const g = this.g, p = this.p, sts = g.c.by.statuses, slowM = sts.get('slow').speedMult, burn = sts.get('burn');
     const G = this.G, far2 = (g.c.cfg.world.activeRadiusM * (this.map.world ? this.map.world.ppm : M)) ** 2;
@@ -502,11 +504,11 @@ export class World {
       const d = Math.hypot(tx - e.x, ty - e.y); if (d < 2) return true;
       const k = Math.min(1, (sp * dt) / d), ox = e.x, oy = e.y;
       [e.x, e.y] = slide(G, e.x, e.y, e.x + (tx - e.x) * k, e.y + (ty - e.y) * k, Math.min(e.r, 18));
-      if (safe(e.x, e.y) || this.strays(e)) { e.x = ox; e.y = oy; }
+      if (safe(e.x, e.y) || this.strays(e) || this.tooFar(e, ox, oy)) { e.x = ox; e.y = oy; }
       if (e.x === ox && e.y === oy) e.stuck = (e.stuck || 0) + dt; else e.stuck = 0;
       return d < 6;
     };
-    const away = (e, sp) => { const d = Math.hypot(p.x - e.x, p.y - e.y) || 1, k = (sp * dt) / d, ox = e.x, oy = e.y; [e.x, e.y] = slide(G, e.x, e.y, e.x - (p.x - e.x) * k, e.y - (p.y - e.y) * k, 14); if (safe(e.x, e.y) || this.strays(e)) { e.x = ox; e.y = oy; } };
+    const away = (e, sp) => { const d = Math.hypot(p.x - e.x, p.y - e.y) || 1, k = (sp * dt) / d, ox = e.x, oy = e.y; [e.x, e.y] = slide(G, e.x, e.y, e.x - (p.x - e.x) * k, e.y - (p.y - e.y) * k, 14); if (safe(e.x, e.y) || this.strays(e) || this.tooFar(e, ox, oy)) { e.x = ox; e.y = oy; } };
     // Alarm: wer den Spieler bemerkt, weckt ruhende Nachbarn im Umkreis (keine Kettenreaktion)
     const alert = (e) => {
       e.st = 'aggro'; e.t = 0.3;
@@ -537,18 +539,21 @@ export class World {
         case 'idle':
           if (p.alive && d < aggro && sees(e)) { alert(e); break; }
           if ((e.t -= dt) <= 0 && b.patrol > 0) {
-            const a = rnd(g.state.rng, 'world') * 6.283, tx = clamp(e.hx + Math.cos(a) * b.patrol, 20, this.map.w - 20), ty = clamp(e.hy + Math.sin(a) * b.patrol, 20, this.map.h - 20);
-            if (walkable(G, tx, ty) && los(G, e.hx, e.hy, tx, ty)) { e.tx = tx; e.ty = ty; e.st = 'patrol'; } else e.t = 2;
+            // Umherlaufen wie in der Vorlage: alle paar Sekunden ein neuer Punkt INNERHALB des eigenen Spawnkreises (Mitte und Radius des Spawnpunkts);
+            // ohne Spawnkreis (Arenen, Kapitel ohne Szenendaten) im kleinen Umkreis um den Heimatpunkt
+            const gr = e.group, circ = !this.mode && gr && gr.r > 0, cx = circ ? gr.x : e.hx, cy = circ ? gr.y : e.hy, rad = circ ? gr.r * Math.sqrt(rnd(g.state.rng, 'world')) : b.patrol;
+            const a = rnd(g.state.rng, 'world') * 6.283, tx = clamp(cx + Math.cos(a) * rad, 20, this.map.w - 20), ty = clamp(cy + Math.sin(a) * rad, 20, this.map.h - 20);
+            if (walkable(G, tx, ty) && los(G, e.x, e.y, tx, ty) && (!circ || zoneAt(G, tx, ty) === gr.area)) { e.tx = tx; e.ty = ty; e.st = 'patrol'; } else e.t = 2;
           }
           break;
         case 'patrol':
           if (p.alive && d < aggro && sees(e)) { alert(e); break; }
-          if (move(e, e.tx, e.ty, sp * 0.4) || e.stuck > 1) { e.st = 'idle'; e.t = 1.5 + rnd(g.state.rng, 'world') * 3; }
+          if (move(e, e.tx, e.ty, sp * 0.4) || e.stuck > 1) { e.st = 'idle'; e.t = (g.c.cfg.combat.wanderCycleSec || 4) * (0.75 + rnd(g.state.rng, 'world') * 0.5); }
           break;
         case 'aggro': if ((e.t -= dt) <= 0) e.st = 'chase'; break;
         case 'chase':
           // Verfolgung endet bei Leine, Tod des Spielers oder wenn der Spieler hinter Wänden festhängt (keine Endlosschleife)
-          if (!p.alive || dist2(e.x, e.y, e.hx, e.hy) > leash * leash || e.stuck > 2.5) { e.st = 'return'; e.stuck = 0; break; }
+          if (!p.alive || dist2(e.x, e.y, e.group && !this.mode ? e.group.x : e.hx, e.group && !this.mode ? e.group.y : e.hy) > leash * leash || e.stuck > 2.5) { e.st = 'return'; e.stuck = 0; break; }
           if (b.flee) { if (d > aggro * 1.6) { e.st = 'return'; break; } away(e, sp); break; }
           if (b.pattern && !e.mech && (e.pcd -= dt) <= 0) { const pt = g.c.get('bossPatterns', b.pattern); e.st = 'cast'; e.t = pt.windup; e.cx = p.x; e.cy = p.y; e.pcd = pt.period * (e.hp < (e.maxHp * pt.enrageHpPct) / 100 ? pt.enrageIntervalMult : 1); break; }
           near.push(e);

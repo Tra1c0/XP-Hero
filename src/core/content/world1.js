@@ -50,14 +50,14 @@ const F = BUILD_POS.bonfire, fl = (p) => (onFloor(p[0], p[1]) ? p : nearestFloor
 export const BASE = { fire: F, elder: fl(POINTS.npc), smith: fl([BUILD_POS.smithy[0] - 2.2, BUILD_POS.smithy[1] - 1.6]) };
 export const BUILDINGS = { bonfire: F, smithy: fl(BUILD_POS.smithy), chesthouse: fl(BUILD_POS.chesthouse), portal: fl(BUILD_POS.portal), raidcamp: fl(BUILD_POS.raidcamp) };
 // Kostümladen, Sägewerk und Steinbruch (ohne Bauplatz in den Szenendaten): der jeweils nächste freie Fleck beim Lagerfeuer, der samt Trittfeld auf Boden liegt,
-// mindestens 5,5 m von anderen Gebäuden und mit 6,5 m Abstand zu jedem Spawnkreis – damit kein Bauplatz in einer Gegnergruppe steht.
+// mindestens 5,5 m von anderen Gebäuden und außerhalb aller Spawnkreise (Radius + 3 m) – damit kein Bauplatz in einer Gegnergruppe steht.
 for (const id of ['costumeshop', 'lumbermill', 'quarry']) {
   let best = null, bd = 1e9;
   for (let dx = -16; dx <= 16; dx += 1) for (let dz = -16; dz <= 16; dz += 1) {
     const x = F[0] + dx, z = F[1] + dz, d = Math.hypot(dx, dz);
     if (d < 5 || d >= bd || !onFloor(x, z) || !onFloor(x, z - 2.7) || !onFloor(x + 1.4, z) || !onFloor(x - 1.4, z)) continue;
     if (Object.values(BUILDINGS).some((b) => Math.hypot(b[0] - x, b[1] - z) < 5.5) || Object.values(BUILD_POS).some((b) => Math.hypot(b[0] - x, b[1] - z) < 5.5)) continue;
-    if (SPAWN_PTS.some((q) => Math.hypot(q[2] - x, q[3] - z) < q[4] + 6.5 || Math.hypot(q[2] - x, q[3] - (z - 2.7)) < q[4] + 5)) continue;
+    if (SPAWN_PTS.some((q) => Math.hypot(q[2] - x, q[3] - z) < q[4] + 3 || Math.hypot(q[2] - x, q[3] - (z - 2.7)) < q[4] + 2)) continue;
     best = [x, z]; bd = d;
   }
   BUILDINGS[id] = best || at(id === 'costumeshop' ? -3.4 : id === 'lumbermill' ? 5 : 11, id === 'quarry' ? -4.8 : -10);
@@ -72,6 +72,9 @@ for (const id of ['costumeshop', 'lumbermill', 'quarry']) {
     if (spots.some(([sx, sz, sr]) => Math.hypot(sx - x, sz - z) <= sr) && !SPAWN_PTS.some((q) => Math.hypot(q[2] - x, q[3] - z) < q[4] + 1.5)) rows[r][c] = '0';
   }
   MAP1.z = rows.map((r) => r.join('')); MAP1.base = { c: F, r: 5.2 }; MAP1.entries = { ...MAP1.entries, base: [F[0], F[1] - 3.4] };
+  // Der Einstiegspunkt von Greenhaven darf nicht in der Siedlung liegen: zur nächsten Greenhaven-Zelle verschieben
+  { const [ex, ez] = MAP1.entries.a1_1, cell = (x, z) => (MAP1.z[Math.floor((MAP1.maxZ - z) / MAP1.cell)] || '')[Math.floor((x - MAP1.minX) / MAP1.cell)];
+    if (cell(ex, ez) !== '1') { let best = null, bd = 1e9; for (let dx = -12; dx <= 12; dx += 2) for (let dz = -12; dz <= 12; dz += 2) { const d = Math.hypot(dx, dz); if (d < bd && cell(ex + dx, ez + dz) === '1') { bd = d; best = [ex + dx, ez + dz]; } } if (best) MAP1.entries = { ...MAP1.entries, a1_1: best }; } }
 }
 const lm = (t, dx, dz, x = {}) => ({ t, p: [F[0] + dx, F[1] + dz], ...x });
 LANDMARKS.push(lm('sandpatch', 0.4, 0.2), lm('sandpath', 0, -7.4), lm('storechest', -2.3, 0.7, { r: 12 }), lm('boulder_grey', 5.2, 8.2, { s: 1.1 }), lm('boulder_grey', 6.6, 7.2, { r: 80 }),

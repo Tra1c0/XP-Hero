@@ -115,7 +115,22 @@ test('Siedlung: Schutzzone folgt den Gebäuden statt einem großen Kreis; vom Ra
   assert.ok(n > 30 && n < 110, `Siedlung umfasst ${n} Zellen (vorher über 70 allein im 10-m-Kreis, jetzt nur um die Gebäude)`);
   let pair = null; for (let r = 1; r < G.rows - 1 && !pair; r++) for (let c = 1; c < G.cols - 1 && !pair; c++) { const x = (c + 0.5) * G.cpx, y = (r + 0.5) * G.cpx; if (zoneAt(G, x, y) === 'base' && walkable(G, x, y) && zoneAt(G, x, y + G.cpx) === 'a1_1' && walkable(G, x, y + G.cpx)) pair = [x, y]; }
   const e = w.enemies.find((x) => x.alive && x.v.id === 'slime'); for (const o of w.enemies) if (o !== e) o.alive = false;
-  w.p.x = w.p.px = pair[0]; w.p.y = w.p.py = pair[1] + G.cpx / 2 - 6; e.x = e.hx = pair[0]; e.y = e.hy = pair[1] + G.cpx / 2 + 40; e.st = 'idle'; let entered = false;
+  w.p.x = w.p.px = pair[0]; w.p.y = w.p.py = pair[1] + G.cpx / 2 - 6; e.x = e.hx = pair[0]; e.y = e.hy = pair[1] + G.cpx / 2 + 40; e.group = { ...e.group, x: e.x, y: e.y }; e.st = 'idle'; let entered = false; // Spawnpunkt für den Test an den Rand verlegt
   for (let k = 0; k < 300 && e.alive; k++) { game.tick(1 / 30); clock.t += 1000 / 30; if (zoneAt(G, e.x, e.y) === 'base') entered = true; }
   assert.equal(e.alive, false, 'Gegner direkt am Siedlungsrand wird besiegt'); assert.equal(entered, false, 'Gegner hat die Siedlung nicht betreten');
+});
+
+test('Gegner bleiben in ihrem Spawnbereich: Standplatz im Spawnkreis der Daten, Umherlaufen nur im Kreis, Verfolgen höchstens bis zum Rückzugsradius', async () => {
+  const { SPAWN_PTS } = await import('../src/core/content/scene1_ref.js');
+  const a = mk(); for (const ar of a.game.c.t.areas) a.game.state.world.cleared[ar.id] = 1;
+  const { game, clock } = mk({ state: JSON.parse(JSON.stringify(a.game.state)) }); const w = game.world, G = w.G, ppm = G.ppm, B = G.world.bounds;
+  for (const e of w.enemies) { if (e.v.rank === 'node' || !e.group || !e.group.pos) continue; const st = Number(e.group.area.slice(3));
+    const pt = SPAWN_PTS.find((q) => q[0] === st && Math.hypot(q[2] - e.group.pos[0], q[3] - e.group.pos[1]) < 0.75); if (!pt) continue;
+    assert.ok(Math.hypot(B.minX + e.hx / ppm - pt[2], B.maxZ - e.hy / ppm - pt[3]) <= pt[4] + 0.6, `${e.v.name}: Standplatz im Spawnkreis`); }
+  w.p.auto = true; const pts = Object.values(G.world.entries).map((p) => G.toPx(p[0], p[1])); let idle = -9, fight = -9, who = '';
+  for (let k = 0; k < 30 * 420; k++) { if (k % 1800 === 0) { const q = pts[(k / 1800) % pts.length]; w.p.x = w.p.px = q.x; w.p.y = w.p.py = q.y; w.p.huntArea = null; } game.tick(1 / 30); clock.t += 1000 / 30; w.p.hp = 1e12; game.stats.hp = 1e12;
+    if (k % 15 === 0) for (const e of w.enemies) { if (!e.alive || e.v.rank === 'node' || !e.group || !e.group.r) continue; const d = Math.hypot(e.x - e.group.x, e.y - e.group.y) / ppm;
+      if (e.st === 'idle' || e.st === 'patrol') idle = Math.max(idle, d - e.group.r / ppm); else if (e.st !== 'spawn' && d - e.beh.leash / ppm > fight) { fight = d - e.beh.leash / ppm; who = e.v.name; } } }
+  assert.ok(idle <= 0.5, `umherlaufende Gegner verlassen ihren Spawnkreis nicht (${idle.toFixed(1)} m)`);
+  assert.ok(fight <= 1.0, `kein Gegner entfernt sich weiter als seinen Rückzugsradius von seinem Spawnpunkt (${who} ${fight.toFixed(1)} m darüber)`);
 });

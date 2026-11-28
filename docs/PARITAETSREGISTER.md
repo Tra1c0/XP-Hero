@@ -1,6 +1,6 @@
 # Paritätsregister
 
-Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint jp1ftwgunc).
+Automatisch erzeugt mit `npm run parity` aus `src/core/content/base.js` (Version base-27.2.0-1, Fingerprint 2e09v9y393o).
 Quelle aller Referenzangaben: Systemanalyse (Stand 26.11.2026, Referenz 27.2.0, inoffizielle Fan-Daten). Es fand keine eigene Datenextraktion statt.
 
 Status: **D** = belegt (Referenz 27.2.0) · **B** = beobachtet, Details eigen · **R** = rekonstruiert · **E** = EIGENER Wert · **?** = offen / zu verifizieren
@@ -81,7 +81,7 @@ Jeder Wert ist im Admin-Panel unter „Content & Balancing“ änderbar; kein We
 | dailyTickets | E | `{"ticket_tower":5,"ticket_raid":2,"ticket_tomb":3}` | Tägliche Grundtickets (Auffüllen bis zu diesem Wert). |
 | player | E | `{"baseCargo":20,"moveSpeed":230,"critChance":5,"critDmg":150,"pickupRadius":90,"regenPct":1,"radius":16}` | Grundwerte Spieler. |
 | statCaps | E | `{"critChance":100,"cooldownPct":70,"atkSpeedPct":400,"moveSpeedPct":150,"lifesteal":50,"multiHit":100,"trip…` | Obergrenzen; Kritchance <= 100. |
-| combat | R | `{"weaponSkillRadius":110,"subRangeM":4,"fistAps":1.8,"enemyLeashM":8,"enemySpeedCap":300,"subIntervalMult":…` | Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt. |
+| combat | R | `{"weaponSkillRadius":110,"subRangeM":4,"fistAps":1.8,"enemyLeashM":8,"wanderCycleSec":4,"enemySpeedCap":300…` | Nebenwaffen feuern langsamer/schwächer als die Hauptwaffe (eigene Werte). Offline-Respawn ungeklärt. |
 | weaponLevelCost | D | `{"gold":[[1,82],[5,106],[11,287],[15,493],[19,863],[23,1322],[28,1919],[33,2878],[39,4688],[45,6880],[52,10…` | Waffenstufe: Gold nach Stützstufen (dazwischen linear), Schriftrollen 2 x Stufe - 1; unabhängig von der Seltenheit (Spieldaten). |
 | craftCost | B | `[5,5,5,5,5,5,5,5]` | Schmieden kostet auf jeder Schmiedestufe 5 Kristalle (Vorlage). |
 | weaponSlots | D | `[{"slot":1},{"slot":2,"level":5,"cost":{"stone":5},"quest":true},{"slot":3,"level":25,"cost":{"stone":10}},…` | Waffenplätze 2-6: Level und Kosten aus den Spieldaten; Platz 2 schaltet die Questkette frei. |
